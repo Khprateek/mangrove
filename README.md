@@ -2,17 +2,7 @@
   <img src="assets/logo.png" alt="Mangrove Logo" width="100" />
   <h1>Mangrove</h1>
   <p><b>Real-Time In-Database Supply Chain Triage &amp; Assembly Starvation Defense on Exasol Personal</b></p>
-  <p>
-    <a href="#problem-statement">Problem Statement</a>
-    ·
-    <a href="pitch/PRESENTATION_SLIDES_DECK.md">Pitch Deck</a>
-    ·
-    <a href="docs/run-guide.md">Reproducibility Runbook</a>
-    ·
-    <a href="#system-architecture">System Architecture</a>
-    ·
-    <a href="#run-locally">Turnkey Quick Start</a>
-  </p>
+
   <p>
     <img src="https://img.shields.io/badge/ExaThon%20India-2026%20Open%20Build-blue?style=flat-square&logo=exasol" alt="ExaThon 2026" />
     <img src="https://img.shields.io/badge/Track%2003-Factories%2C%20Fleets%20%26%20Supply%20Chains-orange?style=flat-square" alt="Track 03" />
