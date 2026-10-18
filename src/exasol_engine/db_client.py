@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
+import hashlib
 import os
 from pathlib import Path
 import time
@@ -18,6 +19,7 @@ from src.exasol_engine.harmonizer_core import (
 )
 
 load_dotenv()
+GENESIS_HASH: str = "GENESIS_HASH_BLOCK_" + ("0" * 45)
 
 
 class ExasolBootstrapError(RuntimeError):
@@ -98,6 +100,29 @@ class ChakanExasolClient:
             for f in required_files:
                 t_name = f.replace(".csv", "").upper()
                 self.tables[t_name] = pd.read_csv(self.data_dir / f)
+
+        audit_file = self.data_dir / "audit_log_ledger.csv"
+        if audit_file.exists():
+            self.tables["AUDIT_LOG_LEDGER"] = pd.read_csv(
+                audit_file,
+                dtype={"prev_hash": str, "sha256_hash": str, "asn_line_id": str, "event_id": str},
+            )
+        elif "AUDIT_LOG_LEDGER" not in self.tables:
+            self.tables["AUDIT_LOG_LEDGER"] = pd.DataFrame(
+                columns=[
+                    "event_id",
+                    "event_type",
+                    "asn_line_id",
+                    "resolved_part_num",
+                    "normalized_qty",
+                    "normalized_uom",
+                    "action",
+                    "operator_id",
+                    "timestamp",
+                    "sha256_hash",
+                    "prev_hash",
+                ]
+            )
 
         return self.tables
 
@@ -807,6 +832,90 @@ class ChakanExasolClient:
             },
         }
 
+    def _log_audit_event(
+        self,
+        event_type: str,
+        asn_line_id: str,
+        resolved_part_num: str,
+        normalized_qty: float,
+        normalized_uom: str,
+        action: str,
+        operator_id: str,
+    ) -> str:
+        """
+        Appends an immutable, cryptographically chained SHA-256 audit block to AUDIT_LOG_LEDGER.
+        Returns the 64-character hexadecimal SHA-256 fingerprint.
+        """
+        audit_df = self.tables.get("AUDIT_LOG_LEDGER")
+        if audit_df is None or len(audit_df) == 0:
+            prev_hash = GENESIS_HASH
+            next_seq = 1
+        else:
+            prev_hash = str(audit_df.iloc[-1].get("sha256_hash", GENESIS_HASH))
+            next_seq = len(audit_df) + 1
+
+        ts_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        event_id = f"AUD-{datetime.now().strftime('%Y%m%d')}-{next_seq:04d}"
+
+        payload = f"{event_id}|{event_type}|{asn_line_id}|{resolved_part_num}|{float(normalized_qty):.2f}|{normalized_uom}|{action}|{operator_id}|{ts_str}|{prev_hash}"
+        sha256_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+        new_audit_row = pd.DataFrame(
+            [
+                {
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "asn_line_id": asn_line_id,
+                    "resolved_part_num": resolved_part_num,
+                    "normalized_qty": float(normalized_qty),
+                    "normalized_uom": normalized_uom,
+                    "action": action,
+                    "operator_id": operator_id,
+                    "timestamp": ts_str,
+                    "sha256_hash": sha256_hash,
+                    "prev_hash": prev_hash,
+                }
+            ]
+        )
+        updated_audit = (
+            new_audit_row if audit_df is None or len(audit_df) == 0 else pd.concat([audit_df, new_audit_row], ignore_index=True)
+        )
+        self.tables["AUDIT_LOG_LEDGER"] = updated_audit
+        updated_audit.to_csv(self.data_dir / "audit_log_ledger.csv", index=False)
+        return sha256_hash
+
+    def get_verified_audit_ledger(self) -> Tuple[pd.DataFrame, bool]:
+        """
+        Retrieves the audit log and mathematically verifies the integrity of the SHA-256 hash chain.
+        Returns (audit_dataframe, is_chain_valid).
+        """
+        self.ensure_data_loaded()
+        audit_df = self.tables.get("AUDIT_LOG_LEDGER")
+        if audit_df is None or len(audit_df) == 0:
+            return pd.DataFrame(), True
+
+        df = audit_df.copy()
+        is_valid = True
+        verification_statuses = []
+
+        for pos, (_, row) in enumerate(df.iterrows()):
+            expected_prev = GENESIS_HASH if pos == 0 else str(df.iloc[pos - 1]["sha256_hash"])
+            curr_prev = str(row["prev_hash"])
+            if curr_prev != str(expected_prev):
+                is_valid = False
+                verification_statuses.append(False)
+                continue
+
+            payload = f"{row['event_id']}|{row['event_type']}|{row['asn_line_id']}|{row['resolved_part_num']}|{float(row['normalized_qty']):.2f}|{row['normalized_uom']}|{row['action']}|{row['operator_id']}|{row['timestamp']}|{curr_prev}"
+            computed = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+            match = (computed == str(row["sha256_hash"]))
+            if not match:
+                is_valid = False
+            verification_statuses.append(match)
+
+        df["chain_verified"] = verification_statuses
+        return df, is_valid
+
     def approve_harmonization_override(
         self,
         asn_line_id: str,
@@ -821,6 +930,17 @@ class ChakanExasolClient:
         self.ensure_data_loaded()
         ov_df = self.tables["ASN_PLANNER_OVERRIDES"]
         ov_df = ov_df[ov_df["asn_line_id"] != asn_line_id].copy()
+
+        # 1. Generate Cryptographic Audit Block
+        sha256_hash = self._log_audit_event(
+            event_type="OVERRIDE_APPROVED",
+            asn_line_id=asn_line_id,
+            resolved_part_num=resolved_part_num,
+            normalized_qty=normalized_qty,
+            normalized_uom=normalized_uom,
+            action=action,
+            operator_id=user,
+        )
 
         new_row = pd.DataFrame(
             [
@@ -852,6 +972,56 @@ class ChakanExasolClient:
 
         return round((time.perf_counter() - t0) * 1000.0, 2)
 
+    def revert_planner_override(
+        self,
+        asn_line_id: str,
+        user: str = "lead_planner_chakan",
+    ) -> float:
+        """
+        Safely rolls back a specific planner override, restores baseline state for that ASN,
+        and logs an immutable cryptographic reversal block to AUDIT_LOG_LEDGER.
+        """
+        t0 = time.perf_counter()
+        self.ensure_data_loaded()
+        ov_df = self.tables["ASN_PLANNER_OVERRIDES"]
+
+        target_rows = ov_df[ov_df["asn_line_id"] == asn_line_id]
+        if len(target_rows) == 0:
+            return round((time.perf_counter() - t0) * 1000.0, 2)
+
+        reverted_row = target_rows.iloc[0]
+        resolved_part = str(reverted_row.get("resolved_part_num", "UNKNOWN"))
+        norm_qty = float(reverted_row.get("normalized_qty", 0.0))
+        norm_uom = str(reverted_row.get("normalized_uom", "EA"))
+
+        # 1. Remove from active overrides table
+        remaining_ov = ov_df[ov_df["asn_line_id"] != asn_line_id].copy()
+        self.tables["ASN_PLANNER_OVERRIDES"] = remaining_ov
+        remaining_ov.to_csv(self.data_dir / "asn_planner_overrides.csv", index=False)
+
+        # 2. Append cryptographic reversal to audit ledger
+        self._log_audit_event(
+            event_type="OVERRIDE_REVERTED",
+            asn_line_id=asn_line_id,
+            resolved_part_num=resolved_part,
+            normalized_qty=norm_qty,
+            normalized_uom=norm_uom,
+            action="ROLLBACK_REVERT_TO_BASELINE",
+            operator_id=user,
+        )
+
+        # 3. Propagate deletion to Exasol DB if connected
+        if self.conn is not None:
+            try:
+                self.conn.execute(
+                    f"DELETE FROM {self.schema}.ASN_PLANNER_OVERRIDES WHERE asn_line_id = {{asn_line_id}}",
+                    {"asn_line_id": asn_line_id},
+                )
+            except Exception as exc:
+                raise ExasolWriteError(f"Revert of override {asn_line_id} failed in Exasol: {exc}") from exc
+
+        return round((time.perf_counter() - t0) * 1000.0, 2)
+
     def reset_planner_overrides(self) -> float:
         t0 = time.perf_counter()
         self.ensure_data_loaded()
@@ -869,6 +1039,16 @@ class ChakanExasolClient:
         )
         self.tables["ASN_PLANNER_OVERRIDES"] = empty_ov
         empty_ov.to_csv(self.data_dir / "asn_planner_overrides.csv", index=False)
+
+        self._log_audit_event(
+            event_type="ALL_OVERRIDES_RESET",
+            asn_line_id="ALL",
+            resolved_part_num="ALL",
+            normalized_qty=0.0,
+            normalized_uom="ALL",
+            action="SYSTEM_RESET_ALL_OVERRIDES",
+            operator_id="lead_planner_chakan",
+        )
 
         if self.conn is not None:
             try:

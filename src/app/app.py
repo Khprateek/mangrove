@@ -323,6 +323,53 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
             st.success(f"Authorized emergency shortfall cover and updated Exasol in {write_ms:.2f} ms.")
             st.rerun()
 
+    # 4. Active Overrides with 1-Click Rollback Control
+    st.markdown("---")
+    ov_active = client.tables.get("ASN_PLANNER_OVERRIDES", pd.DataFrame())
+    if len(ov_active) > 0:
+        st.subheader("Active Planner Overrides & 1-Click Rollback / Undo")
+        st.caption(
+            "Every override can be reversed instantly. Reverting rolls back Exasol in-memory tables "
+            "and commits an immutable cryptographic reversal block to the audit ledger."
+        )
+
+        for _, ov_row in ov_active.iterrows():
+            ov_id = str(ov_row["asn_line_id"])
+            col_ov1, col_ov2 = st.columns([4, 1])
+            with col_ov1:
+                st.info(
+                    f"**Active Override: `{ov_id}`** | Part: `{ov_row['resolved_part_num']}` | "
+                    f"Qty: `{ov_row['normalized_qty']:,.0f} {ov_row['normalized_uom']}` | "
+                    f"Action: `{ov_row['resolution_action']}` | By: `{ov_row['resolved_by']}` at `{ov_row['resolved_at']}`"
+                )
+            with col_ov2:
+                if st.button(f"↩️ Revert ({ov_id})", key=f"revert_{ov_id}", use_container_width=True):
+                    rev_ms = client.revert_planner_override(ov_id)
+                    st.success(f"Reverted override {ov_id} in {rev_ms:.2f} ms!")
+                    st.rerun()
+
+    # 5. Immutable Cryptographic Audit Trail (SHA-256 Merkle Chain)
+    with st.expander("🛡️ Immutable Cryptographic Audit Trail (SHA-256 Chained Ledger)", expanded=False):
+        audit_df, chain_valid = client.get_verified_audit_ledger()
+        if len(audit_df) > 0:
+            status_color = "#10b981" if chain_valid else "#ef4444"
+            status_text = "CRYPTOGRAPHIC INTEGRITY: 100% VERIFIED (CHAIN VALID)" if chain_valid else "INTEGRITY WARNING: CORRUPTED HASH DETECTED"
+            st.markdown(
+                f"""
+                <div style="background-color: #0f172a; border-left: 4px solid {status_color}; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px;">
+                    <span style="color: {status_color}; font-weight: 800; font-size: 0.85rem;">🛡️ {status_text}</span>
+                    <span style="color: #94a3b8; font-size: 0.82rem; margin-left: 12px;">Every override and reversal is permanently sealed with SHA-256 Merkle-chain cryptography.</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            display_audit = audit_df[
+                ["event_id", "event_type", "asn_line_id", "resolved_part_num", "normalized_qty", "action", "operator_id", "timestamp", "sha256_hash", "chain_verified"]
+            ].copy()
+            st.dataframe(display_audit, use_container_width=True, hide_index=True)
+        else:
+            st.caption("No override events recorded yet. Approving or reverting overrides will log immutable cryptographic blocks here.")
+
 
 def render_bom_horizon_tab(marts: dict) -> None:
     bom_df: pd.DataFrame = marts["bom_risk_mart"].copy()

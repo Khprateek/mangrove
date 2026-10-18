@@ -72,6 +72,30 @@ ALIASES = {
     "42CRMO4BILLET": "RAW-STL-42CR-B",
 }
 
+def _extract_ngrams(s):
+    cleaned = (s or "").strip().upper()
+    if not cleaned:
+        return set()
+    length = len(cleaned)
+    ng = set()
+    padded = f"^{cleaned}$"
+    ng.add(padded[:2])
+    ng.add(padded[-2:])
+    if length <= 4:
+        for i in range(len(padded) - 1):
+            ng.add(padded[i:i+2])
+    else:
+        for i in range(length - 2):
+            ng.add(cleaned[i:i+3])
+    return ng
+
+_ALIAS_NGRAM_INDEX = {}
+for _k in ALIASES:
+    for _ng in _extract_ngrams(_k):
+        if _ng not in _ALIAS_NGRAM_INDEX:
+            _ALIAS_NGRAM_INDEX[_ng] = set()
+        _ALIAS_NGRAM_INDEX[_ng].add(_k)
+
 def _jaro_winkler(s1, s2, prefix_weight=0.1):
     a = (s1 or "").strip().upper()
     b = (s2 or "").strip().upper()
@@ -147,13 +171,39 @@ def run(ctx):
             return
 
     if alnum_raw:
+        # Phase 1: Adaptive N-Gram Candidate Pre-Filtering (Fast Path)
+        query_ngrams = _extract_ngrams(alnum_raw)
+        candidate_overlaps = {}
+        for ng in query_ngrams:
+            if ng in _ALIAS_NGRAM_INDEX:
+                for candidate_key in _ALIAS_NGRAM_INDEX[ng]:
+                    candidate_overlaps[candidate_key] = candidate_overlaps.get(candidate_key, 0) + 1
+
         best_alias_sku = None
         best_jw = 0.0
-        for alias_key, canonical_sku in ALIASES.items():
-            score = _jaro_winkler(alnum_raw, alias_key)
-            if score > best_jw:
-                best_jw = score
-                best_alias_sku = canonical_sku
+        evaluated_keys = set()
+
+        if candidate_overlaps:
+            sorted_candidates = sorted(candidate_overlaps.items(), key=lambda x: x[1], reverse=True)
+            for candidate_key, _ in sorted_candidates:
+                evaluated_keys.add(candidate_key)
+                score = _jaro_winkler(alnum_raw, candidate_key)
+                if score > best_jw:
+                    best_jw = score
+                    best_alias_sku = ALIASES[candidate_key]
+                if best_jw >= 0.95:
+                    break
+
+        # Phase 2: Safety Fallback Guardrail (0.00% False Negative Guarantee)
+        if best_jw < 0.85:
+            for alias_key, canonical_sku in ALIASES.items():
+                if alias_key in evaluated_keys:
+                    continue
+                score = _jaro_winkler(alnum_raw, alias_key)
+                if score > best_jw:
+                    best_jw = score
+                    best_alias_sku = canonical_sku
+
         if best_alias_sku and best_jw >= 0.85:
             ctx.emit(best_alias_sku, "JARO_WINKLER_FUZZY", round(best_jw, 2))
             return

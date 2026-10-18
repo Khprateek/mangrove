@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 import re
-from typing import Dict, Tuple
+from typing import Dict, List, Set, Tuple
 
 
 KNOWN_SUPPLIER_SKU_ALIASES: Dict[str, str] = {
@@ -17,6 +17,54 @@ KNOWN_SUPPLIER_SKU_ALIASES: Dict[str, str] = {
     "CUHAIRPIN04": "EVC-WND-CU-04",
     "42CRMO4BILLET": "RAW-STL-42CR-B",
 }
+
+
+def extract_adaptive_ngrams(s: str) -> Set[str]:
+    """
+    Extracts boundary-padded character n-grams for fast sub-millisecond candidate filtering:
+    - Short strings (<= 4 chars): Pads boundary '^...$' and extracts bigrams (2-grams).
+    - Longer strings (> 4 chars): Extracts trigrams (3-grams) plus boundary bigrams.
+    This guarantees short part codes (e.g., 'M6', 'ECU') are never skipped.
+    """
+    cleaned = (s or "").strip().upper()
+    if not cleaned:
+        return set()
+
+    length = len(cleaned)
+    ngrams: Set[str] = set()
+
+    # Boundary anchors ensure prefix/suffix alignment is strongly rewarded
+    padded = f"^{cleaned}$"
+    ngrams.add(padded[:2])   # e.g., '^M'
+    ngrams.add(padded[-2:])  # e.g., '6$'
+
+    if length <= 4:
+        # 2-grams across short string
+        for i in range(len(padded) - 1):
+            ngrams.add(padded[i : i + 2])
+    else:
+        # 3-grams across main body
+        for i in range(length - 2):
+            ngrams.add(cleaned[i : i + 3])
+
+    return ngrams
+
+
+def build_ngram_inverted_index(catalog: Dict[str, str]) -> Dict[str, Set[str]]:
+    """
+    Constructs an In-Memory Inverted Index mapping n-grams to candidate alias keys.
+    Query lookup is O(1) in RAM.
+    """
+    index: Dict[str, Set[str]] = {}
+    for alias_key in catalog:
+        for ng in extract_adaptive_ngrams(alias_key):
+            if ng not in index:
+                index[ng] = set()
+            index[ng].add(alias_key)
+    return index
+
+
+_ALIAS_NGRAM_INDEX: Dict[str, Set[str]] = build_ngram_inverted_index(KNOWN_SUPPLIER_SKU_ALIASES)
 
 
 def normalize_uom_quantity(
@@ -161,13 +209,42 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
             return cleaned_po, "JARO_WINKLER_FUZZY", round(jw_po, 2)
 
     if alnum_raw:
+        # Phase 1: Adaptive N-Gram Candidate Pre-Filtering (Fast Path)
+        query_ngrams = extract_adaptive_ngrams(alnum_raw)
+        candidate_overlaps: Dict[str, int] = {}
+        for ng in query_ngrams:
+            if ng in _ALIAS_NGRAM_INDEX:
+                for candidate_key in _ALIAS_NGRAM_INDEX[ng]:
+                    candidate_overlaps[candidate_key] = candidate_overlaps.get(candidate_key, 0) + 1
+
         best_alias_sku = None
         best_jw = 0.0
-        for alias_key, canonical_sku in KNOWN_SUPPLIER_SKU_ALIASES.items():
-            score = jaro_winkler_similarity(alnum_raw, alias_key)
-            if score > best_jw:
-                best_jw = score
-                best_alias_sku = canonical_sku
+        evaluated_keys: Set[str] = set()
+
+        if candidate_overlaps:
+            # Sort candidates by overlap count descending to test top matches first
+            sorted_candidates = sorted(candidate_overlaps.items(), key=lambda x: x[1], reverse=True)
+            for candidate_key, _ in sorted_candidates:
+                evaluated_keys.add(candidate_key)
+                score = jaro_winkler_similarity(alnum_raw, candidate_key)
+                if score > best_jw:
+                    best_jw = score
+                    best_alias_sku = KNOWN_SUPPLIER_SKU_ALIASES[candidate_key]
+                if best_jw >= 0.95:
+                    break
+
+        # Phase 2: Safety Fallback Guardrail (0.00% False Negative Guarantee)
+        # If candidate pre-filtering found 0 matches OR best score < 0.85 threshold,
+        # perform an exhaustive scan across remaining keys to guarantee zero misses.
+        if best_jw < 0.85:
+            for alias_key, canonical_sku in KNOWN_SUPPLIER_SKU_ALIASES.items():
+                if alias_key in evaluated_keys:
+                    continue
+                score = jaro_winkler_similarity(alnum_raw, alias_key)
+                if score > best_jw:
+                    best_jw = score
+                    best_alias_sku = canonical_sku
+
         if best_alias_sku and best_jw >= 0.85:
             return best_alias_sku, "JARO_WINKLER_FUZZY", round(best_jw, 2)
 

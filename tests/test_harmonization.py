@@ -7,6 +7,8 @@ from src.exasol_engine.db_client import (
     ExasolWriteError,
 )
 from src.exasol_engine.harmonizer_core import (
+    build_ngram_inverted_index,
+    extract_adaptive_ngrams,
     jaro_winkler_similarity,
     normalize_uom_quantity,
     parse_asn_date,
@@ -38,6 +40,43 @@ def test_supplier_sku_drift_and_jaro_winkler_resolution() -> None:
     assert sku_jw == "ENG-BRG-6204-01"
     assert method_jw == "JARO_WINKLER_FUZZY"
     assert conf_jw >= 0.85
+
+
+def test_adaptive_ngram_prefiltering_and_safety_fallback() -> None:
+    # 1. Short code boundary padding guarantees non-empty bigrams
+    m6_ngrams = extract_adaptive_ngrams("M6")
+    assert "^M" in m6_ngrams
+    assert "M6" in m6_ngrams
+    assert "6$" in m6_ngrams
+
+    # 2. Long code trigrams and boundary anchors
+    brg_ngrams = extract_adaptive_ngrams("6204ZZ")
+    assert "620" in brg_ngrams
+    assert "204" in brg_ngrams
+    assert "04Z" in brg_ngrams
+    assert "4ZZ" in brg_ngrams
+    assert "^6" in brg_ngrams
+    assert "Z$" in brg_ngrams
+
+    # 3. Inverted index lookup
+    test_catalog = {"6204ZZ": "ENG-BRG-6204-01", "M6": "FAST-06-M"}
+    idx = build_ngram_inverted_index(test_catalog)
+    assert "620" in idx
+    assert "6204ZZ" in idx["620"]
+    assert "M6" in idx["^M"]
+
+    # 4. Phase 1 Fast Path resolution
+    sku_fast, method_fast, conf_fast = resolve_supplier_sku("FBD6204Z", None)
+    assert sku_fast == "ENG-BRG-6204-01"
+    assert method_fast == "JARO_WINKLER_FUZZY"
+    assert conf_fast >= 0.85
+
+    # 5. Fallback safety verification: Severe transposition or unseen query
+    # guarantees 0.00% False Negatives by exhausting remaining keys if Phase 1 falls below 0.85
+    sku_unseen, method_unseen, conf_unseen = resolve_supplier_sku("TOTALLY-UNSEEN-PART-XYZ", None)
+    assert sku_unseen == "TOTALLY-UNSEEN-PART-XYZ"
+    assert method_unseen == "UNRESOLVED"
+    assert conf_unseen == 0.00
 
 
 def test_multiformat_date_parsing() -> None:
@@ -79,6 +118,44 @@ def test_blast_radius_analytical_marts(tmp_path) -> None:
     client.reset_planner_overrides()
     reset_marts = client.compute_analytical_marts(source="pandas")
     assert float(reset_marts["bom_risk_mart"]["revenue_at_risk_net_inr"].sum()) == initial_net_risk
+
+
+def test_cryptographic_audit_trail_and_rollback(tmp_path) -> None:
+    client = ChakanExasolClient(data_dir=str(tmp_path))
+    marts = client.compute_analytical_marts(source="pandas")
+    initial_net_risk = float(marts["bom_risk_mart"]["revenue_at_risk_net_inr"].sum())
+
+    # 1. Approve Override -> creates chained SHA-256 block
+    client.approve_harmonization_override(
+        asn_line_id="ASN-L-9011",
+        resolved_part_num="AXL-HUB-DUC-14",
+        normalized_qty=600.0,
+        normalized_uom="EA",
+        normalized_eta_date="2026-10-12",
+        action="EXPEDITED_SHORTFALL_COVERED",
+        user="test_operator_1",
+    )
+
+    audit_df, chain_valid = client.get_verified_audit_ledger()
+    assert chain_valid is True
+    assert len(audit_df) >= 1
+    latest_evt = audit_df.iloc[-1]
+    assert latest_evt["event_type"] == "OVERRIDE_APPROVED"
+    assert latest_evt["asn_line_id"] == "ASN-L-9011"
+    assert bool(latest_evt["chain_verified"]) is True
+
+    # 2. Revert Override -> rolls back to baseline and creates cryptographically chained reversal block
+    client.revert_planner_override("ASN-L-9011", user="test_operator_1")
+    reverted_marts = client.compute_analytical_marts(source="pandas")
+    assert float(reverted_marts["bom_risk_mart"]["revenue_at_risk_net_inr"].sum()) == initial_net_risk
+
+    audit_df_after, chain_valid_after = client.get_verified_audit_ledger()
+    assert chain_valid_after is True
+    assert len(audit_df_after) >= 2
+    revert_evt = audit_df_after.iloc[-1]
+    assert revert_evt["event_type"] == "OVERRIDE_REVERTED"
+    assert revert_evt["prev_hash"] == latest_evt["sha256_hash"]
+    assert bool(revert_evt["chain_verified"]) is True
 
 
 def test_financial_roi_and_downtime_cost_engine(tmp_path) -> None:
