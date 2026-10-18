@@ -1,0 +1,375 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="100%" height="100%">
+  <defs>
+    <!-- Background Dot Pattern (Exasol Tech Grid) -->
+    <pattern id="dot-grid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1.5" fill="#182c49" opacity="0.85" />
+    </pattern>
+
+    <!-- Card Background Gradients -->
+    <linearGradient id="bg-canvas" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050d1a" />
+      <stop offset="50%" stop-color="#081426" />
+      <stop offset="100%" stop-color="#040b17" />
+    </linearGradient>
+
+    <linearGradient id="card-hero-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0c203a" />
+      <stop offset="100%" stop-color="#071527" />
+    </linearGradient>
+
+    <linearGradient id="card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0a1a30" />
+      <stop offset="100%" stop-color="#061222" />
+    </linearGradient>
+
+    <linearGradient id="green-pill-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5fc22d" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#5fc22d" stop-opacity="0.08" />
+    </linearGradient>
+
+    <linearGradient id="line-glow-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2a72d4" />
+      <stop offset="50%" stop-color="#5fc22d" />
+      <stop offset="100%" stop-color="#5fc22d" />
+    </linearGradient>
+
+    <!-- Glowing Drop Shadow Filters -->
+    <filter id="glow-green" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="shadow-card" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+
+    <!-- Arrow Markers -->
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#5fc22d" />
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#388bfd" />
+    </marker>
+    <marker id="arrow-cyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#00d084" />
+    </marker>
+  </defs>
+
+  <style>
+    .font-title { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 800; }
+    .font-sub { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 600; }
+    .font-mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+    .font-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-weight: 400; }
+  </style>
+
+  <!-- 1. Deep Canvas Background -->
+  <rect width="1200" height="660" fill="url(#bg-canvas)" rx="16" />
+  <rect width="1200" height="660" fill="url(#dot-grid)" rx="16" />
+
+  <!-- 2. Header Banner with Exasol Branding -->
+  <g transform="translate(40, 28)">
+    <!-- Brand / Title -->
+    <text x="0" y="24" fill="#ffffff" class="font-title" font-size="22" letter-spacing="-0.5">CHAKAN SCM BLAST-RADIUS PLATFORM</text>
+    <text x="0" y="44" fill="#7592b5" class="font-sub" font-size="12" letter-spacing="1.2">END-TO-END IN-DATABASE DATA HARMONIZATION &amp; FACTORY STARVATION DEFENSE</text>
+
+    <!-- Top Badge Pills -->
+    <g transform="translate(640, 4)">
+      <rect x="0" y="0" width="160" height="26" rx="13" fill="url(#green-pill-grad)" stroke="#5fc22d" stroke-width="1.2" />
+      <circle cx="14" cy="13" r="4" fill="#5fc22d" />
+      <text x="26" y="17" fill="#5fc22d" class="font-sub" font-size="11" font-weight="700">EXASOL PERSONAL</text>
+
+      <rect x="172" y="0" width="150" height="26" rx="13" fill="#0e233d" stroke="#254a77" stroke-width="1" />
+      <text x="184" y="17" fill="#79b8ff" class="font-mono" font-size="11">SCHEMA: CHAKAN_SCM</text>
+
+      <rect x="334" y="0" width="146" height="26" rx="13" fill="#0e233d" stroke="#254a77" stroke-width="1" />
+      <text x="346" y="17" fill="#9ec1cf" class="font-mono" font-size="11">PORT: 8563 (IN-RAM)</text>
+    </g>
+  </g>
+
+  <!-- Divider Line -->
+  <line x1="40" y1="84" x2="1160" y2="84" stroke="#182c49" stroke-width="1" />
+
+  <!-- ========================================================================= -->
+  <!-- STAGE 1: UPSTREAM DIRTY FEEDS (LEFT) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(40, 102)" filter="url(#shadow-card)">
+    <!-- Stage Container -->
+    <rect width="260" height="520" rx="12" fill="url(#card-grad)" stroke="#1a3558" stroke-width="1.2" />
+    
+    <!-- Stage Header -->
+    <rect width="260" height="42" rx="12" fill="#0d213a" />
+    <rect x="0" y="30" width="260" height="12" fill="#0d213a" />
+    <circle cx="22" cy="21" r="9" fill="#1b3f6b" />
+    <text x="19" y="25" fill="#79b8ff" class="font-mono" font-size="11" font-weight="bold">1</text>
+    <text x="40" y="25" fill="#ffffff" class="font-title" font-size="13">UPSTREAM DIRTY FEEDS</text>
+    <text x="192" y="24" fill="#79b8ff" class="font-mono" font-size="10">NON-EDI</text>
+
+    <!-- Card 1.1: MSME ASN Payloads -->
+    <g transform="translate(14, 56)">
+      <rect width="232" height="136" rx="8" fill="#081528" stroke="#1d3b66" stroke-width="1" />
+      <rect x="10" y="10" width="68" height="18" rx="4" fill="#2d2208" stroke="#d29922" stroke-width="0.8" />
+      <text x="16" y="23" fill="#f0883e" class="font-mono" font-size="9" font-weight="bold">CHAOS ASN</text>
+      <text x="84" y="23" fill="#e6edf3" class="font-sub" font-size="12">MSME Inbound ASNs</text>
+      
+      <text x="12" y="48" fill="#7d9dbf" class="font-mono" font-size="10">• UOM Drift: BOX_100, MT, BAG</text>
+      <text x="12" y="66" fill="#7d9dbf" class="font-mono" font-size="10">• SKU Aliases: 6204ZZ vs OEM</text>
+      <text x="12" y="84" fill="#7d9dbf" class="font-mono" font-size="10">• Mixed Dates: DD/MM, Epoch</text>
+      <text x="12" y="102" fill="#7d9dbf" class="font-mono" font-size="10">• Partial Multi-Truck Splits</text>
+      <text x="12" y="120" fill="#f85149" class="font-mono" font-size="10">⚠️ Quarantined by Legacy ERP</text>
+    </g>
+
+    <!-- Card 1.2: Central ERP Master -->
+    <g transform="translate(14, 206)">
+      <rect width="232" height="136" rx="8" fill="#081528" stroke="#1d3b66" stroke-width="1" />
+      <rect x="10" y="10" width="56" height="18" rx="4" fill="#0d2d20" stroke="#00d084" stroke-width="0.8" />
+      <text x="16" y="23" fill="#00d084" class="font-mono" font-size="9" font-weight="bold">ERP SAP</text>
+      <text x="74" y="23" fill="#e6edf3" class="font-sub" font-size="12">Core Production Runs</text>
+      
+      <text x="12" y="48" fill="#7d9dbf" class="font-mono" font-size="10">• 4 Active Schedules (48h)</text>
+      <text x="12" y="66" fill="#5fc22d" class="font-mono" font-size="10">• Output: ₹37.88 Cr Planned</text>
+      <text x="12" y="84" fill="#7d9dbf" class="font-mono" font-size="10">• Open Purchase Orders</text>
+      <text x="12" y="102" fill="#7d9dbf" class="font-mono" font-size="10">• 18 Level-1 BOM Links</text>
+      <text x="12" y="120" fill="#7d9dbf" class="font-mono" font-size="10">• 16 Tier-1/2/3 Suppliers</text>
+    </g>
+
+    <!-- Card 1.3: Warehouse WMS Ledger -->
+    <g transform="translate(14, 356)">
+      <rect width="232" height="148" rx="8" fill="#081528" stroke="#1d3b66" stroke-width="1" />
+      <rect x="10" y="10" width="56" height="18" rx="4" fill="#18233c" stroke="#388bfd" stroke-width="0.8" />
+      <text x="17" y="23" fill="#58a6ff" class="font-mono" font-size="9" font-weight="bold">WMS BIN</text>
+      <text x="74" y="23" fill="#e6edf3" class="font-sub" font-size="12">Physical Ledger</text>
+      
+      <text x="12" y="48" fill="#7d9dbf" class="font-mono" font-size="10">• 16 Warehouse Bins</text>
+      <text x="12" y="66" fill="#7d9dbf" class="font-mono" font-size="10">• Cycle Count Audits</text>
+      <text x="12" y="84" fill="#d29922" class="font-mono" font-size="10">• Damaged &amp; Quality Holds</text>
+      <text x="12" y="102" fill="#f85149" class="font-mono" font-size="10">• ₹1.18 Cr Phantom Stock</text>
+      <text x="12" y="120" fill="#7d9dbf" class="font-mono" font-size="10">• 7,138 Unpickable Units</text>
+      <text x="12" y="138" fill="#7d9dbf" class="font-mono" font-size="10">• Blind-spot in Central ERP</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- STAGE 2: EXASOL PERSONAL ENGINE (CENTER HERO CARD) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(332, 102)" filter="url(#shadow-card)">
+    <!-- Stage Container with Green Glow Border -->
+    <rect width="536" height="520" rx="14" fill="url(#card-hero-grad)" stroke="#5fc22d" stroke-width="1.8" />
+    
+    <!-- Stage Header -->
+    <rect width="536" height="42" rx="14" fill="#0e2a4a" />
+    <rect x="0" y="30" width="536" height="12" fill="#0e2a4a" />
+    <circle cx="24" cy="21" r="10" fill="#5fc22d" />
+    <text x="21" y="25" fill="#05101f" class="font-mono" font-size="12" font-weight="bold">2</text>
+    <text x="44" y="25" fill="#ffffff" class="font-title" font-size="14">EXASOL PERSONAL ENGINE</text>
+    <text x="238" y="25" fill="#5fc22d" class="font-mono" font-size="11" font-weight="bold">IN-MEMORY MPP • SCHEMA CHAKAN_SCM</text>
+    <text x="488" y="25" fill="#79b8ff" class="font-mono" font-size="10">:8563</text>
+
+    <!-- Sub-Section 2A: Columnar Storage with DISTRIBUTE BY Keys -->
+    <g transform="translate(16, 52)">
+      <rect width="504" height="96" rx="8" fill="#07172b" stroke="#1d406d" stroke-width="1" />
+      <text x="14" y="20" fill="#79b8ff" class="font-mono" font-size="10" font-weight="bold">RELATIONAL COLUMNAR TABLES (COLOCATED PARTITIONS • 0 INTER-NODE NETWORK HOPS)</text>
+      
+      <!-- Mini Tables -->
+      <g transform="translate(14, 30)">
+        <rect width="112" height="54" rx="5" fill="#0a203c" stroke="#265287" stroke-width="0.8" />
+        <text x="8" y="16" fill="#e6edf3" class="font-mono" font-size="9" font-weight="bold">ASN_LINES_RAW</text>
+        <text x="8" y="32" fill="#5fc22d" class="font-mono" font-size="8">DISTRIBUTE BY</text>
+        <text x="8" y="44" fill="#9ec1cf" class="font-mono" font-size="8">(po_number_ref)</text>
+
+        <rect x="122" y="0" width="118" height="54" rx="5" fill="#0a203c" stroke="#265287" stroke-width="0.8" />
+        <text x="8" y="16" fill="#e6edf3" class="font-mono" font-size="9" font-weight="bold">ITEM_MASTER</text>
+        <text x="8" y="32" fill="#5fc22d" class="font-mono" font-size="8">DISTRIBUTE BY</text>
+        <text x="8" y="44" fill="#9ec1cf" class="font-mono" font-size="8">(internal_part_num)</text>
+
+        <rect x="250" y="0" width="118" height="54" rx="5" fill="#0a203c" stroke="#265287" stroke-width="0.8" />
+        <text x="8" y="16" fill="#e6edf3" class="font-mono" font-size="9" font-weight="bold">BILL_OF_MATERIALS</text>
+        <text x="8" y="32" fill="#5fc22d" class="font-mono" font-size="8">DISTRIBUTE BY</text>
+        <text x="8" y="44" fill="#9ec1cf" class="font-mono" font-size="8">(component_part_num)</text>
+
+        <rect x="378" y="0" width="98" height="54" rx="5" fill="#0a203c" stroke="#265287" stroke-width="0.8" />
+        <text x="8" y="16" fill="#e6edf3" class="font-mono" font-size="9" font-weight="bold">WMS_LEDGER</text>
+        <text x="8" y="32" fill="#5fc22d" class="font-mono" font-size="8">DISTRIBUTE BY</text>
+        <text x="8" y="44" fill="#9ec1cf" class="font-mono" font-size="8">(internal_part_num)</text>
+      </g>
+    </g>
+
+    <!-- Sub-Section 2B: In-Database Python 3 Scalar UDFs -->
+    <g transform="translate(16, 158)">
+      <rect width="504" height="142" rx="8" fill="#061930" stroke="#5fc22d" stroke-width="1.2" />
+      <rect x="12" y="10" width="138" height="20" rx="4" fill="url(#green-pill-grad)" stroke="#5fc22d" stroke-width="1" />
+      <text x="18" y="24" fill="#5fc22d" class="font-mono" font-size="10" font-weight="bold">⚡ PYTHON 3 SCALAR UDFs</text>
+      <text x="158" y="24" fill="#9ec1cf" class="font-sub" font-size="11">EXECUTED IN-PARALLEL ACROSS EXASOL RAM CORES</text>
+
+      <!-- UDF 1 -->
+      <g transform="translate(12, 38)">
+        <rect width="154" height="92" rx="6" fill="#092444" stroke="#204d80" stroke-width="0.8" />
+        <text x="8" y="18" fill="#5fc22d" class="font-mono" font-size="10" font-weight="bold">UDF_NORMALIZE_UOM</text>
+        <text x="8" y="34" fill="#7d9dbf" class="font-mono" font-size="9">RETURNS DOUBLE</text>
+        <text x="8" y="52" fill="#e6edf3" class="font-mono" font-size="9">• BOX_100 → ×100</text>
+        <text x="8" y="68" fill="#e6edf3" class="font-mono" font-size="9">• BAG_250 → ×250</text>
+        <text x="8" y="84" fill="#e6edf3" class="font-mono" font-size="9">• MT → KG / EA weight</text>
+      </g>
+
+      <!-- UDF 2 -->
+      <g transform="translate(176, 38)">
+        <rect width="168" height="92" rx="6" fill="#092444" stroke="#204d80" stroke-width="0.8" />
+        <text x="8" y="18" fill="#5fc22d" class="font-mono" font-size="10" font-weight="bold">UDF_RESOLVE_SKU</text>
+        <text x="8" y="34" fill="#7d9dbf" class="font-mono" font-size="9">EMITS (part, method, conf)</text>
+        <text x="8" y="52" fill="#e6edf3" class="font-mono" font-size="9">• Hyphen stripping</text>
+        <text x="8" y="68" fill="#e6edf3" class="font-mono" font-size="9">• Vendor cross-ref catalog</text>
+        <text x="8" y="84" fill="#5fc22d" class="font-mono" font-size="9">• Jaro-Winkler (≥ 0.85)</text>
+      </g>
+
+      <!-- UDF 3 -->
+      <g transform="translate(354, 38)">
+        <rect width="138" height="92" rx="6" fill="#092444" stroke="#204d80" stroke-width="0.8" />
+        <text x="8" y="18" fill="#5fc22d" class="font-mono" font-size="10" font-weight="bold">UDF_PARSE_DATE</text>
+        <text x="8" y="34" fill="#7d9dbf" class="font-mono" font-size="9">RETURNS DATE</text>
+        <text x="8" y="52" fill="#e6edf3" class="font-mono" font-size="9">• DD/MM/YYYY</text>
+        <text x="8" y="68" fill="#e6edf3" class="font-mono" font-size="9">• MM/DD/YYYY</text>
+        <text x="8" y="84" fill="#e6edf3" class="font-mono" font-size="9">• Unix Epoch timestamp</text>
+      </g>
+    </g>
+
+    <!-- Sub-Section 2C: Columnar Analytical Views (Blast-Radius Marts) -->
+    <g transform="translate(16, 310)">
+      <rect width="504" height="194" rx="8" fill="#07172b" stroke="#1d406d" stroke-width="1" />
+      <text x="14" y="20" fill="#79b8ff" class="font-mono" font-size="10" font-weight="bold">SUB-SECOND COLUMNAR ANALYTICAL MARTS (LIVE SQL VIEWS)</text>
+
+      <!-- View 1 -->
+      <g transform="translate(12, 28)">
+        <rect width="232" height="74" rx="6" fill="#091f3a" stroke="#1f4b7c" stroke-width="0.8" />
+        <text x="8" y="16" fill="#58a6ff" class="font-mono" font-size="10" font-weight="bold">VW_INVENTORY_TRUE_ATP</text>
+        <text x="8" y="32" fill="#9ec1cf" class="font-mono" font-size="9">ATP = max(0, WMS - Alloc - Hold)</text>
+        <text x="8" y="48" fill="#d29922" class="font-mono" font-size="9">Exposes ₹1.18 Cr Phantom Stock</text>
+        <text x="8" y="64" fill="#7d9dbf" class="font-mono" font-size="9">7,138 damaged/held units isolated</text>
+      </g>
+
+      <!-- View 2 -->
+      <g transform="translate(254, 28)">
+        <rect width="238" height="74" rx="6" fill="#091f3a" stroke="#1f4b7c" stroke-width="0.8" />
+        <text x="8" y="16" fill="#58a6ff" class="font-mono" font-size="10" font-weight="bold">VW_ASN_HARMONIZED_LINEAGE</text>
+        <text x="8" y="32" fill="#9ec1cf" class="font-mono" font-size="9">ROW_NUMBER() deduplication</text>
+        <text x="8" y="48" fill="#5fc22d" class="font-mono" font-size="9">Applies UDF Normalization</text>
+        <text x="8" y="64" fill="#7d9dbf" class="font-mono" font-size="9">Merges ASN_PLANNER_OVERRIDES</text>
+      </g>
+
+      <!-- View 3 -->
+      <g transform="translate(12, 108)">
+        <rect width="232" height="74" rx="6" fill="#091f3a" stroke="#1f4b7c" stroke-width="0.8" />
+        <text x="8" y="16" fill="#58a6ff" class="font-mono" font-size="10" font-weight="bold">VW_BOM_LINE_STARVATION_RISK</text>
+        <text x="8" y="32" fill="#9ec1cf" class="font-mono" font-size="9">Recursive Level-1 BOM Explosion</text>
+        <text x="8" y="48" fill="#f85149" class="font-mono" font-size="9">Net Shortage: ₹5.29 Cr Exposed</text>
+        <text x="8" y="64" fill="#5fc22d" class="font-mono" font-size="9">Clears ₹20.76 Cr False Alarms</text>
+      </g>
+
+      <!-- View 4 -->
+      <g transform="translate(254, 108)">
+        <rect width="238" height="74" rx="6" fill="#091f3a" stroke="#1f4b7c" stroke-width="0.8" />
+        <text x="8" y="16" fill="#58a6ff" class="font-mono" font-size="10" font-weight="bold">VW_FINANCIAL_ROI_SUMMARY</text>
+        <text x="8" y="32" fill="#9ec1cf" class="font-mono" font-size="9">Line Stoppage Penalty: ₹12.5L/hr</text>
+        <text x="8" y="48" fill="#5fc22d" class="font-mono" font-size="9">Executive Freight ROI: 1,175x</text>
+        <text x="8" y="64" fill="#7d9dbf" class="font-mono" font-size="9">Saved ₹1.35 L Avoided Panic Charter</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- STAGE 3: MATERIALS PLANNER COCKPIT (RIGHT) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(900, 102)" filter="url(#shadow-card)">
+    <!-- Stage Container -->
+    <rect width="260" height="520" rx="12" fill="url(#card-grad)" stroke="#1a3558" stroke-width="1.2" />
+    
+    <!-- Stage Header -->
+    <rect width="260" height="42" rx="12" fill="#0d213a" />
+    <rect x="0" y="30" width="260" height="12" fill="#0d213a" />
+    <circle cx="22" cy="21" r="9" fill="#1b3f6b" />
+    <text x="19" y="25" fill="#79b8ff" class="font-mono" font-size="11" font-weight="bold">3</text>
+    <text x="40" y="25" fill="#ffffff" class="font-title" font-size="13">PLANNER COCKPIT (UI)</text>
+    <text x="198" y="24" fill="#5fc22d" class="font-mono" font-size="10">:8501</text>
+
+    <!-- Tab 1: Live Blast-Radius Triage -->
+    <g transform="translate(14, 56)">
+      <rect width="232" height="116" rx="8" fill="#081528" stroke="#1d3b66" stroke-width="1" />
+      <rect x="10" y="10" width="46" height="18" rx="4" fill="#09283e" stroke="#388bfd" stroke-width="0.8" />
+      <text x="16" y="23" fill="#58a6ff" class="font-mono" font-size="9" font-weight="bold">TAB 1</text>
+      <text x="64" y="23" fill="#e6edf3" class="font-sub" font-size="12">Live Blast Triage</text>
+      
+      <text x="12" y="46" fill="#7d9dbf" class="font-mono" font-size="10">• Top 5 Live KPI Executive Cards</text>
+      <text x="12" y="64" fill="#5fc22d" class="font-mono" font-size="10">• Line Starvation Waterfall</text>
+      <text x="12" y="82" fill="#7d9dbf" class="font-mono" font-size="10">• Quarantine Revenue Queue</text>
+      <text x="12" y="100" fill="#7d9dbf" class="font-mono" font-size="10">• Jaro-Winkler Confidence Score</text>
+    </g>
+
+    <!-- Tab 2: 1-Click Override Workbench -->
+    <g transform="translate(14, 182)">
+      <rect width="232" height="106" rx="8" fill="#081528" stroke="#5fc22d" stroke-width="1.2" />
+      <rect x="10" y="10" width="72" height="18" rx="4" fill="url(#green-pill-grad)" stroke="#5fc22d" stroke-width="0.8" />
+      <text x="16" y="23" fill="#5fc22d" class="font-mono" font-size="9" font-weight="bold">1-CLICK FIX</text>
+      <text x="90" y="23" fill="#e6edf3" class="font-sub" font-size="12">Override Store</text>
+      
+      <text x="12" y="46" fill="#7d9dbf" class="font-mono" font-size="10">• Approve Fuzzy SKU Alias</text>
+      <text x="12" y="64" fill="#7d9dbf" class="font-mono" font-size="10">• Adjust Normalized Units</text>
+      <text x="12" y="82" fill="#5fc22d" class="font-mono" font-size="10">• Writes to OVERRIDES Table</text>
+      <text x="12" y="98" fill="#5fc22d" class="font-mono" font-size="9">⚡ &lt; 15ms Exasol View Recompute</text>
+    </g>
+
+    <!-- Tab 3: Financial ROI & Downtime -->
+    <g transform="translate(14, 298)">
+      <rect width="232" height="96" rx="8" fill="#081528" stroke="#1d3b66" stroke-width="1" />
+      <rect x="10" y="10" width="46" height="18" rx="4" fill="#09283e" stroke="#388bfd" stroke-width="0.8" />
+      <text x="16" y="23" fill="#58a6ff" class="font-mono" font-size="9" font-weight="bold">TAB 2</text>
+      <text x="64" y="23" fill="#e6edf3" class="font-sub" font-size="12">Plant Downtime ROI</text>
+      
+      <text x="12" y="46" fill="#7d9dbf" class="font-mono" font-size="10">• Idle Burn Rate (₹7.2L–14.5L/h)</text>
+      <text x="12" y="64" fill="#7d9dbf" class="font-mono" font-size="10">• ₹45k Air Charter vs Stoppage</text>
+      <text x="12" y="82" fill="#5fc22d" class="font-mono" font-size="10">• 1,174.7x Mitigation ROI</text>
+    </g>
+
+    <!-- Tab 4: What-If Crisis Simulator -->
+    <g transform="translate(14, 404)">
+      <rect width="232" height="106" rx="8" fill="#081528" stroke="#1d3b66" stroke-width="1" />
+      <rect x="10" y="10" width="46" height="18" rx="4" fill="#09283e" stroke="#388bfd" stroke-width="0.8" />
+      <text x="16" y="23" fill="#58a6ff" class="font-mono" font-size="9" font-weight="bold">TAB 3</text>
+      <text x="64" y="23" fill="#e6edf3" class="font-sub" font-size="12">What-If Simulator</text>
+      
+      <text x="12" y="44" fill="#7d9dbf" class="font-mono" font-size="10">• Monsoon Logistics Delay (+3d)</text>
+      <text x="12" y="60" fill="#7d9dbf" class="font-mono" font-size="10">• Foundry Core Porosity (35%)</text>
+      <text x="12" y="76" fill="#7d9dbf" class="font-mono" font-size="10">• Festive Diwali Ramp (1.35x)</text>
+      <text x="12" y="94" fill="#5fc22d" class="font-mono" font-size="10">• Strictly Additive Waterfall</text>
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- CONNECTING ARROWS & FEEDBACK LOOPS -->
+  <!-- ========================================================================= -->
+
+  <!-- Feed 1 -> Exasol -->
+  <path d="M 300 190 L 328 190" fill="none" stroke="#388bfd" stroke-width="2" marker-end="url(#arrow-blue)" />
+  <path d="M 300 320 L 328 320" fill="none" stroke="#388bfd" stroke-width="2" marker-end="url(#arrow-blue)" />
+  <path d="M 300 450 L 328 450" fill="none" stroke="#388bfd" stroke-width="2" marker-end="url(#arrow-blue)" />
+
+  <!-- Exasol -> Decision Layer -->
+  <path d="M 868 280 L 896 280" fill="none" stroke="#5fc22d" stroke-width="2.2" marker-end="url(#arrow-green)" />
+  <path d="M 868 450 L 896 450" fill="none" stroke="#5fc22d" stroke-width="2.2" marker-end="url(#arrow-green)" />
+
+  <!-- Interactive 1-Click Feedback Loop Arrow (Cockpit -> Exasol OVERRIDES) -->
+  <path d="M 900 236 C 850 210, 780 200, 720 200" fill="none" stroke="#5fc22d" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow-green)" />
+
+  <!-- Interactive Writeback Badge on Arc -->
+  <g transform="translate(730, 184)">
+    <rect width="144" height="20" rx="10" fill="#0a2618" stroke="#5fc22d" stroke-width="1" />
+    <text x="10" y="14" fill="#5fc22d" class="font-mono" font-size="9" font-weight="bold">⚡ 1-Click Writeback (&lt;15ms)</text>
+  </g>
+
+  <!-- Bottom Metric Summary Strip -->
+  <g transform="translate(40, 628)">
+    <text x="0" y="14" fill="#7592b5" class="font-mono" font-size="11">BENCHMARK SCALE (10,000 ROWS):</text>
+    <text x="210" y="14" fill="#ffffff" class="font-mono" font-size="11" font-weight="bold">54.7 ms Columnar</text>
+    <text x="340" y="14" fill="#7592b5" class="font-mono" font-size="11">vs 2,977 ms Row-by-Row ETL</text>
+    <text x="540" y="14" fill="#5fc22d" class="font-mono" font-size="11" font-weight="bold">⚡ 54.4x Pure CPU Speedup</text>
+    <text x="730" y="14" fill="#58a6ff" class="font-mono" font-size="11" font-weight="bold">🚀 182,882 rows/sec</text>
+    <text x="910" y="14" fill="#79b8ff" class="font-mono" font-size="11">Parity: 0.00 INR vs Pandas Mirror</text>
+  </g>
+</svg>

@@ -31,6 +31,7 @@
 - [About The Project](#about-the-project)
 - [Inspiration & Industry Context](#inspiration--industry-context)
 - [System Architecture](#system-architecture)
+- [Architecture Deep Dives](#architecture-deep-dives)
 - [Key Features](#key-features)
 - [Cockpit Walkthrough](#cockpit-walkthrough)
 - [Performance & Scale Benchmark](#performance--scale-benchmark)
@@ -83,40 +84,109 @@ Traditional data validation pipelines optimize for **database schema purity over
 
 ## System Architecture
 
+### High-Level System Overview
+
 ```mermaid
 flowchart LR
-    subgraph S1 ["1. Dirty Inbound Feeds"]
-        F1["MSME ASN Streams<br/>(UOM drift, SKU aliases, date formats)"]
-        F2["Central ERP Masters<br/>(POs & Production Schedules)"]
-        F3["WMS Bin Ledgers<br/>(Physical count vs ERP)"]
+    subgraph S1 ["1. Upstream Messy Feeds"]
+        F1["MSME Inbound ASNs<br/>(Dirty Units, Aliases, Mixed Dates)"]
+        F2["Central ERP & Schedules<br/>(POs & ₹37.88 Cr Planned Output)"]
+        F3["Physical WMS Ledger<br/>(16 Bins & Quarantine Stock)"]
     end
 
-    subgraph S2 ["2. Exasol Personal Engine (CHAKAN_SCM | Port 8563)"]
-        T1["Columnar Tables<br/>(DISTRIBUTE BY part_num / po_ref)"]
-        UDF["In-DB Python 3 UDFs<br/>• UDF_NORMALIZE_UOM<br/>• UDF_RESOLVE_SUPPLIER_SKU (Jaro-Winkler ≥ 0.85)<br/>• UDF_PARSE_ASN_DATE"]
-        M1["Columnar SQL Views<br/>• VW_INVENTORY_TRUE_ATP<br/>• VW_ASN_HARMONIZED_LINEAGE<br/>• VW_BOM_LINE_STARVATION_RISK<br/>• VW_FINANCIAL_ROI_SUMMARY"]
-        T1 --> UDF --> M1
+    subgraph S2 ["2. Exasol Personal Engine (Port 8563)"]
+        direction TB
+        E1["In-Memory Relational Tables<br/>(Colocated via DISTRIBUTE BY)"]
+        E2["In-Database Python 3 Scalar UDFs<br/>(UOM, Jaro-Winkler SKU, Dates)"]
+        E3["Sub-Second Columnar Views<br/>(True ATP, Clean Lineage, BOM Deficits)"]
+        E1 --> E2 --> E3
     end
 
-    subgraph S3 ["3. Decision Cockpit (Streamlit UI)"]
-        C1["Executive KPI Bar<br/>(₹37.88 Cr vs ₹5.29 Cr)"]
-        C2["Line Starvation Waterfall Chart"]
-        C3["Quarantine Triage Queue & 1-Click Override"]
-        C4["Interactive What-If Crisis Simulator"]
-        M1 --> C1 & C2 & C3 & C4
-        C3 -. "1-Click Writeback" .-> T1
+    subgraph S3 ["3. Materials Planner Cockpit"]
+        C1["Live Blast-Radius Triage<br/>(Clear ₹20.76 Cr False Alarms)"]
+        C2["1-Click Override Workbench<br/>(Sub-15ms Writeback to Exasol)"]
+        C3["What-If Crisis Simulator<br/>(Monsoon, Foundry, Festive Ramp)"]
+        C1 --> C2
     end
 
-    F1 & F2 & F3 --> T1
+    F1 & F2 & F3 --> E1
+    E3 --> C1 & C3
+    C2 -. "⚡ < 15ms In-Memory Recompute" .-> E3
 ```
 
-### Why Exasol Personal?
-- **In-Database Python 3 UDFs**: Runs normalization, date parsing, and Jaro-Winkler string distance ($\ge 0.85$) directly inside Exasol's memory cores—eliminating costly external ETL hops and network serialization.
-- **MPP Colocation Joins (`DISTRIBUTE BY`)**: Partitioning tables by `internal_part_num`, `component_part_num`, and `po_number_ref` enables colocated in-memory hash joins with **0 inter-node network data shuffles**.
-- **Sub-Second Recomputation**: When a planner approves an override, Exasol re-evaluates the entire analytical lineage and BOM explosion in **under 15 milliseconds**.
-- **Dual-Mode Client**: Connects natively to Exasol Personal (`localhost:8563`) with zero-latency `LOCAL_MIRROR` fallback, verified to **`0.00 INR` mathematical parity** across all 10 financial metrics.
-
 ---
+
+## Architecture Deep Dives
+
+### 1. In-Database Harmonization Pipeline (In-DB Python 3 UDFs)
+Instead of extracting messy rows out to external Python ETL workers, Exasol executes three native Python 3 scalar UDFs directly inside database RAM slices in parallel:
+
+```mermaid
+flowchart LR
+    subgraph Raw ["Raw MSME Payload"]
+        R1["Packaging String<br/>('BOX_100', 'BAG_250', 'MT')"]
+        R2["Vendor SKU Alias<br/>('6204ZZ' vs 'ENG-BRG-6204-01')"]
+        R3["Ambiguous Date<br/>('05/11/2026', Unix Epoch)"]
+    end
+
+    subgraph UDFs ["Exasol In-DB Python 3 UDFs (In-RAM Parallelism)"]
+        U1["⚡ UDF_NORMALIZE_UOM<br/>(Pack Multipliers & Unit Weight)"]
+        U2["⚡ UDF_RESOLVE_SUPPLIER_SKU<br/>(Jaro-Winkler Similarity ≥ 0.85)"]
+        U3["⚡ UDF_PARSE_ASN_DATE<br/>(Multi-Format Date Disambiguation)"]
+    end
+
+    subgraph Clean ["Harmonized Mart: VW_ASN_HARMONIZED_LINEAGE"]
+        O1["Canonical Base UOM Quantity"]
+        O2["Resolved Internal OEM Part Number"]
+        O3["Validated Inbound Arrival Date"]
+    end
+
+    R1 --> U1 --> O1
+    R2 --> U2 --> O2
+    R3 --> U3 --> O3
+```
+
+### 2. In-Memory MPP Colocation & Recursive BOM Explosion
+Hierarchical Bill-of-Materials joins across 6 relational tables execute with **0 inter-node network data shuffles** by collocating partition slices on matching distribution keys:
+
+```mermaid
+flowchart LR
+    subgraph Tables ["Colocated Tables (DISTRIBUTE BY internal_part_num)"]
+        T1[("WAREHOUSE_INVENTORY_LEDGER")]
+        T2[("ITEM_MASTER & PO_LINES")]
+        T3[("BILL_OF_MATERIALS<br/>(DISTRIBUTE BY component_part_num)")]
+        T4[("PRODUCTION_SCHEDULES<br/>(DISTRIBUTE BY parent_part_num)")]
+    end
+
+    subgraph Views ["Analytical Calculation Views"]
+        V1["📊 VW_INVENTORY_TRUE_ATP<br/>ATP = max(0, WMS - Alloc - Hold)<br/>Exposes ₹1.18 Cr Phantom Stock"]
+        V2["📊 VW_BOM_LINE_STARVATION_RISK<br/>Gross Required vs (True ATP + Harmonized Inbound)<br/>Pins Net Shortage: ₹5.29 Cr on Line 2"]
+    end
+
+    T1 --> V1
+    V1 & T2 & T3 & T4 --> V2
+```
+
+### 3. Interactive 1-Click Override & Sub-15ms Feedback Loop
+When a planner reviews a quarantined shipment and submits an override, it writes directly back to Exasol's `ASN_PLANNER_OVERRIDES` table, triggering an instant view recalculation without overnight batch reruns:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Planner as Materials Planner (UI)
+    participant UI as Streamlit Cockpit (:8501)
+    participant Exa as Exasol Personal Engine (:8563)
+    participant Views as Columnar SQL Views (CHAKAN_SCM)
+
+    Planner->>UI: Flags Quarantined ASN (e.g. ₹5.29 Cr Shortage on Line 2)
+    Planner->>UI: Reviews Jaro-Winkler match & clicks "Approve Override"
+    UI->>Exa: INSERT INTO ASN_PLANNER_OVERRIDES (asn_line_id, resolved_part, qty)
+    Note over Exa,Views: In-Memory Recompute (< 15 ms, Zero Batch Delay)
+    Exa->>Views: Re-evaluates VW_ASN_HARMONIZED_LINEAGE & Starvation Risk
+    Views-->>UI: Refreshes KPI Banner: False Alarms Cleared, Lines Cleared!
+    UI-->>Planner: Instant Visual Confirmation: 0 Assembly Stations Halting
+```
+
 
 ## Key Features
 
