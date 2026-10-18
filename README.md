@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="assets/logo.svg" alt="Mangrove Logo" width="140" />
+</p>
+
+<p align="center">
   <h1 align="center">🌿 Mangrove</h1>
   <p align="center">
     <b>In-Memory Supply Chain Triage & Assembly Starvation Engine on Exasol Personal</b>

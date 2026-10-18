@@ -44,13 +44,13 @@ def get_client() -> ChakanExasolClient:
 
 
 def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
+    logo_path = PROJECT_ROOT / "assets" / "logo.svg"
+    if logo_path.exists():
+        st.sidebar.image(str(logo_path), width=90)
     st.sidebar.markdown(
         """
         <div style="padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #1e293b;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.4rem;">🌿</span>
-                <div style="font-weight: 800; font-size: 1.25rem; color: #f8fafc; letter-spacing: -0.5px;">Mangrove</div>
-            </div>
+            <div style="font-weight: 800; font-size: 1.25rem; color: #f8fafc; letter-spacing: -0.5px;">Mangrove</div>
             <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 2px;">In-Memory Triage &amp; Starvation Engine</div>
         </div>
         """,
@@ -102,37 +102,42 @@ def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
 
 
 def render_header() -> None:
-    st.markdown(
-        """
-        <div style="background-color: #0d1527; padding: 18px 24px; border-radius: 12px; border: 1px solid #1e293b; margin-bottom: 14px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 1.85rem;">🌿</span>
-                        <h1 style="margin: 0; font-size: 1.85rem; font-weight: 800; color: #f8fafc; letter-spacing: -0.5px;">
-                            Mangrove
-                        </h1>
-                        <span style="background-color: #064e3b; color: #34d399; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; border: 1px solid #059669; letter-spacing: 0.8px;">
-                            IN-MEMORY SCM DEFENSE
-                        </span>
-                    </div>
-                    <p style="margin: 6px 0 0 0; font-size: 0.94rem; color: #94a3b8;">
-                        Real-Time In-Database Supply Chain Triage &amp; Line Starvation Engine on Exasol Personal
-                    </p>
-                </div>
-                <div style="text-align: right;">
-                    <span style="background-color: #1e293b; color: #94a3b8; font-size: 0.78rem; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: 1px solid #334155;">
-                        FACILITY: PLANT-1 (CHAKAN INDUSTRIAL CORRIDOR)
-                    </span>
-                    <div style="font-size: 0.76rem; color: #64748b; margin-top: 5px;">
-                        Role: Lead Inbound Materials &amp; Line-Feed Planner
-                    </div>
+    logo_path = PROJECT_ROOT / "assets" / "logo.svg"
+    col_logo, col_title, col_meta = st.columns([1, 7, 3])
+    with col_logo:
+        if logo_path.exists():
+            st.image(str(logo_path), width=75)
+    with col_title:
+        st.markdown(
+            """
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: -4px;">
+                <h1 style="margin: 0; font-size: 2.1rem; font-weight: 800; color: #f8fafc; letter-spacing: -0.5px;">
+                    Mangrove
+                </h1>
+                <span style="background-color: #064e3b; color: #34d399; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; border: 1px solid #059669; letter-spacing: 0.8px;">
+                    IN-MEMORY SCM DEFENSE
+                </span>
+            </div>
+            <p style="margin: 4px 0 0 0; font-size: 0.94rem; color: #94a3b8;">
+                Real-Time In-Database Supply Chain Triage &amp; Line Starvation Engine on Exasol Personal
+            </p>
+            """,
+            unsafe_allow_html=True,
+        )
+    with col_meta:
+        st.markdown(
+            """
+            <div style="text-align: right; padding-top: 4px;">
+                <span style="background-color: #1e293b; color: #94a3b8; font-size: 0.78rem; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: 1px solid #334155;">
+                    FACILITY: PLANT-1 (CHAKAN INDUSTRIAL CORRIDOR)
+                </span>
+                <div style="font-size: 0.76rem; color: #64748b; margin-top: 5px;">
+                    Role: Lead Inbound Materials &amp; Line-Feed Planner
                 </div>
             </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_telemetry_banner(marts: dict) -> None:
