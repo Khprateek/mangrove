@@ -1,6 +1,6 @@
 <div align="center">
   <img src="assets/logo.png" alt="Mangrove Logo" width="100" />
-  <h1>🌿 Mangrove</h1>
+  <h1>Mangrove</h1>
   <p><b>Real-Time In-Database Supply Chain Triage &amp; Assembly Starvation Defense on Exasol Personal</b></p>
   <p>
     <a href="#problem-statement">Problem Statement</a>
