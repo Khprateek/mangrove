@@ -8,9 +8,9 @@ services:
     environment:
       - EXA_MEM_SIZE=2GiB
     privileged: true
-    stop_timeout: 120s
+    stop_grace_period: 120s
     healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 8563 || exit 1"]
+      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/8563' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 15
