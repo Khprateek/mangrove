@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import base64
 from pathlib import Path
 import sys
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -15,6 +15,131 @@ import streamlit as st
 
 from src.data_generator.generate_all import generate_dataset
 from src.exasol_engine.db_client import ChakanExasolClient
+
+
+def inject_minimalist_theme() -> None:
+    """Injects a standardized, high-precision minimalist design system."""
+    st.markdown(
+        """
+        <style>
+        /* Global Typography Standard */
+        html, body, [class*="css"] {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        }
+
+        /* Standardize Streamlit Metric Cards */
+        [data-testid="stMetric"] {
+            background-color: #0f172a !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 8px !important;
+            padding: 10px 14px !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+        }
+        [data-testid="stMetricLabel"] {
+            font-size: 0.72rem !important;
+            font-weight: 600 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            color: #94a3b8 !important;
+            margin-bottom: 2px !important;
+        }
+        [data-testid="stMetricValue"] {
+            font-size: 1.35rem !important;
+            font-weight: 700 !important;
+            color: #f8fafc !important;
+            line-height: 1.25 !important;
+        }
+        [data-testid="stMetricDelta"] {
+            font-size: 0.74rem !important;
+            font-weight: 500 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            margin-top: 2px !important;
+        }
+
+        /* Standardize Headings */
+        h1 {
+            font-size: 1.55rem !important;
+            font-weight: 700 !important;
+            letter-spacing: -0.02em !important;
+            color: #f8fafc !important;
+        }
+        h2 {
+            font-size: 1.15rem !important;
+            font-weight: 600 !important;
+            letter-spacing: -0.01em !important;
+            color: #f1f5f9 !important;
+        }
+        h3, [data-testid="stSubheader"] {
+            font-size: 0.95rem !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.01em !important;
+            color: #e2e8f0 !important;
+        }
+
+        /* Sidebar Clean Minimalist Styling */
+        [data-testid="stSidebar"] {
+            background-color: #080e1a !important;
+            border-right: 1px solid #1e293b !important;
+        }
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+            gap: 0.5rem !important;
+        }
+        [data-testid="stSidebar"] .stButton > button {
+            font-size: 0.78rem !important;
+            font-weight: 500 !important;
+            padding: 5px 12px !important;
+            border-radius: 6px !important;
+            border: 1px solid #334155 !important;
+            background-color: #1e293b !important;
+            color: #e2e8f0 !important;
+            transition: all 0.15s ease-in-out !important;
+        }
+        [data-testid="stSidebar"] .stButton > button:hover {
+            border-color: #10b981 !important;
+            color: #10b981 !important;
+            background-color: #0f172a !important;
+        }
+
+        /* Tab Navigation Bar */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 6px !important;
+            border-bottom: 1px solid #1e293b !important;
+            padding-bottom: 2px !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.80rem !important;
+            font-weight: 500 !important;
+            padding: 7px 14px !important;
+            color: #94a3b8 !important;
+            border-radius: 6px 6px 0 0 !important;
+            border: none !important;
+            background: transparent !important;
+        }
+        .stTabs [aria-selected="true"] {
+            color: #34d399 !important;
+            font-weight: 600 !important;
+            background: rgba(16, 185, 129, 0.08) !important;
+            border-bottom: 2px solid #10b981 !important;
+        }
+
+        /* Clean Dataframe Styling */
+        [data-testid="stDataFrame"] {
+            border: 1px solid #1e293b !important;
+            border-radius: 6px !important;
+        }
+
+        /* Expander Styling */
+        [data-testid="stExpander"] {
+            border: 1px solid #1e293b !important;
+            border-radius: 6px !important;
+            background-color: #0b1120 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def safe_float(val: Any) -> float:
@@ -46,81 +171,125 @@ def get_client() -> ChakanExasolClient:
 def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
     logo_path = PROJECT_ROOT / "assets" / "logo.svg"
     if logo_path.exists():
-        st.sidebar.image(str(logo_path), width=90)
+        st.sidebar.image(str(logo_path), width=52)
     st.sidebar.markdown(
         """
-        <div style="padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #1e293b;">
-            <div style="font-weight: 800; font-size: 1.25rem; color: #f8fafc; letter-spacing: -0.5px;">Mangrove</div>
-            <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 2px;">In-Memory Triage &amp; Starvation Engine</div>
+        <div style="margin-top: -6px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #1e293b;">
+            <div style="font-weight: 700; font-size: 1.15rem; color: #f8fafc; letter-spacing: -0.3px;">Mangrove</div>
+            <div style="font-size: 0.72rem; color: #94a3b8; margin-top: 1px;">In-Memory SCM Defense &amp; Triage</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.sidebar.markdown("### Exasol Platform Control")
-    st.sidebar.caption("Schema: `CHAKAN_SCM` | DSN: `localhost:8563`")
-
     telemetry = marts.get("telemetry", {})
     compute_source = marts.get("compute_source", telemetry.get("compute_source", "PANDAS_MIRROR"))
-    mode_label = (
-        "EXASOL PERSONAL (LIVE SQL/UDF)"
-        if marts["engine_mode"] == "EXASOL_PERSONAL"
-        else "LOCAL ANALYTICAL MIRROR"
+    is_live = marts.get("engine_mode") == "EXASOL_PERSONAL" and compute_source == "EXASOL_VIEWS"
+    latency_ms = marts.get("query_latency_ms", telemetry.get("latency_ms", 0.0))
+    total_eval = telemetry.get("total_rows_evaluated", len(marts.get("asn_lineage_mart", [])))
+
+    status_dot = "🟢" if is_live else "🟠"
+    status_label = "Exasol Personal (Live)" if is_live else "Local Analytical Mirror"
+    status_color = "#34d399" if is_live else "#fbbf24"
+
+    st.sidebar.markdown(
+        f"""
+        <div style="font-size: 0.68rem; font-weight: 700; color: #64748b; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px;">
+            PLATFORM TELEMETRY
+        </div>
+        <div style="background-color: #0f172a; border: 1px solid #1e293b; border-radius: 6px; padding: 10px 12px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #1e293b;">
+                <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 600;">Engine:</span>
+                <span style="font-size: 0.74rem; font-weight: 700; color: {status_color};">{status_dot} {status_label}</span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 0.72rem; color: #64748b;">Source:</span>
+                <code style="font-size: 0.70rem; color: #cbd5e1; background: #1e293b; padding: 1px 5px; border-radius: 3px;">{compute_source}</code>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 0.72rem; color: #64748b;">Latency:</span>
+                <span style="font-size: 0.74rem; font-weight: 600; color: #a5b4fc;">{latency_ms:.1f} ms</span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 0.72rem; color: #64748b;">Evaluated:</span>
+                <span style="font-size: 0.74rem; font-weight: 600; color: #f1f5f9;">{total_eval:,} rows</span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                <span style="font-size: 0.72rem; color: #64748b;">Schema / DSN:</span>
+                <span style="font-size: 0.70rem; color: #94a3b8; font-family: monospace;">CHAKAN_SCM:8563</span>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 0.72rem; color: #64748b;">Partition Key:</span>
+                <code style="font-size: 0.68rem; color: #7dd3fc; background: #0c4a6e; padding: 1px 5px; border-radius: 3px;">internal_part_num</code>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
-    st.sidebar.metric("Execution Engine", mode_label)
-    st.sidebar.metric("Compute Source", compute_source)
-    st.sidebar.metric("Analytical Mart Latency", f"{marts['query_latency_ms']:.2f} ms")
-    total_eval = telemetry.get("total_rows_evaluated", len(marts["asn_lineage_mart"]))
-    st.sidebar.metric("Rows Evaluated", f"{total_eval:,} Records")
-    st.sidebar.metric("Distribution Keys", "internal_part_num / component_part_num")
-    st.sidebar.caption("Co-located joins across `ITEM_MASTER`, `PURCHASE_ORDER_LINES`, `WAREHOUSE_INVENTORY_LEDGER`, `BILL_OF_MATERIALS`")
 
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### Live Demo Workflow")
+    st.sidebar.markdown(
+        """
+        <div style="font-size: 0.68rem; font-weight: 700; color: #64748b; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 8px;">
+            DATASET ACTIONS
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    if st.sidebar.button("1. Sync Monday ASN Batch (500 Rows)", use_container_width=True):
+    if st.sidebar.button("⚡ Sync Monday Batch (500 Rows)", use_container_width=True):
         generate_dataset(output_dir=str(client.data_dir), extra_asns=480)
         client.bootstrap_exasol_schema_and_data()
         st.rerun()
 
-    if st.sidebar.button("2. Stress-Test Batch (5,000 ASN Rows)", use_container_width=True):
+    if st.sidebar.button("🚀 Stress Test Batch (5,000 Rows)", use_container_width=True):
         generate_dataset(output_dir=str(client.data_dir), extra_asns=4982)
         client.bootstrap_exasol_schema_and_data()
         st.rerun()
 
-    if st.sidebar.button("3. Reset Planner Overrides", use_container_width=True):
+    if st.sidebar.button("↩️ Reset All Overrides", use_container_width=True):
         client.reset_planner_overrides()
         st.rerun()
 
-    st.sidebar.markdown("---")
     st.sidebar.markdown(
-        "**Problem Context:** Sub-tier MSME suppliers submit dispatch notices in conflicting units "
-        "(`BAG_250`, `CRATE_50`, `MT`), vendor SKU aliases (`6204ZZ`), and mixed dates. "
-        "Instead of dropping malformed rows into a dead-letter table, Exasol Personal harmonizes "
-        "them in-database and ranks every anomaly by **Rs Production Output at Risk**."
+        """
+        <div style="font-size: 0.68rem; font-weight: 700; color: #64748b; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 14px; margin-bottom: 6px;">
+            ARCHITECTURE SUMMARY
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
+    with st.sidebar.expander("ℹ️ Problem Context & Invariants", expanded=False):
+        st.markdown(
+            """
+            <div style="font-size: 0.74rem; color: #94a3b8; line-height: 1.45;">
+                <b>Sub-tier MSME suppliers</b> submit dispatches with conflicting UOMs (<code>BAG_250</code>, <code>CRATE_50</code>, <code>MT</code>), SKU aliases (<code>6204ZZ</code>), and mixed dates.<br><br>
+                Instead of dropping rows into dead-letter sinks, <b>Exasol Personal</b> harmonizes them in-database and ranks every anomaly by <b>Rs Production Output at Risk</b>.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 def render_header() -> None:
     logo_path = PROJECT_ROOT / "assets" / "logo.svg"
-    col_logo, col_title, col_meta = st.columns([1, 7, 3])
+    col_logo, col_title, col_meta = st.columns([0.65, 6.35, 4.0])
     with col_logo:
         if logo_path.exists():
-            st.image(str(logo_path), width=75)
+            st.image(str(logo_path), width=50)
     with col_title:
         st.markdown(
             """
-            <div style="display: flex; align-items: center; gap: 10px; margin-top: -4px;">
-                <h1 style="margin: 0; font-size: 2.1rem; font-weight: 800; color: #f8fafc; letter-spacing: -0.5px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: -2px;">
+                <span style="font-size: 1.65rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.5px;">
                     Mangrove
-                </h1>
-                <span style="background-color: #064e3b; color: #34d399; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; border: 1px solid #059669; letter-spacing: 0.8px;">
+                </span>
+                <span style="background-color: rgba(16, 185, 129, 0.15); color: #34d399; font-size: 0.68rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3); letter-spacing: 0.6px;">
                     IN-MEMORY SCM DEFENSE
                 </span>
             </div>
-            <p style="margin: 4px 0 0 0; font-size: 0.94rem; color: #94a3b8;">
+            <div style="margin-top: 2px; font-size: 0.84rem; color: #94a3b8;">
                 Real-Time In-Database Supply Chain Triage &amp; Line Starvation Engine on Exasol Personal
-            </p>
+            </div>
             """,
             unsafe_allow_html=True,
         )
@@ -128,10 +297,10 @@ def render_header() -> None:
         st.markdown(
             """
             <div style="text-align: right; padding-top: 4px;">
-                <span style="background-color: #1e293b; color: #94a3b8; font-size: 0.78rem; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: 1px solid #334155;">
-                    FACILITY: PLANT-1 (CHAKAN INDUSTRIAL CORRIDOR)
+                <span style="background-color: #1e293b; color: #cbd5e1; font-size: 0.74rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid #334155; white-space: nowrap; letter-spacing: 0.3px;">
+                    CHAKAN INDUSTRIAL CORRIDOR &bull; PLANT-1
                 </span>
-                <div style="font-size: 0.76rem; color: #64748b; margin-top: 5px;">
+                <div style="font-size: 0.72rem; color: #64748b; margin-top: 4px;">
                     Role: Lead Inbound Materials &amp; Line-Feed Planner
                 </div>
             </div>
@@ -151,20 +320,20 @@ def render_telemetry_banner(marts: dict) -> None:
 
     is_live = (engine_mode == "EXASOL_PERSONAL" and compute_source == "EXASOL_VIEWS")
     mode_html = (
-        '<span style="background-color: #064e3b; color: #34d399; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; border: 1px solid #059669;">🟢 EXASOL PERSONAL (LIVE SQL VIEWS &amp; UDFs)</span>'
+        '<span style="background-color: #064e3b; color: #34d399; padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; border: 1px solid #059669;">🟢 EXASOL PERSONAL (LIVE SQL VIEWS &amp; UDFs)</span>'
         if is_live
-        else '<span style="background-color: #451a03; color: #fde68a; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; border: 1px solid #d97706;">🟠 LOCAL ANALYTICAL MIRROR (PANDAS FALLBACK)</span>'
+        else '<span style="background-color: #451a03; color: #fde68a; padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; border: 1px solid #d97706;">🟠 LOCAL ANALYTICAL MIRROR (PANDAS FALLBACK)</span>'
     )
 
     st.markdown(
         f"""
-        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background-color: #0b1120; padding: 8px 14px; border-radius: 8px; margin-top: 6px; margin-bottom: 12px; border: 1px solid #1e293b;">
-            <span style="font-size: 0.76rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">LIVE ENGINE TELEMETRY:</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background-color: #0b1120; padding: 6px 12px; border-radius: 6px; margin-top: 6px; margin-bottom: 12px; border: 1px solid #1e293b;">
+            <span style="font-size: 0.70rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px;">LIVE ENGINE TELEMETRY:</span>
             {mode_html}
-            <span style="background-color: #1e1b4b; color: #a5b4fc; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 0.82rem; border: 1px solid #4f46e5;">⚡ Measured Latency: {latency_ms:.1f} ms ({compute_source})</span>
-            <span style="background-color: #1f2937; color: #e5e7eb; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.82rem; border: 1px solid #374151;">💾 {total_rows:,} Rows Evaluated</span>
-            <span style="background-color: #0c4a6e; color: #7dd3fc; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.82rem; border: 1px solid #0284c7;">🔗 DISTRIBUTE BY ({colocation_key})</span>
-            <span style="background-color: #3b0764; color: #f0abfc; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 0.82rem; border: 1px solid #9333ea;">🐍 UDF Engine: {udf_engine}</span>
+            <span style="background-color: #1e1b4b; color: #a5b4fc; padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 0.75rem; border: 1px solid #4f46e5;">⚡ {latency_ms:.1f} ms ({compute_source})</span>
+            <span style="background-color: #1f2937; color: #e5e7eb; padding: 3px 8px; border-radius: 4px; font-weight: 500; font-size: 0.75rem; border: 1px solid #374151;">💾 {total_rows:,} Rows Evaluated</span>
+            <span style="background-color: #0c4a6e; color: #7dd3fc; padding: 3px 8px; border-radius: 4px; font-weight: 500; font-size: 0.75rem; border: 1px solid #0284c7;">🔗 DISTRIBUTE BY ({colocation_key})</span>
+            <span style="background-color: #3b0764; color: #f0abfc; padding: 3px 8px; border-radius: 4px; font-weight: 500; font-size: 0.75rem; border: 1px solid #9333ea;">🐍 {udf_engine}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -214,48 +383,52 @@ def render_telemetry_banner(marts: dict) -> None:
             st.dataframe(prof_table, use_container_width=True, hide_index=True)
 
 
-
 def render_kpi_header(marts: dict) -> None:
     sched_df = get_client().tables["PRODUCTION_SCHEDULES"]
     inv_df = marts["inventory_mart"]
     bom_df = marts["bom_risk_mart"]
     triage_df = marts["triage_queue"]
 
-    total_scheduled_val = float((sched_df["planned_output_units"] * sched_df["finished_unit_value_inr"]).sum())
-    legacy_risk_val = float(bom_df["revenue_at_risk_legacy_inr"].sum())
-    net_risk_val = float(bom_df["revenue_at_risk_net_inr"].sum())
+    # Defensive numeric coercion to strictly prevent string concatenation
+    sched_units = pd.to_numeric(sched_df["planned_output_units"], errors="coerce").fillna(0.0)
+    sched_val = pd.to_numeric(sched_df["finished_unit_value_inr"], errors="coerce").fillna(0.0)
+    total_scheduled_val = float((sched_units * sched_val).sum())
+
+    legacy_risk_val = float(pd.to_numeric(bom_df["revenue_at_risk_legacy_inr"], errors="coerce").fillna(0.0).sum())
+    net_risk_val = float(pd.to_numeric(bom_df["revenue_at_risk_net_inr"], errors="coerce").fillna(0.0).sum())
     cleared_by_udf_val = max(0.0, legacy_risk_val - net_risk_val)
-    phantom_val = float(inv_df["phantom_inventory_value_inr"].sum())
-    phantom_units = int(inv_df["phantom_inventory_qty"].sum())
+
+    phantom_val = float(pd.to_numeric(inv_df["phantom_inventory_value_inr"], errors="coerce").fillna(0.0).sum())
+    phantom_units = int(pd.to_numeric(inv_df["phantom_inventory_qty"], errors="coerce").fillna(0.0).sum())
     pending_count = int((triage_df["harmonization_state"] == "UDF_HARMONIZED_PENDING_APPROVAL").sum())
 
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric(
         "48h Scheduled Output",
         format_inr_crore_lakh(total_scheduled_val),
-        f"{int(sched_df['planned_output_units'].sum())} Assemblies (4 Lines)",
+        f"{int(sched_units.sum()):,} Units (4 Lines)",
     )
     c2.metric(
-        "Legacy ETL Blind-Spot Risk",
+        "Legacy Blind-Spot Risk",
         format_inr_crore_lakh(legacy_risk_val),
-        f"{len(triage_df)} Quarantined Active ASNs",
+        f"{len(triage_df)} Quarantined ASNs",
         delta_color="inverse",
     )
     c3.metric(
-        "Risk Cleared by Exasol UDFs",
+        "Cleared by Exasol UDFs",
         format_inr_crore_lakh(cleared_by_udf_val),
-        "In-DB SKU / UOM / Date Harmonization",
+        "Harmonized in RAM",
     )
     c4.metric(
-        "True Net Shortage Exposed",
+        "True Net Shortage",
         format_inr_crore_lakh(net_risk_val),
-        f"{pending_count} Pending Planner Action",
+        f"{pending_count} Actionable Deficits",
         delta_color="inverse" if net_risk_val > 0 else "normal",
     )
     c5.metric(
-        "Phantom Inventory Detected",
+        "Phantom Inventory",
         format_inr_crore_lakh(phantom_val),
-        f"{phantom_units:,} Unpickable Ledger Units",
+        f"{phantom_units:,} Unpickable Units",
         delta_color="inverse",
     )
 
@@ -263,12 +436,12 @@ def render_kpi_header(marts: dict) -> None:
     if roi:
         st.markdown(
             f"""
-            <div style="background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%); padding: 12px 18px; border-radius: 8px; margin-top: 10px; margin-bottom: 6px; border-left: 5px solid #10b981; color: #f8fafc; font-size: 0.92rem;">
-                <b style="color: #34d399; font-weight: 700; letter-spacing: 0.5px;">BOARDROOM BUSINESS DEFENSE (FORMULATION 3):</b>
-                &nbsp;&nbsp;|&nbsp;&nbsp;<b>Total Stoppage Exposure:</b> <span style="color: #f87171; font-weight: 600;">{format_inr_crore_lakh(roi.get('total_stoppage_exposure_inr', 0))}</span>
-                &nbsp;&nbsp;|&nbsp;&nbsp;<b>Emergency Freight:</b> <span style="color: #fbbf24; font-weight: 600;">{format_inr_crore_lakh(roi.get('benchmark_freight_inr', 45000))}</span>
-                &nbsp;&nbsp;|&nbsp;&nbsp;<b>Executive Mitigation ROI:</b> <span style="color: #34d399; font-weight: 800; font-size: 1.05rem;">{roi.get('headline_roi_x', 1175):,.0f}x</span>
-                &nbsp;&nbsp;|&nbsp;&nbsp;<b>Avoided Panic Freight Waste:</b> <span style="color: #38bdf8; font-weight: 600;">{format_inr_crore_lakh(roi.get('avoided_panic_freight_inr', 135000))}</span>
+            <div style="background: #0f172a; border-left: 4px solid #10b981; border: 1px solid #1e293b; padding: 10px 16px; border-radius: 6px; margin-top: 10px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                <span style="font-size: 0.78rem; font-weight: 700; color: #34d399; letter-spacing: 0.5px;">BOARDROOM BUSINESS DEFENSE:</span>
+                <span style="font-size: 0.82rem; color: #94a3b8;">Total Stoppage Exposure: <b style="color: #f87171;">{format_inr_crore_lakh(roi.get('total_stoppage_exposure_inr', 0))}</b></span>
+                <span style="font-size: 0.82rem; color: #94a3b8;">Emergency Freight: <b style="color: #fbbf24;">{format_inr_crore_lakh(roi.get('benchmark_freight_inr', 45000))}</b></span>
+                <span style="font-size: 0.82rem; color: #94a3b8;">Executive ROI: <b style="color: #34d399; font-size: 0.95rem;">{roi.get('headline_roi_x', 1175):,.0f}x</b></span>
+                <span style="font-size: 0.82rem; color: #94a3b8;">Avoided Panic Freight: <b style="color: #38bdf8;">{format_inr_crore_lakh(roi.get('avoided_panic_freight_inr', 135000))}</b></span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1305,6 +1478,7 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="expanded",
     )
+    inject_minimalist_theme()
 
     client = get_client()
     marts = client.compute_analytical_marts()

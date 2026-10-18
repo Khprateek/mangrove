@@ -327,15 +327,19 @@ class ChakanExasolClient:
         cols = [str(c).lower() for c in stmt.column_names()]
         rows = stmt.fetchall()
         df = pd.DataFrame.from_records(rows, columns=cols)
+        skip_suffixes = ("_id", "_code", "_sku", "_num", "_format", "_name", "_action", "_by", "_method", "_state", "_verdict", "_status", "_type", "_category", "_ts", "_date")
         for col in df.columns:
             if df[col].dtype == object:
                 # First convert any Decimal instances to float
                 df[col] = df[col].apply(lambda v: float(v) if isinstance(v, Decimal) else v)
-                # Then attempt pd.to_numeric if all non-null values can be numeric
-                try:
-                    df[col] = pd.to_numeric(df[col], errors="raise")
-                except (ValueError, TypeError):
-                    pass
+                # Attempt conversion to numeric if it's not a text identifier
+                if not any(col.endswith(sfx) for sfx in skip_suffixes):
+                    try:
+                        converted = pd.to_numeric(df[col], errors="coerce")
+                        if converted.notna().sum() > 0 and converted.notna().sum() == df[col].notna().sum():
+                            df[col] = converted
+                    except (ValueError, TypeError):
+                        pass
         return df
 
     def _make_telemetry(
