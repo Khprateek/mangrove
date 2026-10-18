@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 import sys
 
@@ -14,6 +15,13 @@ import streamlit as st
 
 from src.data_generator.generate_all import generate_dataset
 from src.exasol_engine.db_client import ChakanExasolClient
+
+
+def get_base64_svg(svg_path: Path) -> str:
+    if svg_path.exists():
+        with open(svg_path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    return ""
 
 
 def format_inr_crore_lakh(amount_inr: float) -> str:
@@ -34,6 +42,20 @@ def get_client() -> ChakanExasolClient:
 
 
 def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
+    mark_path = PROJECT_ROOT / "assets" / "logo-mark.svg"
+    if mark_path.exists():
+        b64_mark = get_base64_svg(mark_path)
+        st.sidebar.markdown(
+            f"""
+            <div style="text-align: center; margin-bottom: 12px; padding: 6px 0; border-bottom: 1px solid #1e293b;">
+                <img src="data:image/svg+xml;base64,{b64_mark}" style="width: 68px; height: 68px; border-radius: 14px; box-shadow: 0 0 16px rgba(95,194,45,0.35);" alt="Logo Mark" />
+                <div style="font-weight: 900; font-size: 1.05rem; color: #f8fafc; margin-top: 8px; letter-spacing: 1.5px;">BLAST-RADIUS <span style="color: #5fc22d;">SCM</span></div>
+                <div style="font-size: 0.68rem; color: #94a3b8; font-weight: 700; letter-spacing: 0.8px;">CHAKAN POWERTRAIN COMPLEX</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     st.sidebar.markdown("### Exasol Platform Control")
     st.sidebar.caption("Schema: `CHAKAN_SCM` | DSN: `localhost:8563`")
 
@@ -76,6 +98,27 @@ def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
         "Instead of dropping malformed rows into a dead-letter table, Exasol Personal harmonizes "
         "them in-database and ranks every anomaly by **Rs Production Output at Risk**."
     )
+
+
+def render_enterprise_header() -> None:
+    logo_path = PROJECT_ROOT / "assets" / "logo.svg"
+    if logo_path.exists():
+        b64_logo = get_base64_svg(logo_path)
+        st.markdown(
+            f"""
+            <div style="margin-top: -20px; margin-bottom: 12px;">
+                <img src="data:image/svg+xml;base64,{b64_logo}" style="width: 100%; max-height: 150px; object-fit: contain; border-radius: 12px; border: 1px solid #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.55);" alt="BLAST-RADIUS SCM Logo" />
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.title("Chakan Plant-1: Inbound ASN Harmonization & Line-Starvation Cockpit")
+        st.markdown(
+            "**Persona:** Lead Inbound Materials & Line-Feed Planner | "
+            "**Facility:** Pune-Chakan Powertrain Assembly Plant | "
+            "**Data Platform:** Exasol Personal (`CHAKAN_SCM`)"
+        )
 
 
 def render_telemetry_banner(marts: dict) -> None:
@@ -1218,22 +1261,17 @@ MEASURED ROUND-TRIP LATENCY ({compute_src}): {measured_ms:.2f} ms
 
 def main() -> None:
     st.set_page_config(
-        page_title="Chakan ASN Blast-Radius Cockpit | Exasol Personal",
+        page_title="BLAST-RADIUS SCM™ | Exasol Personal Cockpit",
+        page_icon="⚡",
         layout="wide",
         initial_sidebar_state="expanded",
-    )
-
-    st.title("Chakan Plant-1: Inbound ASN Harmonization & Line-Starvation Cockpit")
-    st.markdown(
-        "**Persona:** Lead Inbound Materials & Line-Feed Planner | "
-        "**Facility:** Pune-Chakan Powertrain Assembly Plant | "
-        "**Data Platform:** Exasol Personal (`CHAKAN_SCM`)"
     )
 
     client = get_client()
     marts = client.compute_analytical_marts()
 
     render_sidebar(client, marts)
+    render_enterprise_header()
     render_telemetry_banner(marts)
     render_kpi_header(marts)
 

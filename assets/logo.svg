@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 200" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#060c18" />
+      <stop offset="50%" stop-color="#081225" />
+      <stop offset="100%" stop-color="#0b172e" />
+    </linearGradient>
+
+    <!-- Exasol Lime Glow Gradient -->
+    <linearGradient id="limeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#84f244" />
+      <stop offset="50%" stop-color="#5fc22d" />
+      <stop offset="100%" stop-color="#3b8a16" />
+    </linearGradient>
+
+    <!-- Shockwave Cyan Gradient -->
+    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#00e5ff" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- Warning / Alert Pulse Gradient -->
+    <linearGradient id="alertGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff758c" />
+      <stop offset="100%" stop-color="#ff5370" />
+    </linearGradient>
+
+    <!-- Chrome / Titanium Text Gradient -->
+    <linearGradient id="silverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#f1f5f9" />
+      <stop offset="100%" stop-color="#cbd5e1" />
+    </linearGradient>
+
+    <!-- Filters & Glows -->
+    <filter id="glowLime" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="glowCyan" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="glowSubtle" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Container Box with Rounded Edges & Subtle Border -->
+  <rect x="2" y="2" width="836" height="196" rx="16" fill="url(#bgGrad)" stroke="#1e293b" stroke-width="1.5" />
+
+  <!-- Background Tech Grid Pattern Overlay -->
+  <g opacity="0.08" stroke="#38bdf8" stroke-width="0.75">
+    <line x1="0" y1="40" x2="840" y2="40" stroke-dasharray="4 6" />
+    <line x1="0" y1="80" x2="840" y2="80" stroke-dasharray="4 6" />
+    <line x1="0" y1="120" x2="840" y2="120" stroke-dasharray="4 6" />
+    <line x1="0" y1="160" x2="840" y2="160" stroke-dasharray="4 6" />
+    <line x1="100" y1="0" x2="100" y2="200" stroke-dasharray="4 6" />
+    <line x1="200" y1="0" x2="200" y2="200" stroke-dasharray="4 6" />
+    <line x1="300" y1="0" x2="300" y2="200" stroke-dasharray="4 6" />
+    <line x1="450" y1="0" x2="450" y2="200" stroke-dasharray="4 6" />
+    <line x1="600" y1="0" x2="600" y2="200" stroke-dasharray="4 6" />
+    <line x1="750" y1="0" x2="750" y2="200" stroke-dasharray="4 6" />
+  </g>
+
+  <!-- ==================== LEFT LOGO MARK EMBLEM (Center X: 105, Y: 100) ==================== -->
+  <g id="logo-emblem">
+    <!-- Outer Blast Radius Shockwave (Ring 3: 48h Horizon) -->
+    <circle cx="105" cy="100" r="74" fill="none" stroke="#334155" stroke-width="1.2" stroke-dasharray="3 7" opacity="0.6" />
+    <circle cx="105" cy="100" r="74" fill="none" stroke="url(#cyanGrad)" stroke-width="1.5" stroke-dasharray="14 180" stroke-dashoffset="40" opacity="0.8" filter="url(#glowCyan)" />
+
+    <!-- Middle Blast Radius Shockwave (Ring 2: 24h Horizon) -->
+    <circle cx="105" cy="100" r="54" fill="none" stroke="#1e293b" stroke-width="1.5" />
+    <circle cx="105" cy="100" r="54" fill="none" stroke="url(#limeGrad)" stroke-width="2.2" stroke-dasharray="36 72" stroke-dashoffset="15" opacity="0.9" filter="url(#glowLime)" />
+    
+    <!-- Inner Blast Radius Shockwave (Ring 1: 8h Immediate Starvation) -->
+    <circle cx="105" cy="100" r="36" fill="none" stroke="url(#alertGrad)" stroke-width="2" stroke-dasharray="18 36" stroke-dashoffset="5" opacity="0.85" />
+
+    <!-- Dynamic Radar Sweep Crosshairs -->
+    <line x1="105" y1="20" x2="105" y2="180" stroke="#00e5ff" stroke-width="0.8" stroke-dasharray="2 4" opacity="0.3" />
+    <line x1="25" y1="100" x2="185" y2="100" stroke="#00e5ff" stroke-width="0.8" stroke-dasharray="2 4" opacity="0.3" />
+
+    <!-- Outer Hexagonal Chassis Armor -->
+    <polygon points="105,62 138,81 138,119 105,138 72,119 72,81" fill="#0b172a" stroke="#1e293b" stroke-width="1.5" />
+
+    <!-- Inner Core Hexagon (In-Memory Microchip & Engine) -->
+    <polygon points="105,70 131,85 131,115 105,130 79,115 79,85" fill="#081225" stroke="url(#limeGrad)" stroke-width="2.5" filter="url(#glowLime)" />
+
+    <!-- Core Geometric Circuit Traces -->
+    <line x1="105" y1="70" x2="105" y2="130" stroke="#5fc22d" stroke-width="1.5" opacity="0.8" />
+    <line x1="79" y1="100" x2="131" y2="100" stroke="#00e5ff" stroke-width="1.5" opacity="0.8" />
+
+    <!-- Pulsating Nuclear Starvation Core Node -->
+    <circle cx="105" cy="100" r="8" fill="url(#limeGrad)" filter="url(#glowLime)" />
+    <circle cx="105" cy="100" r="3" fill="#ffffff" />
+
+    <!-- Critical Shockwave Nodes on Rings -->
+    <circle cx="143" cy="62" r="3.5" fill="#00e5ff" filter="url(#glowCyan)" />
+    <circle cx="160" cy="130" r="3" fill="#5fc22d" filter="url(#glowLime)" />
+    <circle cx="50" cy="135" r="3.5" fill="#ff5370" />
+    <circle cx="68" cy="66" r="2.5" fill="#00e5ff" />
+  </g>
+
+  <!-- ==================== BRANDING & TYPOGRAPHY SECTION ==================== -->
+  <g transform="translate(205, 0)">
+    <!-- Category & Facility Overhead Tracker -->
+    <g transform="translate(0, 48)">
+      <rect x="0" y="-14" width="220" height="22" rx="4" fill="#0b172e" stroke="#1e293b" stroke-width="1" />
+      <circle cx="12" cy="-3" r="3.5" fill="#5fc22d" filter="url(#glowSubtle)" />
+      <text x="24" y="1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#94a3b8" letter-spacing="1.2">CHAKAN POWERTRAIN COMPLEX</text>
+      
+      <rect x="230" y="-14" width="138" height="22" rx="4" fill="#13271d" stroke="#1e3a29" stroke-width="1" />
+      <text x="242" y="1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#5fc22d" letter-spacing="1">EXASOL MPP IN-DB</text>
+
+      <rect x="378" y="-14" width="130" height="22" rx="4" fill="#1a1c2e" stroke="#2a3052" stroke-width="1" />
+      <text x="390" y="1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="9.5" font-weight="700" fill="#38bdf8" letter-spacing="1">MRP-II RESILIENCE</text>
+    </g>
+
+    <!-- Main Title: BLAST-RADIUS SCM -->
+    <text x="0" y="112" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Montserrat', Roboto, Arial, sans-serif" font-size="46" font-weight="900" fill="url(#silverGrad)" letter-spacing="2">BLAST-RADIUS</text>
+    <text x="350" y="112" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Montserrat', Roboto, Arial, sans-serif" font-size="46" font-weight="900" fill="url(#limeGrad)" letter-spacing="2" filter="url(#glowLime)">SCM</text>
+    <text x="475" y="86" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="12" font-weight="800" fill="#00e5ff" letter-spacing="0.5">TM</text>
+
+    <!-- Enterprise Subtitle -->
+    <text x="2" y="142" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="14.5" font-weight="600" fill="#94a3b8" letter-spacing="1.2">In-Memory Supply Chain Shockwave &amp; Assembly Starvation Cockpit</text>
+
+    <!-- Sub-bar Specs -->
+    <g transform="translate(0, 168)">
+      <line x1="0" y1="-8" x2="600" y2="-8" stroke="#1e293b" stroke-width="1" />
+      <circle cx="5" cy="-2" r="3" fill="#00e5ff" />
+      <text x="14" y="2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="600" fill="#64748b">Sub-15ms In-DB Python 3 UDFs</text>
+      
+      <circle cx="210" cy="-2" r="3" fill="#5fc22d" />
+      <text x="219" y="2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="600" fill="#64748b">True Pickable ATP Algorithm</text>
+
+      <circle cx="410" cy="-2" r="3" fill="#f59e0b" />
+      <text x="419" y="2" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif" font-size="11" font-weight="600" fill="#64748b">1-Click SHA-256 Audit Rollback</text>
+    </g>
+  </g>
+</svg>

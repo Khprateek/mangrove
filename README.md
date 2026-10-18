@@ -1,26 +1,28 @@
 <p align="center">
-  <h1 align="center">Chakan Line-Feed & ASN Blast-Radius Engine</h1>
-  <p align="center">
-    <b>Real-Time In-Database Supply Chain Harmonization & Assembly Line Starvation Defense on Exasol Personal</b>
-    <br />
-    <a href="pitch/DEMO_VIDEO_SCRIPT_3MIN.md">Video Demo Script</a>
-    ·
-    <a href="pitch/PRESENTATION_SLIDES_DECK.md">Pitch Deck</a>
-    ·
-    <a href="docs/run-guide.md">Reproducibility Runbook</a>
-    ·
-    <a href="#cockpit-walkthrough">Cockpit Walkthrough</a>
-    ·
-    <a href="#run-locally">Run Locally</a>
-  </p>
+  <img src="assets/logo.svg" alt="BLAST-RADIUS SCM™ Enterprise Logo" width="100%" />
+</p>
+
+<p align="center">
+  <b>Real-Time In-Database Supply Chain Harmonization & Assembly Line Starvation Defense on Exasol Personal</b>
+  <br />
+  <a href="pitch/DEMO_VIDEO_SCRIPT_3MIN.md">Video Demo Script</a>
+  ·
+  <a href="pitch/PRESENTATION_SLIDES_DECK.md">Pitch Deck</a>
+  ·
+  <a href="docs/run-guide.md">Reproducibility Runbook</a>
+  ·
+  <a href="#cockpit-walkthrough">Cockpit Walkthrough</a>
+  ·
+  <a href="#run-locally">Turnkey Quick Start</a>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/ExaThon%20India-2026%20Open%20Build-blue?style=flat-square&logo=exasol" alt="ExaThon 2026" />
   <img src="https://img.shields.io/badge/Track%2003-Factories%2C%20Fleets%20%26%20Supply%20Chains-orange?style=flat-square" alt="Track 03" />
   <img src="https://img.shields.io/badge/Exasol%20Personal-In--Memory%20Columnar%20MPP-blueviolet?style=flat-square&logo=database" alt="Exasol Personal" />
-  <img src="https://img.shields.io/badge/Pytest-10%2F10%20Passing-brightgreen?style=flat-square&logo=pytest" alt="Pytest" />
+  <img src="https://img.shields.io/badge/Pytest-12%2F12%20Verified-brightgreen?style=flat-square&logo=pytest" alt="Pytest" />
   <img src="https://img.shields.io/badge/Speedup-35.4x%20to%2054.4x%20Columnar-success?style=flat-square" alt="Speedup" />
+  <img src="https://img.shields.io/badge/Turnkey-Docker%20Compose%20Ready-blue?style=flat-square&logo=docker" alt="Docker Compose" />
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT" />
 </p>
 
@@ -243,11 +245,24 @@ Conducted with pure measured CPU timings (`0.0 ms` synthetic network penalty) co
 
 ## Run Locally
 
-### Prerequisites
-- Python 3.12+
-- Docker or Podman (optional, for live Exasol Personal instance)
+### Option A: Turnkey 1-Command Enterprise Appliance (Recommended)
+Launch the complete stack (Exasol Personal In-Memory Engine + Auto-DDL/UDF Bootstrap + Cockpit UI) with a single command:
 
-### 1. Setup Environment
+```bash
+docker compose up -d
+```
+*Access the live cockpit instantly at `http://localhost:8501`.*
+
+To shut down:
+```bash
+docker compose down
+```
+
+---
+
+### Option B: Local Python Virtual Environment
+
+#### 1. Setup Environment
 ```bash
 git clone https://github.com/Khprateek/exasol-supply-chain-blast-radius.git
 cd exasol-supply-chain-blast-radius
@@ -267,7 +282,7 @@ Copy-Item .env.example .env
 python -m src.data_generator.generate_all --extra-asns 480
 ```
 
-### 3. Run Verification Tests (10/10 Passed)
+### 3. Run Verification Tests (12/12 Verified)
 ```bash
 python -m pytest -v
 ```
