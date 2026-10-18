@@ -17,15 +17,17 @@ from src.data_generator.generate_all import generate_dataset
 from src.exasol_engine.db_client import ChakanExasolClient
 
 
-def get_base64_svg(svg_path: Path) -> str:
-    if svg_path.exists():
-        with open(svg_path, "rb") as f:
-            return base64.b64encode(f.read()).decode("utf-8")
-    return ""
+def safe_float(val: Any) -> float:
+    if val is None or pd.isna(val):
+        return 0.0
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return 0.0
 
 
-def format_inr_crore_lakh(amount_inr: float) -> str:
-    val = float(amount_inr or 0.0)
+def format_inr_crore_lakh(amount_inr: Any) -> str:
+    val = safe_float(amount_inr)
     if val >= 10_000_000:
         return f"Rs {val / 10_000_000:.2f} Cr"
     if val >= 100_000:
@@ -42,19 +44,15 @@ def get_client() -> ChakanExasolClient:
 
 
 def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
-    mark_path = PROJECT_ROOT / "assets" / "logo-mark.svg"
-    if mark_path.exists():
-        b64_mark = get_base64_svg(mark_path)
-        st.sidebar.markdown(
-            f"""
-            <div style="text-align: center; margin-bottom: 12px; padding: 6px 0; border-bottom: 1px solid #1e293b;">
-                <img src="data:image/svg+xml;base64,{b64_mark}" style="width: 68px; height: 68px; border-radius: 14px; box-shadow: 0 0 16px rgba(95,194,45,0.35);" alt="Logo Mark" />
-                <div style="font-weight: 900; font-size: 1.05rem; color: #f8fafc; margin-top: 8px; letter-spacing: 1.5px;">BLAST-RADIUS <span style="color: #5fc22d;">SCM</span></div>
-                <div style="font-size: 0.68rem; color: #94a3b8; font-weight: 700; letter-spacing: 0.8px;">CHAKAN POWERTRAIN COMPLEX</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    st.sidebar.markdown(
+        """
+        <div style="padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid #1e293b;">
+            <div style="font-weight: 700; font-size: 1.15rem; color: #f8fafc;">🏭 Materials Cockpit</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">Inbound Triage &amp; Starvation Engine</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.sidebar.markdown("### Exasol Platform Control")
     st.sidebar.caption("Schema: `CHAKAN_SCM` | DSN: `localhost:8563`")
@@ -100,25 +98,32 @@ def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
     )
 
 
-def render_enterprise_header() -> None:
-    logo_path = PROJECT_ROOT / "assets" / "logo.svg"
-    if logo_path.exists():
-        b64_logo = get_base64_svg(logo_path)
-        st.markdown(
-            f"""
-            <div style="margin-top: -20px; margin-bottom: 12px;">
-                <img src="data:image/svg+xml;base64,{b64_logo}" style="width: 100%; max-height: 150px; object-fit: contain; border-radius: 12px; border: 1px solid #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.55);" alt="BLAST-RADIUS SCM Logo" />
+def render_header() -> None:
+    st.markdown(
+        """
+        <div style="background-color: #0d1527; padding: 18px 22px; border-radius: 10px; border: 1px solid #1e293b; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <h1 style="margin: 0; font-size: 1.75rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.5px;">
+                        🏭 Inbound Supply Chain Triage &amp; Assembly Starvation Cockpit
+                    </h1>
+                    <p style="margin: 4px 0 0 0; font-size: 0.92rem; color: #94a3b8;">
+                        Real-Time In-Database Data Harmonization &amp; Line Starvation Defense on Exasol Personal
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <span style="background-color: #1e293b; color: #94a3b8; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid #334155;">
+                        FACILITY: PLANT-1 (CHAKAN INDUSTRIAL CORRIDOR)
+                    </span>
+                    <div style="font-size: 0.76rem; color: #64748b; margin-top: 4px;">
+                        Role: Lead Inbound Materials &amp; Line-Feed Planner
+                    </div>
+                </div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    else:
-        st.title("Chakan Plant-1: Inbound ASN Harmonization & Line-Starvation Cockpit")
-        st.markdown(
-            "**Persona:** Lead Inbound Materials & Line-Feed Planner | "
-            "**Facility:** Pune-Chakan Powertrain Assembly Plant | "
-            "**Data Platform:** Exasol Personal (`CHAKAN_SCM`)"
-        )
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_telemetry_banner(marts: dict) -> None:
@@ -259,6 +264,20 @@ def render_kpi_header(marts: dict) -> None:
 def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
     triage_df: pd.DataFrame = marts["triage_queue"].copy()
 
+    for col_name in [
+        "downtime_burn_rate_inr_hr",
+        "expedited_freight_cost_inr",
+        "mitigation_roi_x",
+        "revenue_at_risk_net_inr",
+        "revenue_at_risk_legacy_inr",
+        "true_net_deficit_qty",
+        "harmonized_shipped_qty",
+        "po_ordered_qty",
+        "raw_shipped_qty",
+    ]:
+        if col_name in triage_df.columns:
+            triage_df[col_name] = pd.to_numeric(triage_df[col_name], errors="coerce").fillna(0.0)
+
     st.subheader("Quarantined Supplier ASNs Ranked by Production Blast Radius (Rs)")
     st.caption(
         "Unlike traditional data-quality tools that list technical regex failures, this queue ranks "
@@ -272,13 +291,19 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
             "Supplier": triage_df["supplier_name"] + " (" + triage_df["tier_level"] + ")",
             "Raw SKU -> UDF Resolved SKU": triage_df["raw_supplier_sku"] + " -> " + triage_df["resolved_part_num"],
             "Raw Qty/UOM": triage_df["raw_shipped_qty"].astype(str) + " " + triage_df["raw_shipped_uom"],
-            "UDF Harmonized Qty": triage_df["harmonized_shipped_qty"].round(1).astype(str) + " " + triage_df["canonical_uom"],
-            "PO Ordered Qty": triage_df["po_ordered_qty"].round(0).astype(str) + " " + triage_df["canonical_uom"],
+            "UDF Harmonized Qty": triage_df["harmonized_shipped_qty"].apply(lambda v: f"{safe_float(v):.1f}") + " " + triage_df["canonical_uom"],
+            "PO Ordered Qty": triage_df["po_ordered_qty"].apply(lambda v: f"{safe_float(v):,.0f}") + " " + triage_df["canonical_uom"],
             "Affected Line(s)": triage_df["affected_lines"],
             "Operational Verdict": triage_df["operational_verdict"],
-            "Line Idle Penalty": triage_df["downtime_burn_rate_inr_hr"].apply(lambda v: f"Rs {v/100000:.1f} L/hr" if v > 0 else "-"),
-            "Expedited Freight": triage_df["expedited_freight_cost_inr"].apply(lambda v: f"Rs {v:,.0f}" if v > 0 else "-"),
-            "Mitigation ROI": triage_df["mitigation_roi_x"].apply(lambda v: f"{v:,.0f}x" if v > 0 else "-"),
+            "Line Idle Penalty": triage_df["downtime_burn_rate_inr_hr"].apply(
+                lambda v: f"Rs {safe_float(v)/100000:.1f} L/hr" if safe_float(v) > 0 else "-"
+            ),
+            "Expedited Freight": triage_df["expedited_freight_cost_inr"].apply(
+                lambda v: f"Rs {safe_float(v):,.0f}" if safe_float(v) > 0 else "-"
+            ),
+            "Mitigation ROI": triage_df["mitigation_roi_x"].apply(
+                lambda v: f"{safe_float(v):,.0f}x" if safe_float(v) > 0 else "-"
+            ),
             "True Net Risk (Rs)": triage_df["revenue_at_risk_net_inr"].apply(format_inr_crore_lakh),
             "State": triage_df["harmonization_state"],
         }
@@ -1261,8 +1286,8 @@ MEASURED ROUND-TRIP LATENCY ({compute_src}): {measured_ms:.2f} ms
 
 def main() -> None:
     st.set_page_config(
-        page_title="BLAST-RADIUS SCM™ | Exasol Personal Cockpit",
-        page_icon="⚡",
+        page_title="Inbound Materials Triage Cockpit | Exasol Personal",
+        page_icon="🏭",
         layout="wide",
         initial_sidebar_state="expanded",
     )
@@ -1271,7 +1296,7 @@ def main() -> None:
     marts = client.compute_analytical_marts()
 
     render_sidebar(client, marts)
-    render_enterprise_header()
+    render_header()
     render_telemetry_banner(marts)
     render_kpi_header(marts)
 

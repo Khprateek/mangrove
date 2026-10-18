@@ -249,6 +249,21 @@ class ChakanExasolClient:
             )
         )
 
+        numeric_triage_cols = [
+            "revenue_at_risk_legacy_inr",
+            "revenue_at_risk_net_inr",
+            "true_net_deficit_qty",
+            "min_hours_to_stop_legacy",
+            "min_hours_to_stop_harmonized",
+            "downtime_burn_rate_inr_hr",
+            "plant_idle_cost_inr",
+            "total_stoppage_exposure_inr",
+            "expedited_freight_cost_inr",
+        ]
+        for c in numeric_triage_cols:
+            if c in triage_queue.columns:
+                triage_queue[c] = pd.to_numeric(triage_queue[c], errors="coerce").fillna(0.0)
+
         def classify_operational_outcome(r: pd.Series) -> str:
             if int(r["transmission_seq"]) > 1:
                 return "DUPLICATE_PAYLOAD_SUPPRESSED"
@@ -314,9 +329,13 @@ class ChakanExasolClient:
         df = pd.DataFrame.from_records(rows, columns=cols)
         for col in df.columns:
             if df[col].dtype == object:
-                sample = df[col].dropna().head(20)
-                if len(sample) and all(isinstance(v, Decimal) for v in sample):
-                    df[col] = df[col].astype(float)
+                # First convert any Decimal instances to float
+                df[col] = df[col].apply(lambda v: float(v) if isinstance(v, Decimal) else v)
+                # Then attempt pd.to_numeric if all non-null values can be numeric
+                try:
+                    df[col] = pd.to_numeric(df[col], errors="raise")
+                except (ValueError, TypeError):
+                    pass
         return df
 
     def _make_telemetry(

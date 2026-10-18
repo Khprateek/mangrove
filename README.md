@@ -1,10 +1,8 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="BLAST-RADIUS SCM™ Enterprise Logo" width="100%" />
-</p>
-
-<p align="center">
-  <b>Real-Time In-Database Supply Chain Harmonization & Assembly Line Starvation Defense on Exasol Personal</b>
-  <br />
+  <h1 align="center">🏭 Inbound Supply Chain Harmonization & Line Starvation Engine</h1>
+  <p align="center">
+    <b>Real-Time In-Database Supply Chain Harmonization & Assembly Line Starvation Defense on Exasol Personal</b>
+    <br />
   <a href="pitch/DEMO_VIDEO_SCRIPT_3MIN.md">Video Demo Script</a>
   ·
   <a href="pitch/PRESENTATION_SLIDES_DECK.md">Pitch Deck</a>
