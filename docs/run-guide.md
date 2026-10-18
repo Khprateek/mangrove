@@ -1,6 +1,6 @@
 # Reproducibility & Verification Runbook (`docs/run-guide.md`)
 
-This guide walks through reproducing the **Chakan Plant-1 Inbound ASN Harmonization & Line-Starvation Cockpit** from a clean checkout, both via the **Turnkey 1-Command Enterprise Appliance (`docker compose`)** and via manual local environments (**Exasol Personal Live SQL Views & Python 3 UDFs** or **Offline Analytical Mirror**).
+This guide walks through reproducing **Mangrove (In-Memory Supply Chain Triage & Assembly Starvation Engine)** from a clean checkout, both via the **Turnkey 1-Command Enterprise Appliance (`docker compose`)** and via manual local environments (**Exasol Personal Live SQL Views & Python 3 UDFs** or **Offline Analytical Mirror**).
 
 ---
 
@@ -15,7 +15,7 @@ docker compose up -d
 
 ### Automated Self-Bootstrapping Sequence:
 1. **Container 1 (`exasol-personal-db`)**: Launches Exasol Personal (`exasol/docker-db:latest`) on port `8563` with privileged memory mapping.
-2. **Container 2 (`blast-radius-cockpit`)**: Spawns [`scripts/entrypoint.py`](../scripts/entrypoint.py), probes the Exasol port until RAM initializes, automatically executes `bootstrap_exasol_schema_and_data()` (creating schema `CHAKAN_SCM`, compiling the 3 Python 3 UDFs, creating the 4 analytical views, and bulk-loading all 7 ERP tables), and launches Streamlit.
+2. **Container 2 (`mangrove-cockpit`)**: Spawns [`scripts/entrypoint.py`](../scripts/entrypoint.py), probes the Exasol port until RAM initializes, automatically executes `bootstrap_exasol_schema_and_data()` (creating schema `CHAKAN_SCM`, compiling the 3 Python 3 UDFs, creating the 4 analytical views, and bulk-loading all 7 ERP tables), and launches Streamlit.
 3. Access the Cockpit UI: Open `http://localhost:8501` in your browser.
 
 To stop the appliance:

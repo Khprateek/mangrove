@@ -1,4 +1,4 @@
-# Production Dockerfile for Blast-Radius SCM Cockpit Appliance
+# Production Dockerfile for Mangrove SCM Cockpit Appliance
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \

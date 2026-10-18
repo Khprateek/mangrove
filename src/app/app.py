@@ -46,9 +46,12 @@ def get_client() -> ChakanExasolClient:
 def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
     st.sidebar.markdown(
         """
-        <div style="padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid #1e293b;">
-            <div style="font-weight: 700; font-size: 1.15rem; color: #f8fafc;">🏭 Materials Cockpit</div>
-            <div style="font-size: 0.75rem; color: #94a3b8;">Inbound Triage &amp; Starvation Engine</div>
+        <div style="padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid #1e293b;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.4rem;">🌿</span>
+                <div style="font-weight: 800; font-size: 1.25rem; color: #f8fafc; letter-spacing: -0.5px;">Mangrove</div>
+            </div>
+            <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 2px;">In-Memory Triage &amp; Starvation Engine</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -101,21 +104,27 @@ def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
 def render_header() -> None:
     st.markdown(
         """
-        <div style="background-color: #0d1527; padding: 18px 22px; border-radius: 10px; border: 1px solid #1e293b; margin-bottom: 14px;">
+        <div style="background-color: #0d1527; padding: 18px 24px; border-radius: 12px; border: 1px solid #1e293b; margin-bottom: 14px;">
             <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
                 <div>
-                    <h1 style="margin: 0; font-size: 1.75rem; font-weight: 700; color: #f8fafc; letter-spacing: -0.5px;">
-                        🏭 Inbound Supply Chain Triage &amp; Assembly Starvation Cockpit
-                    </h1>
-                    <p style="margin: 4px 0 0 0; font-size: 0.92rem; color: #94a3b8;">
-                        Real-Time In-Database Data Harmonization &amp; Line Starvation Defense on Exasol Personal
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 1.85rem;">🌿</span>
+                        <h1 style="margin: 0; font-size: 1.85rem; font-weight: 800; color: #f8fafc; letter-spacing: -0.5px;">
+                            Mangrove
+                        </h1>
+                        <span style="background-color: #064e3b; color: #34d399; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; border: 1px solid #059669; letter-spacing: 0.8px;">
+                            IN-MEMORY SCM DEFENSE
+                        </span>
+                    </div>
+                    <p style="margin: 6px 0 0 0; font-size: 0.94rem; color: #94a3b8;">
+                        Real-Time In-Database Supply Chain Triage &amp; Line Starvation Engine on Exasol Personal
                     </p>
                 </div>
                 <div style="text-align: right;">
-                    <span style="background-color: #1e293b; color: #94a3b8; font-size: 0.78rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; border: 1px solid #334155;">
+                    <span style="background-color: #1e293b; color: #94a3b8; font-size: 0.78rem; font-weight: 600; padding: 5px 12px; border-radius: 6px; border: 1px solid #334155;">
                         FACILITY: PLANT-1 (CHAKAN INDUSTRIAL CORRIDOR)
                     </span>
-                    <div style="font-size: 0.76rem; color: #64748b; margin-top: 4px;">
+                    <div style="font-size: 0.76rem; color: #64748b; margin-top: 5px;">
                         Role: Lead Inbound Materials &amp; Line-Feed Planner
                     </div>
                 </div>
@@ -1286,8 +1295,8 @@ MEASURED ROUND-TRIP LATENCY ({compute_src}): {measured_ms:.2f} ms
 
 def main() -> None:
     st.set_page_config(
-        page_title="Inbound Materials Triage Cockpit | Exasol Personal",
-        page_icon="🏭",
+        page_title="Mangrove | Inbound Triage & Starvation Engine (Exasol Personal)",
+        page_icon="🌿",
         layout="wide",
         initial_sidebar_state="expanded",
     )

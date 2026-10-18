@@ -22,7 +22,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: blast-radius-cockpit
+    container_name: mangrove-cockpit
     restart: unless-stopped
     ports:
       - "8501:8501"

@@ -1,7 +1,7 @@
 <p align="center">
-  <h1 align="center">🏭 Inbound Supply Chain Harmonization & Line Starvation Engine</h1>
+  <h1 align="center">🌿 Mangrove</h1>
   <p align="center">
-    <b>Real-Time In-Database Supply Chain Harmonization & Assembly Line Starvation Defense on Exasol Personal</b>
+    <b>In-Memory Supply Chain Triage & Assembly Starvation Engine on Exasol Personal</b>
     <br />
   <a href="pitch/DEMO_VIDEO_SCRIPT_3MIN.md">Video Demo Script</a>
   ·
@@ -55,9 +55,11 @@
 
 ## About The Project
 
-✨ **The Chakan ASN Blast-Radius Engine** is a real-time operational decision cockpit built on **Exasol Personal** for high-volume automotive manufacturing plants (such as the Pune-Chakan corridor).
+✨ **Mangrove** is a real-time in-memory supply chain triage and assembly line starvation defense engine built on **Exasol Personal** for high-volume automotive manufacturing plants (modeled on the Pune-Chakan powertrain corridor).
 
-✨ Instead of dropping malformed MSME supplier dispatches into dead-letter quarantine logs, the engine executes **in-database data harmonization** using Exasol's native Python 3 UDFs—standardizing packaging units, fuzzy-resolving supplier SKU aliases, and disambiguating dates directly inside the database in milliseconds.
+> 🌿 **Biomimetic Inspiration**: In coastal ecology, mangroves thrive at the turbulent boundary where ocean storms collide with the land—their interwoven roots absorb tidal shockwaves while naturally desalinating and filtering murky water into life-giving nourishment. Similarly, **Mangrove** acts as the resilient operational shock absorber between chaotic sub-tier MSME suppliers and the high-precision assembly plant—filtering and harmonizing malformed dispatches into canonical forms in memory and dissipating delivery stockout shockwaves before a single assembly line halts.
+
+✨ Instead of dropping malformed MSME supplier dispatches into dead-letter quarantine logs, **Mangrove** executes **in-database data harmonization** using Exasol's native Python 3 UDFs—standardizing packaging units, fuzzy-resolving supplier SKU aliases, and disambiguating dates directly inside the database in milliseconds.
 
 ✨ It pairs harmonized in-transit shipments with physical warehouse bin counts to expose **True Available-to-Promise (ATP)** stock, performs recursive Bill-of-Materials (BOM) explosions, and quantifies the exact financial blast radius (₹ value and hours-to-starvation) for each production line.
 
