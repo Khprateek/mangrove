@@ -27,7 +27,6 @@
 - [Performance & Scale Benchmark](#performance--scale-benchmark)
 - [Run Locally](#run-locally)
 - [Synthetic Data Disclosure](#synthetic-data-disclosure)
-- [Submission Deliverables](#submission-deliverables)
 - [License](#license)
 
 ---
@@ -45,13 +44,15 @@
 
 ## About The Project
 
-✨ **Mangrove** is a real-time in-memory supply chain triage and assembly line starvation defense engine built on **Exasol Personal** for high-volume automotive manufacturing plants (modeled on the Pune-Chakan powertrain corridor).
+🌿 **Mangrove** is a real-time in-memory supply chain triage and assembly line starvation defense engine built on **Exasol Personal** for high-volume automotive manufacturing plants (modeled on the Pune-Chakan powertrain corridor).
 
 > 🌿 **Biomimetic Inspiration**: In coastal ecology, mangroves thrive at the turbulent boundary where ocean storms collide with the land—their interwoven roots absorb tidal shockwaves while naturally desalinating and filtering murky water into life-giving nourishment. Similarly, **Mangrove** acts as the resilient operational shock absorber between chaotic sub-tier MSME suppliers and the high-precision assembly plant—filtering and harmonizing malformed dispatches into canonical forms in memory and dissipating delivery stockout shockwaves before a single assembly line halts.
 
-✨ Instead of dropping malformed MSME supplier dispatches into dead-letter quarantine logs, **Mangrove** executes **in-database data harmonization** using Exasol's native Python 3 UDFs—standardizing packaging units, fuzzy-resolving supplier SKU aliases, and disambiguating dates directly inside the database in milliseconds.
+🌿 Instead of dropping malformed MSME supplier dispatches into dead-letter quarantine logs, **Mangrove** executes **in-database data harmonization** using Exasol's native Python 3 UDFs—standardizing packaging units, fuzzy-resolving supplier SKU aliases, and disambiguating dates directly inside the database in milliseconds.
 
-✨ It pairs harmonized in-transit shipments with physical warehouse bin counts to expose **True Available-to-Promise (ATP)** stock, performs recursive Bill-of-Materials (BOM) explosions, and quantifies the exact financial blast radius (₹ value and hours-to-starvation) for each production line.
+🌿 It pairs harmonized in-transit shipments with physical warehouse bin counts to expose **True Available-to-Promise (ATP)** stock, performs recursive Bill-of-Materials (BOM) explosions, and quantifies the exact financial blast radius (₹ value and hours-to-starvation) for each production line.
+
+> 📊 **Executive Presentation**: For the formal 10-slide deck with judge Q&A defense, see [`pitch/PRESENTATION_SLIDES_DECK.md`](pitch/PRESENTATION_SLIDES_DECK.md).
 
 ---
 
@@ -300,21 +301,6 @@ In strict compliance with **Hackathon Rule #4 (Public or Synthetic Data Only)**:
 - **100% Synthetic Generation**: All datasets are generated programmatically via `src/data_generator/` using deterministic seed `SEED = 202610`.
 - **Zero Proprietary Data**: Contains zero employer, customer, or confidential supplier records.
 - **Domain Fidelity**: Faithfully mirrors the Bill-of-Materials structures and 6 documented defect modes (UOM drift, SKU aliases, date ambiguities, split shipments, duplicates, phantom stock) of the Pune-Chakan manufacturing cluster.
-
----
-
-## Submission Deliverables
-
-Strictly aligned with the **ExaThon India 2026 Official Submission Requirements**:
-
-| Official Requirement | Repository Artifact / Path | Description & Compliance |
-| :--- | :--- | :--- |
-| **1. Problem Statement** | [README.md # Problem Statement](#problem-statement) | Zero-tech template compliance: `[Who] can't [do what] because [why]. If this worked, [what changes].` |
-| **2. Public Code Repository** | [`Khprateek/exasol-supply-chain-blast-radius`](https://github.com/Khprateek/exasol-supply-chain-blast-radius) | Full open-source repository with Exasol DDL, Python 3 UDFs, and Streamlit cockpit |
-| **3. Pitch Deck** | [`pitch/PRESENTATION_SLIDES_DECK.md`](pitch/PRESENTATION_SLIDES_DECK.md) | 10-Slide executive boardroom presentation deck |
-| **4. Demo Video (3-Min Max)** | [`pitch/DEMO_VIDEO_SCRIPT_3MIN.md`](pitch/DEMO_VIDEO_SCRIPT_3MIN.md) | 3-Minute director script, timed visual cues, and video recording walkthrough |
-| **5. Deployment Run Guide** | [`docs/run-guide.md`](docs/run-guide.md) & [`docker-compose.yml`](docker-compose.yml) | Turnkey single-command container appliance & local reproducibility runbook |
-| **6. Open-Source License** | [`LICENSE`](LICENSE) | Official OSI-approved MIT License |
 
 ---
 
