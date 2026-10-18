@@ -169,7 +169,9 @@ def get_client() -> ChakanExasolClient:
 
 
 def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
-    logo_path = PROJECT_ROOT / "assets" / "logo.svg"
+    logo_path = PROJECT_ROOT / "assets" / "logo.png"
+    if not logo_path.exists():
+        logo_path = PROJECT_ROOT / "assets" / "logo.svg"
     if logo_path.exists():
         st.sidebar.image(str(logo_path), width=52)
     st.sidebar.markdown(
@@ -271,7 +273,9 @@ def render_sidebar(client: ChakanExasolClient, marts: dict) -> None:
 
 
 def render_header() -> None:
-    logo_path = PROJECT_ROOT / "assets" / "logo.svg"
+    logo_path = PROJECT_ROOT / "assets" / "logo.png"
+    if not logo_path.exists():
+        logo_path = PROJECT_ROOT / "assets" / "logo.svg"
     col_logo, col_title, col_meta = st.columns([0.65, 6.35, 4.0])
     with col_logo:
         if logo_path.exists():

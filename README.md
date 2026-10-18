@@ -1,32 +1,28 @@
-<p align="center">
-  <img src="assets/logo.svg" alt="Mangrove Logo" width="140" />
-</p>
-
-<p align="center">
-  <h1 align="center">🌿 Mangrove</h1>
-  <p align="center">
-    <b>In-Memory Supply Chain Triage & Assembly Starvation Engine on Exasol Personal</b>
-    <br />
-  <a href="pitch/DEMO_VIDEO_SCRIPT_3MIN.md">Video Demo Script</a>
-  ·
-  <a href="pitch/PRESENTATION_SLIDES_DECK.md">Pitch Deck</a>
-  ·
-  <a href="docs/run-guide.md">Reproducibility Runbook</a>
-  ·
-  <a href="#cockpit-walkthrough">Cockpit Walkthrough</a>
-  ·
-  <a href="#run-locally">Turnkey Quick Start</a>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/ExaThon%20India-2026%20Open%20Build-blue?style=flat-square&logo=exasol" alt="ExaThon 2026" />
-  <img src="https://img.shields.io/badge/Track%2003-Factories%2C%20Fleets%20%26%20Supply%20Chains-orange?style=flat-square" alt="Track 03" />
-  <img src="https://img.shields.io/badge/Exasol%20Personal-In--Memory%20Columnar%20MPP-blueviolet?style=flat-square&logo=database" alt="Exasol Personal" />
-  <img src="https://img.shields.io/badge/Pytest-12%2F12%20Verified-brightgreen?style=flat-square&logo=pytest" alt="Pytest" />
-  <img src="https://img.shields.io/badge/Speedup-35.4x%20to%2054.4x%20Columnar-success?style=flat-square" alt="Speedup" />
-  <img src="https://img.shields.io/badge/Turnkey-Docker%20Compose%20Ready-blue?style=flat-square&logo=docker" alt="Docker Compose" />
-  <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT" />
-</p>
+<div align="center">
+  <img src="assets/logo.png" alt="Mangrove Logo" width="100" />
+  <h1>🌿 Mangrove</h1>
+  <p><b>Real-Time In-Database Supply Chain Triage &amp; Assembly Starvation Defense on Exasol Personal</b></p>
+  <p>
+    <a href="#problem-statement">Problem Statement</a>
+    ·
+    <a href="pitch/PRESENTATION_SLIDES_DECK.md">Pitch Deck</a>
+    ·
+    <a href="docs/run-guide.md">Reproducibility Runbook</a>
+    ·
+    <a href="#system-architecture">System Architecture</a>
+    ·
+    <a href="#run-locally">Turnkey Quick Start</a>
+  </p>
+  <p>
+    <img src="https://img.shields.io/badge/ExaThon%20India-2026%20Open%20Build-blue?style=flat-square&logo=exasol" alt="ExaThon 2026" />
+    <img src="https://img.shields.io/badge/Track%2003-Factories%2C%20Fleets%20%26%20Supply%20Chains-orange?style=flat-square" alt="Track 03" />
+    <img src="https://img.shields.io/badge/Exasol%20Personal-In--Memory%20Columnar%20MPP-blueviolet?style=flat-square&logo=database" alt="Exasol Personal" />
+    <img src="https://img.shields.io/badge/Pytest-12%2F12%20Verified-brightgreen?style=flat-square&logo=pytest" alt="Pytest" />
+    <img src="https://img.shields.io/badge/Speedup-35.4x%20to%2054.4x%20Columnar-success?style=flat-square" alt="Speedup" />
+    <img src="https://img.shields.io/badge/Turnkey-Docker%20Compose%20Ready-blue?style=flat-square&logo=docker" alt="Docker Compose" />
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT" />
+  </p>
+</div>
 
 ---
 
@@ -319,14 +315,16 @@ In strict compliance with **Hackathon Rule #4 (Public or Synthetic Data Only)**:
 
 ## Submission Deliverables
 
-| Deliverable | Repository Path | Description |
+Strictly aligned with the **ExaThon India 2026 Official Submission Requirements**:
+
+| Official Requirement | Repository Artifact / Path | Description & Compliance |
 | :--- | :--- | :--- |
-| **Problem Statement** | [README.md # Problem Statement](#problem-statement) | Official zero-tech problem statement |
-| **Pitch Deck** | [`pitch/PRESENTATION_SLIDES_DECK.md`](pitch/PRESENTATION_SLIDES_DECK.md) | 10-Slide boardroom executive deck |
-| **Video Demo Script** | [`pitch/DEMO_VIDEO_SCRIPT_3MIN.md`](pitch/DEMO_VIDEO_SCRIPT_3MIN.md) | 3-Minute director script & visual cues |
-| **Reproducibility Runbook** | [`docs/run-guide.md`](docs/run-guide.md) | End-to-end setup & Docker deployment guide |
-| **Automated Tests** | [`tests/test_harmonization.py`](tests/test_harmonization.py) | 10 unit and live Exasol parity tests |
-| **License** | [`LICENSE`](LICENSE) | Official OSI-approved MIT License |
+| **1. Problem Statement** | [README.md # Problem Statement](#problem-statement) | Zero-tech template compliance: `[Who] can't [do what] because [why]. If this worked, [what changes].` |
+| **2. Public Code Repository** | [`Khprateek/exasol-supply-chain-blast-radius`](https://github.com/Khprateek/exasol-supply-chain-blast-radius) | Full open-source repository with Exasol DDL, Python 3 UDFs, and Streamlit cockpit |
+| **3. Pitch Deck** | [`pitch/PRESENTATION_SLIDES_DECK.md`](pitch/PRESENTATION_SLIDES_DECK.md) | 10-Slide executive boardroom presentation deck |
+| **4. Demo Video (3-Min Max)** | [`pitch/DEMO_VIDEO_SCRIPT_3MIN.md`](pitch/DEMO_VIDEO_SCRIPT_3MIN.md) | 3-Minute director script, timed visual cues, and video recording walkthrough |
+| **5. Deployment Run Guide** | [`docs/run-guide.md`](docs/run-guide.md) & [`docker-compose.yml`](docker-compose.yml) | Turnkey single-command container appliance & local reproducibility runbook |
+| **6. Open-Source License** | [`LICENSE`](LICENSE) | Official OSI-approved MIT License |
 
 ---
 
