@@ -52,8 +52,6 @@
 
 🌿 It pairs harmonized in-transit shipments with physical warehouse bin counts to expose **True Available-to-Promise (ATP)** stock, performs recursive Bill-of-Materials (BOM) explosions, and quantifies the exact financial blast radius (₹ value and hours-to-starvation) for each production line.
 
-> 📊 **Executive Presentation**: For the formal 10-slide deck with judge Q&A defense, see [`pitch/PRESENTATION_SLIDES_DECK.md`](pitch/PRESENTATION_SLIDES_DECK.md).
-
 ---
 
 ## Inspiration & Industry Context
