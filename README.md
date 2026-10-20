@@ -102,22 +102,9 @@ Hierarchical Bill-of-Materials joins across 6 relational tables execute with **0
 ### 3. Interactive 1-Click Override & Sub-15ms Feedback Loop
 When a planner reviews a quarantined shipment and submits an override, it writes directly back to Exasol's `ASN_PLANNER_OVERRIDES` table, triggering an instant view recalculation without overnight batch reruns:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Planner as Materials Planner (UI)
-    participant UI as Streamlit Cockpit (:8501)
-    participant Exa as Exasol Personal Engine (:8563)
-    participant Views as Columnar SQL Views (CHAKAN_SCM)
-
-    Planner->>UI: Flags Quarantined ASN (e.g. ₹5.29 Cr Shortage on Line 2)
-    Planner->>UI: Reviews Jaro-Winkler match & clicks "Approve Override"
-    UI->>Exa: INSERT INTO ASN_PLANNER_OVERRIDES (asn_line_id, resolved_part, qty)
-    Note over Exa,Views: In-Memory Recompute (< 15 ms, Zero Batch Delay)
-    Exa->>Views: Re-evaluates VW_ASN_HARMONIZED_LINEAGE & Starvation Risk
-    Views-->>UI: Refreshes KPI Banner: False Alarms Cleared, Lines Cleared!
-    UI-->>Planner: Instant Visual Confirmation: 0 Assembly Stations Halting
-```
+<p align="center">
+  <img src="assets/Architecture4.svg" alt="Interactive 1-Click Override &amp; Sub-15ms Feedback Loop" width="100%" />
+</p>
 
 
 ## Key Features

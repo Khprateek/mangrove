@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480" width="100%" height="100%">
+  <defs>
+    <!-- Mint Glow Arrowhead Marker (from cocoindex / Architecture1) -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#6DFFB0" />
+    </marker>
+    <style>
+      .text-base { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 13px; fill: #ffffff; }
+      .title-ui { font-size: 24px; font-weight: 500; fill: #e5edf5; }
+      .text-highlight { fill: #9bc5e2; }
+      .text-dark { fill: #002D3B; }
+      .text-small { font-size: 11.5px; fill: #a4b3c2; }
+      .font-bold { font-weight: bold; }
+      
+      .box-outline { stroke: #4b6a8a; stroke-width: 1.5; fill: rgba(30, 45, 59, 0.3); }
+      .subbox-outline { stroke: #2a3c4f; stroke-width: 1.2; fill: #111a24; }
+      
+      /* UI Graph / Sub-widget styling */
+      .ui-live { font-family: monospace; font-size: 7px; fill: #4ade80; font-weight: 700; letter-spacing: 0.5px; }
+      .ui-live-dot { fill: #4ade80; }
+      .ui-sub-title { font-family: monospace; font-size: 5.5px; font-weight: 700; letter-spacing: 0.5px; }
+      .title-pink { fill: #f87171; }
+      .title-purple { fill: #c084fc; }
+      .title-yellow { fill: #facc15; }
+      .title-blue { fill: #38bdf8; }
+      .text-code { font-family: monospace; font-size: 5px; }
+      
+      .box-streamlit { fill: #3D1F1B; stroke: #f87171; stroke-width: 1.2; stroke-opacity: 0.6; }
+      .box-views { fill: #1E2D3B; stroke: #4b6a8a; stroke-width: 1.5; }
+      
+      .connector { stroke: #6DFFB0; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .flow { stroke-dasharray: 6 6; animation: mv 1.4s linear infinite; }
+      @keyframes mv { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -24; } }
+      .spin { animation: sp 9s linear infinite; transform-origin: 875px 180px; }
+      @keyframes sp { to { transform: rotate(360deg); } }
+    </style>
+    
+    <!-- Glow Gradient (cocoindex engine glow) -->
+    <radialGradient id="eh-engine-glow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#6DFFB0" stop-opacity="0.45" />
+      <stop offset="60%" stop-color="#6DFFB0" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#6DFFB0" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- ==================== LEFT: Material Planner UI ==================== -->
+  <g id="material-planner-ui">
+    <!-- Outer Box -->
+    <rect x="25" y="45" width="220" height="245" rx="18" class="box-outline" />
+    <text x="135" y="72" class="text-base title-ui" text-anchor="middle">Material Planner UI</text>
+    
+    <!-- Fresh Context Status Indicators -->
+    <text x="45" y="93" class="ui-live">FRESH CONTEXT • LIVE</text>
+    <circle cx="218" cy="91" r="2.5" class="ui-live-dot" />
+
+    <!-- Sub-Box 1: CALL GRAPH -->
+    <g id="ui-widget-call-graph">
+      <rect x="45" y="105" width="75" height="75" rx="10" class="subbox-outline" />
+      <text x="53" y="116" class="ui-sub-title title-pink">CALL GRAPH</text>
+      <!-- Connections/Path -->
+      <path d="M 57,148 L 73,138 M 73,138 L 96,145 M 96,145 L 110,154 M 57,148 L 76,160 M 76,160 L 96,145" fill="none" stroke="#f87171" stroke-width="0.8" opacity="0.8" />
+      <!-- Nodes -->
+      <circle cx="57" cy="148" r="2.2" fill="#f87171" />
+      <circle cx="73" cy="138" r="2.2" fill="#f87171" />
+      <circle cx="76" cy="160" r="2.2" fill="#f87171" />
+      <circle cx="96" cy="145" r="2.2" fill="#f87171" />
+      <circle cx="110" cy="154" r="2.2" fill="#f87171" />
+    </g>
+
+    <!-- Sub-Box 2: VECTOR CLOUD -->
+    <g id="ui-widget-vector-cloud">
+      <rect x="145" y="105" width="75" height="75" rx="10" class="subbox-outline" />
+      <text x="153" y="116" class="ui-sub-title title-purple">VECTOR CLOUD</text>
+      <!-- Small scattered nodes -->
+      <circle cx="156" cy="143" r="1.3" fill="#c084fc" />
+      <circle cx="162" cy="151" r="1.1" fill="#c084fc" />
+      <circle cx="168" cy="140" r="1.4" fill="#c084fc" />
+      <circle cx="172" cy="147" r="1.2" fill="#c084fc" />
+      <circle cx="178" cy="145" r="1.5" fill="#c084fc" />
+      <circle cx="185" cy="149" r="1.2" fill="#c084fc" />
+      <circle cx="187" cy="141" r="1.3" fill="#c084fc" />
+      <circle cx="193" cy="145" r="1.5" fill="#c084fc" opacity="0.9" />
+      <circle cx="198" cy="139" r="1.1" fill="#c084fc" />
+      <circle cx="203" cy="149" r="1.4" fill="#c084fc" />
+      <circle cx="208" cy="143" r="1.2" fill="#c084fc" />
+      <circle cx="213" cy="147" r="1.3" fill="#c084fc" />
+    </g>
+
+    <!-- Sub-Box 3: SEMANTIC CHUNKS & SYMBOLS -->
+    <g id="ui-widget-combined">
+      <rect x="45" y="195" width="175" height="75" rx="10" class="subbox-outline" />
+      
+      <!-- Left Area: Semantic Chunks -->
+      <text x="53" y="206" class="ui-sub-title title-yellow">SEMANTIC CHUNKS</text>
+      <rect x="53" y="214" width="45" height="3.5" rx="1.5" fill="#facc15" />
+      <rect x="53" y="223" width="72" height="3" rx="1" fill="#4b5563" />
+      <rect x="53" y="231" width="55" height="3" rx="1" fill="#4b5563" />
+      <rect x="53" y="239" width="63" height="3" rx="1" fill="#4b5563" />
+      
+      <!-- Right Area: Symbols -->
+      <text x="138" y="206" class="ui-sub-title title-blue">SYMBOLS</text>
+      <!-- "class Parser" -->
+      <text x="138" y="217" class="text-code" fill="#f87171">class <tspan fill="#ffffff">Parser</tspan></text>
+      <!-- "fn index_repo()" -->
+      <text x="138" y="227" class="text-code" fill="#fbbf24">fn <tspan fill="#ffffff">index_repo()</tspan></text>
+      <!-- "type Chunk" -->
+      <text x="138" y="237" class="text-code" fill="#34d399">type <tspan fill="#ffffff">Chunk</tspan></text>
+    </g>
+  </g>
+
+  <!-- ==================== CONNECTORS & LABELS (UI -> Cockpit) ==================== -->
+  <g id="ui-to-cockpit">
+    <!-- Top Connector "Flags Quarantined ASN" -->
+    <path class="connector flow" marker-end="url(#arrow)" d="M 245,130 C 310,130 330,150 365,150 L 440,150" />
+    <text x="260" y="115" class="text-base text-small">Flags Quarantined ASN</text>
+    
+    <!-- Bottom Connector "Reviews Jaro-Winkler..." -->
+    <path class="connector flow" marker-end="url(#arrow)" d="M 245,210 C 315,210 325,190 355,190 L 440,190" />
+    <text x="265" y="232" class="text-base text-small">Reviews Jaro-Winkler</text>
+    <text x="265" y="247" class="text-base text-small">match &amp; clicks "Approve</text>
+    <text x="265" y="262" class="text-base text-small">Override"</text>
+  </g>
+
+  <!-- ==================== CENTER-LEFT: Streamlit Cockpit ==================== -->
+  <g id="streamlit-cockpit">
+    <rect x="450" y="125" width="180" height="110" rx="16" class="box-streamlit" />
+    <text x="540" y="162" class="text-base" font-size="18" text-anchor="middle" fill="#FFF0EB">Streamlit</text>
+    <text x="540" y="187" class="text-base" font-size="18" text-anchor="middle" fill="#FFF0EB">Cockpit</text>
+    <text x="540" y="214" class="text-base font-bold" font-size="18" text-anchor="middle" fill="#FFF0EB">:8501</text>
+  </g>
+
+  <!-- ==================== CONNECTOR: Cockpit -> Exasol ==================== -->
+  <g id="cockpit-to-exasol">
+    <path class="connector flow" marker-end="url(#arrow)" d="M 630,180 L 805,180" />
+    <text x="640" y="155" class="text-base text-small" font-size="11">INSERT INTO</text>
+    <text x="640" y="170" class="text-base text-small" font-size="11">ASN_PLANNER_OVERRIDES</text>
+  </g>
+
+  <!-- ==================== CENTER-RIGHT: Exasol Personal Engine (COCOINDEX GLOW) ==================== -->
+  <g id="exasol-engine-node">
+    <!-- Glow halo from Architecture1 / cocoindex -->
+    <circle cx="875" cy="180" r="105" fill="url(#eh-engine-glow)" />
+
+    <!-- 4 mint dots circling Exasol -->
+    <g class="spin">
+      <circle cx="875" cy="108" r="3.5" fill="#6DFFB0" />
+      <circle cx="947" cy="180" r="3.5" fill="#6DFFB0" />
+      <circle cx="875" cy="252" r="3.5" fill="#6DFFB0" />
+      <circle cx="803" cy="180" r="3.5" fill="#6DFFB0" />
+    </g>
+
+    <!-- Inner dark contrast disc -->
+    <circle cx="875" cy="180" r="68" fill="#0E1A22" stroke="#6DFFB0" stroke-width="1.2" stroke-opacity="0.5" />
+    
+    <!-- Exasol Typographic Logo & Subtitle -->
+    <g transform="translate(875, 180)">
+      <text x="0" y="-8" font-family="'Inter', sans-serif" font-weight="800" font-size="28" text-anchor="middle">
+        <tspan fill="#FFFFFF">E</tspan><tspan fill="#6DFFB0">x</tspan><tspan fill="#FFFFFF">asol</tspan>
+      </text>
+      <text x="0" y="16" font-family="'Inter', sans-serif" font-size="12" fill="#6DFFB0" opacity="0.9" font-weight="500" text-anchor="middle">Personal Engine</text>
+      <text x="0" y="32" font-family="'Inter', monospace" font-size="10.5" fill="#a4b3c2" opacity="0.85" text-anchor="middle">port : 8563</text>
+    </g>
+  </g>
+
+  <!-- ==================== CONNECTOR: Exasol -> SQL Views ==================== -->
+  <g id="exasol-to-views">
+    <path class="connector flow" marker-end="url(#arrow)" d="M 943,180 L 1150,180" />
+    <text x="965" y="125" class="text-base text-small">Re-evaluates</text>
+    <text x="965" y="142" class="text-base text-small">VW_ASN_HARMONIZED_LINEAGE</text>
+    <text x="965" y="159" class="text-base text-small">&amp; Starvation Risk</text>
+  </g>
+
+  <!-- ==================== RIGHT: Columnar SQL Views ==================== -->
+  <g id="columnar-sql-views">
+    <rect x="1160" y="90" width="245" height="235" rx="18" class="box-views" />
+    <text x="1282" y="195" class="text-base" font-size="18" font-weight="500" text-anchor="middle">Columnar SQL Views</text>
+    <text x="1282" y="225" class="text-base text-highlight" font-size="18" font-weight="500" text-anchor="middle">(CHAKAN_SCM)</text>
+  </g>
+
+  <!-- ==================== BOTTOM: Feedback Loop ==================== -->
+  <g id="feedback-loop">
+    <!-- Bottom line base path: Starts below the views box, heads horizontally left -->
+    <path class="connector" d="M 1160,305 L 530,305 L 135,305" />
+    
+    <!-- Arrow 1: Refreshes KPI Banner going up to Cockpit -->
+    <path class="connector flow" marker-end="url(#arrow)" d="M 530,305 L 530,235" />
+    <text x="610" y="325" class="text-base text-small">Refreshes KPI Banner: False Alarms Cleared, Lines Cleared!</text>
+
+    <!-- Arrow 2: Instant Visual Confirmation going up to Material Planner UI -->
+    <path class="connector flow" marker-end="url(#arrow)" d="M 135,305 L 135,290" />
+    <text x="135" y="365" class="text-base text-small">Instant Visual Confirmation: 0 Assembly Stations Halting</text>
+  </g>
+</svg>
