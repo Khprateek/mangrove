@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 500" width="100%" height="100%">
+  <!-- Definitions for Markers, Filters and Styles -->
+  <defs>
+    <style>
+      .card-border { stroke: #FFFFFF; stroke-width: 1.5; opacity: 0.8; }
+      .card-text { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; fill: #FFFFFF; text-anchor: middle; font-weight: 400; }
+      .header-text { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 15px; fill: #FFFFFF; text-anchor: middle; opacity: 0.9; }
+      .connector { fill: none; stroke: #6DFFB0; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .connector-track { fill: none; stroke: rgba(109, 255, 176, 0.2); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .flow { stroke-dasharray: 6 6; animation: mv 1.4s linear infinite; }
+      @keyframes mv { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -24; } }
+      .spin { animation: sp 9s linear infinite; transform-origin: 490px 230px; }
+      @keyframes sp { to { transform: rotate(360deg); } }
+    </style>
+    
+    <!-- Glow Gradient (cocoindex engine glow) -->
+    <radialGradient id="eh-engine-glow" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#6DFFB0" stop-opacity="0.45" />
+      <stop offset="60%" stop-color="#6DFFB0" stop-opacity="0.08" />
+      <stop offset="100%" stop-color="#6DFFB0" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Mint Glow Arrowhead Marker (from cocoindex.svg) -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#6DFFB0" />
+    </marker>
+  </defs>
+
+  <!-- LEFT SECTION: DATA SOURCES -->
+  <g id="data-sources">
+    <!-- Physical WMS Ledger -->
+    <g id="card-wms">
+      <rect x="30" y="80" width="280" height="65" rx="12" fill="#203354" class="card-border" />
+      <text x="170" y="118" class="card-text">Physical WMS Ledger</text>
+    </g>
+
+    <!-- MSME Inbound ASNs -->
+    <g id="card-msme">
+      <rect x="30" y="195" width="280" height="65" rx="12" fill="#4B221B" class="card-border" />
+      <text x="170" y="233" class="card-text">MSME Inbound ASNs</text>
+    </g>
+
+    <!-- Central ERP & Schedules -->
+    <g id="card-erp">
+      <rect x="30" y="310" width="280" height="65" rx="12" fill="#3D3D3D" class="card-border" />
+      <text x="170" y="348" class="card-text">Central ERP &amp; Schedules</text>
+    </g>
+  </g>
+
+  <!-- CENTRAL NODE: EXASOL COMPUTE ENGINE (WITH COCOINDEX GLOW) -->
+  <!-- Glow halo from cocoindex -->
+  <circle cx="490" cy="230" r="115" fill="url(#eh-engine-glow)" />
+
+  <!-- 4 mint dots circling Exasol (like cocoindex) -->
+  <g class="spin">
+    <circle cx="490" cy="148" r="4" fill="#6DFFB0" />
+    <circle cx="572" cy="230" r="4" fill="#6DFFB0" />
+    <circle cx="490" cy="312" r="4" fill="#6DFFB0" />
+    <circle cx="408" cy="230" r="4" fill="#6DFFB0" />
+  </g>
+
+  <g id="exasol-engine" transform="translate(490, 230)">
+    <!-- Inner disc for dark contrast -->
+    <circle r="74" fill="#0E1A22" stroke="#6DFFB0" stroke-width="1.2" stroke-opacity="0.45" />
+    <!-- Exasol Typographic Logo -->
+    <text x="0" y="-5" font-family="'Inter', sans-serif" font-weight="800" font-size="38" text-anchor="middle">
+      <tspan fill="#FFFFFF">E</tspan><tspan fill="#6DFFB0">x</tspan><tspan fill="#FFFFFF">asol</tspan>
+    </text>
+    <text x="0" y="24" font-family="'Inter', sans-serif" font-size="12.5" fill="#6DFFB0" opacity="0.9" font-weight="500" text-anchor="middle">Compute engine</text>
+  </g>
+
+  <!-- CONNECTORS: LEFT TO CENTER (ANIMATED FLOW) -->
+  <g id="connectors-left">
+    <!-- Top connector (WMS to Exasol) -->
+    <path d="M 310,112.5 L 364,112.5 Q 364,112.5 364,112.5 L 364,202 Q 364,202 364,202 L 406,202" class="connector-track" />
+    <path d="M 310,112.5 L 364,112.5 Q 364,112.5 364,112.5 L 364,202 Q 364,202 364,202 L 406,202" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0s" />
+
+    <!-- Middle connector (MSME to Exasol) -->
+    <path d="M 310,227.5 L 406,227.5" class="connector-track" />
+    <path d="M 310,227.5 L 406,227.5" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.3s" />
+
+    <!-- Bottom connector (ERP to Exasol) -->
+    <path d="M 310,342.5 L 364,342.5 Q 364,342.5 364,342.5 L 364,248 Q 364,248 364,248 L 406,248" class="connector-track" />
+    <path d="M 310,342.5 L 364,342.5 Q 364,342.5 364,342.5 L 364,248 Q 364,248 364,248 L 406,248" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.6s" />
+  </g>
+
+  <!-- RIGHT SECTION: MATERIALS PLANNER COCKPIT -->
+  <g id="cockpit-boundary">
+    <!-- Outer boundary box -->
+    <rect x="710" y="70" width="326" height="335" rx="16" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.7" />
+    <text x="873" y="96" class="header-text" font-size="14" font-weight="500">Materials Planner Cockpit</text>
+  </g>
+
+  <g id="cockpit-cards">
+    <!-- Live Blast-Radius Triage -->
+    <g id="card-triage">
+      <rect x="738" y="112" width="112" height="116" rx="14" fill="#3D3D3E" class="card-border" />
+      <text x="794" y="160" class="card-text" font-size="13">
+        <tspan x="794" dy="0">Live Blast-</tspan>
+        <tspan x="794" dy="16">Radius Triage</tspan>
+      </text>
+    </g>
+
+    <!-- What-If Crisis Simulator -->
+    <g id="card-simulator">
+      <rect x="738" y="246" width="112" height="116" rx="14" fill="#1C4724" class="card-border" />
+      <text x="794" y="295" class="card-text" font-size="13">
+        <tspan x="794" dy="0">What-If Crisis</tspan>
+        <tspan x="794" dy="16">Simulator</tspan>
+      </text>
+    </g>
+
+    <!-- 1-Click Override Workbench -->
+    <g id="card-workbench">
+      <rect x="894" y="258" width="104" height="92" rx="14" fill="#4D3421" class="card-border" />
+      <text x="946" y="293" class="card-text" font-size="13">
+        <tspan x="946" dy="0">1-Click</tspan>
+        <tspan x="946" dy="15">Override</tspan>
+        <tspan x="946" dy="15">Workbench</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- CONNECTORS: CENTER TO COCKPIT (ANIMATED FLOW) -->
+  <g id="connectors-center">
+    <!-- Center to Live Blast-Radius Triage -->
+    <path d="M 570,221 L 642,221 Q 656,221 656,206 L 656,170 Q 656,166 660,166 L 733,166" class="connector-track" />
+    <path d="M 570,221 L 642,221 Q 656,221 656,206 L 656,170 Q 656,166 660,166 L 733,166" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.4s" />
+
+    <!-- Center to What-If Crisis Simulator -->
+    <path d="M 570,237 L 642,237 Q 656,237 656,252 L 656,299 Q 656,301 660,301 L 733,301" class="connector-track" />
+    <path d="M 570,237 L 642,237 Q 656,237 656,252 L 656,299 Q 656,301 660,301 L 733,301" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.8s" />
+  </g>
+
+  <!-- CONNECTOR: INSIDE COCKPIT (ANIMATED FLOW) -->
+  <g id="connectors-internal">
+    <!-- Live Blast-Radius Triage to 1-Click Override Workbench -->
+    <path d="M 850,170 L 946,170 Q 946,170 946,170 L 946,252" class="connector-track" />
+    <path d="M 850,170 L 946,170 Q 946,170 946,170 L 946,252" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.5s" />
+  </g>
+
+  <!-- BOTTOM FEEDBACK LOOP: ANIMATED FLOW BACK TO EXASOL -->
+  <g id="feedback-loop">
+    <!-- Dashed Line Path from Workbench back to Exasol -->
+    <path d="M 946,350 L 946,450 Q 946,450 940,450 L 520,450 Q 490,450 490,430 L 490,317" class="connector-track" />
+    <path d="M 946,350 L 946,450 Q 946,450 940,450 L 520,450 Q 490,450 490,430 L 490,317" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.2s" />
+    
+    <!-- Inline < 15ms In-Memory Recompute Badge / Label -->
+    <g transform="translate(595, 439)">
+      <!-- Background shield for readability on transparent GitHub canvas -->
+      <rect x="-8" y="-1" width="242" height="22" fill="#161b22" stroke="rgba(109, 255, 176, 0.4)" stroke-width="1" rx="6" />
+      
+      <!-- Lightning Bolt -->
+      <path d="M 2 1 L 9 1 L 4 7 L 8 7 L 1 14 L 3 8 L 0 8 Z" fill="#F48C06" transform="translate(0, 3) scale(0.9)" />
+      
+      <!-- Label text -->
+      <text x="21" y="15" font-family="'Inter', -apple-system, sans-serif" font-size="13" fill="#6DFFB0" font-weight="500">
+        &lt; 15ms In-Memory Recompute
+      </text>
+    </g>
+  </g>
+</svg>

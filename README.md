@@ -77,6 +77,13 @@ Traditional data validation pipelines optimize for **database schema purity over
 
 ### High-Level System Overview
 
+<p align="center">
+  <img src="assets/Architecture1.svg" alt="Mangrove System Architecture" width="100%" />
+</p>
+
+<details>
+<summary><b>View Mermaid Logical Specification</b></summary>
+
 ```mermaid
 flowchart LR
     subgraph S1 ["1. Upstream Messy Feeds"]
@@ -104,6 +111,8 @@ flowchart LR
     E3 --> C1 & C3
     C2 -. "⚡ < 15ms In-Memory Recompute" .-> E3
 ```
+
+</details>
 
 ---
 
