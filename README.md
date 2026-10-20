@@ -121,6 +121,13 @@ flowchart LR
 ### 1. In-Database Harmonization Pipeline (In-DB Python 3 UDFs)
 Instead of extracting messy rows out to external Python ETL workers, Exasol executes three native Python 3 scalar UDFs directly inside database RAM slices in parallel:
 
+<p align="center">
+  <img src="assets/Architecture2.svg" alt="In-Database Harmonization Pipeline" width="100%" />
+</p>
+
+<details>
+<summary><b>View Mermaid Logical Specification</b></summary>
+
 ```mermaid
 flowchart LR
     subgraph Raw ["Raw MSME Payload"]
@@ -146,25 +153,76 @@ flowchart LR
     R3 --> U3 --> O3
 ```
 
+</details>
+
 ### 2. In-Memory MPP Colocation & Recursive BOM Explosion
 Hierarchical Bill-of-Materials joins across 6 relational tables execute with **0 inter-node network data shuffles** by collocating partition slices on matching distribution keys:
 
 ```mermaid
-flowchart LR
-    subgraph Tables ["Colocated Tables (DISTRIBUTE BY internal_part_num)"]
-        T1[("WAREHOUSE_INVENTORY_LEDGER")]
-        T2[("ITEM_MASTER & PO_LINES")]
-        T3[("BILL_OF_MATERIALS<br/>(DISTRIBUTE BY component_part_num)")]
-        T4[("PRODUCTION_SCHEDULES<br/>(DISTRIBUTE BY parent_part_num)")]
+flowchart TB
+    %% STAGE 1: SUPPLY CHAIN MASTER TABLES
+    subgraph S1 ["01 · Relational Supply Chain Data (In-Memory Master Tables)"]
+        direction LR
+        T_INV[("📦 WAREHOUSE_INVENTORY_LEDGER<br/>16 Bins · Physical & Quarantine")]
+        T_ITEM[("🏷️ ITEM_MASTER<br/>20 SKUs · Specs & Pack Ratios")]
+        T_PO[("📄 PURCHASE_ORDER_LINES<br/>PO Numbers & Target Dates")]
+        T_BOM[("🌳 BILL_OF_MATERIALS<br/>Parent → Component Hierarchy")]
+        T_SCHED[("📅 PRODUCTION_SCHEDULES<br/>₹37.88 Cr Planned Vehicle Target")]
     end
 
-    subgraph Views ["Analytical Calculation Views"]
-        V1["📊 VW_INVENTORY_TRUE_ATP<br/>ATP = max(0, WMS - Alloc - Hold)<br/>Exposes ₹1.18 Cr Phantom Stock"]
-        V2["📊 VW_BOM_LINE_STARVATION_RISK<br/>Gross Required vs (True ATP + Harmonized Inbound)<br/>Pins Net Shortage: ₹5.29 Cr on Line 2"]
+    %% STAGE 2: EXASOL MPP COMPUTE LAYER
+    subgraph S2 ["02 · Exasol MPP Partitioning & Zero-Shuffle Colocated Joins"]
+        direction LR
+        P_KEYS["🔑 DISTRIBUTE BY Keys<br/>internal_part_num & parent_part_num"]
+        SLICES["⚡ In-Memory Slices<br/>Parallel RAM Partition Processing"]
+        COLOC_JOIN["🔗 Colocated Joins<br/>0 Inter-Node Network Shuffle"]
+        P_KEYS --> SLICES --> COLOC_JOIN
     end
 
-    T1 --> V1
-    V1 & T2 & T3 & T4 --> V2
+    %% STAGE 3: RECURSIVE BOM EXPLOSION
+    subgraph S3 ["03 · Recursive In-Memory BOM Explosion Engine"]
+        direction LR
+        BOM_ROOT["🚗 Vehicle Production Demand<br/>Top-Level Assembly Target"]
+        BOM_TRAVERSE["🔄 Recursive CTE Traversal<br/>Level 1 → Level 2 → Level N Multipliers"]
+        BOM_LEAF["⚙️ Leaf Components<br/>Gross Material Demand Breakdown"]
+        BOM_ROOT --> BOM_TRAVERSE --> BOM_LEAF
+    end
+
+    %% STAGE 4: INVENTORY & SHORTAGE ANALYTICS
+    subgraph S4 ["04 · True ATP & Line Starvation Risk Analytics"]
+        direction LR
+        V_ATP["📊 VW_INVENTORY_TRUE_ATP<br/>ATP = max(0, WMS − Alloc − Hold)<br/>Exposes ₹1.18 Cr Phantom Stock"]
+        V_ASN["🚚 VW_ASN_HARMONIZED_LINEAGE<br/>UDF Disambiguated Inbound Pipeline<br/>Reclaims ₹20.76 Cr False Alarms"]
+        V_SHORT["⚠️ VW_MATERIAL_NET_SHORTAGE<br/>Gross Demand − (True ATP + Clean Inbound)<br/>Pins Net Shortage: ₹5.29 Cr on Axle DUC-14"]
+        V_RISK["🚨 VW_BOM_LINE_STARVATION_RISK<br/>Line 1: RUN · Line 2: STARVED (0h Buffer)<br/>Halts False-Alarm Panic Freight"]
+
+        V_ATP --> V_SHORT
+        V_ASN --> V_SHORT
+        V_SHORT --> V_RISK
+    end
+
+    %% CLEAN VERTICAL TRANSITIONS (STRICTLY TOP-TO-BOTTOM)
+    S1 --> P_KEYS
+    COLOC_JOIN --> BOM_ROOT
+    BOM_LEAF --> V_SHORT
+
+    %% STYLING
+    classDef source fill:#1e293b,stroke:#38bdf8,color:#FFFFFF,stroke-width:1.5px
+    classDef compute fill:#132029,stroke:#6DFFB0,color:#FFFFFF,stroke-width:1.5px
+    classDef recursive fill:#2a2415,stroke:#fbbf24,color:#FFFFFF,stroke-width:1.5px
+    classDef analytics fill:#1e1b2e,stroke:#c084fc,color:#FFFFFF,stroke-width:1.5px
+    classDef risk fill:#3b1818,stroke:#f87171,color:#FFFFFF,stroke-width:1.5px
+
+    class T_INV,T_ITEM,T_PO,T_BOM,T_SCHED source
+    class P_KEYS,SLICES,COLOC_JOIN compute
+    class BOM_ROOT,BOM_TRAVERSE,BOM_LEAF recursive
+    class V_ATP,V_ASN,V_SHORT analytics
+    class V_RISK risk
+
+    style S1 fill:#0f172a,stroke:#334155,color:#38bdf8,stroke-width:1.5px
+    style S2 fill:#061b17,stroke:#164e63,color:#6DFFB0,stroke-width:1.5px
+    style S3 fill:#1c1917,stroke:#451a03,color:#fbbf24,stroke-width:1.5px
+    style S4 fill:#180f24,stroke:#3b0764,color:#c084fc,stroke-width:1.5px
 ```
 
 ### 3. Interactive 1-Click Override & Sub-15ms Feedback Loop

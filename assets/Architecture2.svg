@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 500" width="100%" height="100%">
+  <!-- Visual Styles & Arrowhead Definitions -->
+  <defs>
+    <style>
+      .subgraph { fill: none; stroke: #FFFFFF; stroke-width: 1.2; stroke-linejoin: round; stroke-linecap: round; opacity: 0.3; }
+      .card-border { stroke: #FFFFFF; stroke-width: 1.5; opacity: 0.8; }
+      .card-title { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 13.5px; fill: #FFFFFF; text-anchor: middle; font-weight: 600; }
+      .card-sub { font-family: 'Inter', -apple-system, sans-serif; font-size: 11px; fill: #FFFFFF; text-anchor: middle; opacity: 0.7; }
+      .header-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 14.5px; fill: #FFFFFF; text-anchor: middle; font-weight: 600; opacity: 0.95; }
+      .sub-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 11.5px; fill: #A0A0A0; text-anchor: middle; opacity: 0.8; }
+      .connector { fill: none; stroke: #6DFFB0; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .connector-track { fill: none; stroke: rgba(109, 255, 176, 0.2); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .flow { stroke-dasharray: 6 6; animation: mv 1.4s linear infinite; }
+      @keyframes mv { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -24; } }
+    </style>
+    
+    <!-- Mint Glow Arrowhead Marker (from cocoindex.svg) -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#6DFFB0" />
+    </marker>
+  </defs>
+
+  <!-- SECTION 1: RAW MSME PAYLOAD (LEFT) -->
+  <g id="raw-msme">
+    <!-- Outer boundary -->
+    <rect x="20" y="40" width="310" height="425" rx="14" class="subgraph" />
+    <text x="175" y="75" class="header-text">Raw MSME Payload</text>
+
+    <!-- Row 1: Packaging String -->
+    <g id="card-r1" transform="translate(40, 115)">
+      <rect width="270" height="80" rx="10" fill="#4B221B" class="card-border" />
+      <text x="135" y="35" class="card-title">Packaging String</text>
+      <text x="135" y="55" class="card-sub">('BOX_100', 'BAG_250', 'MT')</text>
+    </g>
+
+    <!-- Row 2: Vendor SKU Alias -->
+    <g id="card-r2" transform="translate(40, 230)">
+      <rect width="270" height="80" rx="10" fill="#4B221B" class="card-border" />
+      <text x="135" y="35" class="card-title">Vendor SKU Alias</text>
+      <text x="135" y="55" class="card-sub">('6204ZZ' vs 'ENG-BRG-6204-01')</text>
+    </g>
+
+    <!-- Row 3: Ambiguous Date -->
+    <g id="card-r3" transform="translate(40, 345)">
+      <rect width="270" height="80" rx="10" fill="#4B221B" class="card-border" />
+      <text x="135" y="35" class="card-title">Ambiguous Date</text>
+      <text x="135" y="55" class="card-sub">('05/11/2026', Unix Epoch)</text>
+    </g>
+  </g>
+
+  <!-- SECTION 2: EXASOL IN-DB PYTHON 3 UDFs (MIDDLE) -->
+  <g id="exasol-udfs">
+    <!-- Outer boundary -->
+    <rect x="370" y="40" width="350" height="425" rx="14" class="subgraph" />
+    <text x="545" y="68" class="header-text">Exasol In-DB Python 3 UDFs</text>
+    <text x="545" y="88" class="sub-text">(In-RAM Parallelism)</text>
+
+    <!-- Row 1: Normalize UOM -->
+    <g id="card-u1" transform="translate(390, 115)">
+      <rect width="310" height="80" rx="10" fill="#1C4724" class="card-border" />
+      <!-- Lightning Bolt Pattern and Text -->
+      <text x="155" y="35" class="card-title">
+        <tspan fill="#F48C06">⚡ </tspan>UDF_NORMALIZE_UOM
+      </text>
+      <text x="155" y="55" class="card-sub">(Pack Multipliers &amp; Unit Weight)</text>
+    </g>
+
+    <!-- Row 2: Resolve Supplier SKU -->
+    <g id="card-u2" transform="translate(390, 230)">
+      <rect width="310" height="80" rx="10" fill="#1C4724" class="card-border" />
+      <text x="155" y="35" class="card-title">
+        <tspan fill="#F48C06">⚡ </tspan>UDF_RESOLVE_SUPPLIER_SKU
+      </text>
+      <text x="155" y="55" class="card-sub">(Jaro-Winkler Similarity ≥ 0.85)</text>
+    </g>
+
+    <!-- Row 3: Parse ASN Date -->
+    <g id="card-u3" transform="translate(390, 345)">
+      <rect width="310" height="80" rx="10" fill="#1C4724" class="card-border" />
+      <text x="155" y="35" class="card-title">
+        <tspan fill="#F48C06">⚡ </tspan>UDF_PARSE_ASN_DATE
+      </text>
+      <text x="155" y="55" class="card-sub">(Multi-Format Date Disambiguation)</text>
+    </g>
+  </g>
+
+  <!-- SECTION 3: HARMONIZED MART (RIGHT) -->
+  <g id="harmonized-mart">
+    <!-- Outer boundary -->
+    <rect x="760" y="40" width="310" height="425" rx="14" class="subgraph" />
+    <text x="915" y="68" class="header-text">Harmonized Mart:</text>
+    <text x="915" y="88" class="sub-text" font-family="'Courier New', Courier, monospace" font-size="11">VW_ASN_HARMONIZED_LINEAGE</text>
+
+    <!-- Row 1: Canonical Base UOM Quantity -->
+    <g id="card-o1" transform="translate(780, 115)">
+      <rect width="270" height="80" rx="10" fill="#203354" class="card-border" />
+      <text x="135" y="35" class="card-title">Canonical Base</text>
+      <text x="135" y="55" class="card-sub">UOM Quantity</text>
+    </g>
+
+    <!-- Row 2: Resolved Internal OEM Part Number -->
+    <g id="card-o2" transform="translate(780, 230)">
+      <rect width="270" height="80" rx="10" fill="#203354" class="card-border" />
+      <text x="135" y="35" class="card-title">Resolved Internal</text>
+      <text x="135" y="55" class="card-sub">OEM Part Number</text>
+    </g>
+
+    <!-- Row 3: Validated Inbound Arrival Date -->
+    <g id="card-o3" transform="translate(780, 345)">
+      <rect width="270" height="80" rx="10" fill="#203354" class="card-border" />
+      <text x="135" y="35" class="card-title">Validated Inbound</text>
+      <text x="135" y="55" class="card-sub">Arrival Date</text>
+    </g>
+  </g>
+
+  <!-- WORKFLOW CONNECTORS (ANIMATED FLOW) -->
+  <g id="flow-arrows">
+    <!-- Row 1 Workflow -->
+    <path d="M 310,155 L 382,155" class="connector-track" />
+    <path d="M 310,155 L 382,155" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0s" />
+    
+    <path d="M 700,155 L 772,155" class="connector-track" />
+    <path d="M 700,155 L 772,155" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.3s" />
+
+    <!-- Row 2 Workflow -->
+    <path d="M 310,270 L 382,270" class="connector-track" />
+    <path d="M 310,270 L 382,270" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.2s" />
+    
+    <path d="M 700,270 L 772,270" class="connector-track" />
+    <path d="M 700,270 L 772,270" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.5s" />
+
+    <!-- Row 3 Workflow -->
+    <path d="M 310,385 L 382,385" class="connector-track" />
+    <path d="M 310,385 L 382,385" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.4s" />
+    
+    <path d="M 700,385 L 772,385" class="connector-track" />
+    <path d="M 700,385 L 772,385" class="connector flow" marker-end="url(#arrow)" style="animation-delay: 0.7s" />
+  </g>
+</svg>

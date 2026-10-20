@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1760" width="100%" height="100%">
+  <!-- Definitions for Markers and Styles -->
+  <defs>
+    <style>
+      .bg { fill: #121212; }
+      .container-border { stroke: #FFFFFF; stroke-width: 1.5; fill: rgba(255, 255, 255, 0.02); opacity: 0.6; }
+      .card-border { stroke: #FFFFFF; stroke-width: 1.5; fill: none; opacity: 0.8; }
+      .text-title { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 26px; fill: #FFFFFF; text-anchor: middle; font-weight: 500; opacity: 0.95; }
+      .text-sub { font-family: 'Inter', -apple-system, sans-serif; font-size: 19px; fill: #A0A0A0; text-anchor: middle; opacity: 0.85; }
+      .card-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 20px; fill: #FFFFFF; text-anchor: middle; font-weight: 500; }
+      .label-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 20px; fill: #FFFFFF; opacity: 0.9; }
+      .connector { fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .connector-dashed { fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-dasharray: 8, 8; stroke-linecap: round; stroke-linejoin: round; }
+      .arrow { fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    
+    <!-- Arrowhead Marker -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 8 5 L 1 9" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </marker>
+  </defs>
+
+
+  <!-- SECTION 01: SUPPLY CHAIN DATA -->
+  <g id="supply-chain-data">
+    <rect x="40" y="40" width="1020" height="230" rx="16" class="container-border" />
+    <text x="550" y="80" class="text-title">01 Supply chain Data</text>
+
+    <!-- Cylinders helper macros can be drawn using path -->
+    <!-- Cylinder 1: Warehouse Inventory Ledger -->
+    <g id="cyl-wms" transform="translate(90, 110)">
+      <path d="M 0 20 A 70 15 0 0 0 140 20 L 140 100 A 70 15 0 0 1 0 100 Z" fill="#203354" class="card-border" />
+      <ellipse cx="70" cy="20" rx="70" ry="15" fill="#2D446A" class="card-border" />
+      <text x="70" y="55" class="card-text" font-size="16">Warehouse</text>
+      <text x="70" y="74" class="card-text" font-size="16">Inventory</text>
+      <text x="70" y="93" class="card-text" font-size="16">Ledger</text>
+    </g>
+
+    <!-- Cylinder 2: Item Maste -->
+    <g id="cyl-item" transform="translate(280, 110)">
+      <path d="M 0 20 A 70 15 0 0 0 140 20 L 140 100 A 70 15 0 0 1 0 100 Z" fill="#203354" class="card-border" />
+      <ellipse cx="70" cy="20" rx="70" ry="15" fill="#2D446A" class="card-border" />
+      <text x="70" y="62" class="card-text" font-size="16">Item</text>
+      <text x="70" y="81" class="card-text" font-size="16">Master</text>
+    </g>
+
+    <!-- Cylinder 3: Bill of Materials Parent Component -->
+    <g id="cyl-bom" transform="translate(470, 110)">
+      <path d="M 0 20 A 85 15 0 0 0 170 20 L 170 100 A 85 15 0 0 1 0 100 Z" fill="#203354" class="card-border" />
+      <ellipse cx="85" cy="20" rx="85" ry="15" fill="#2D446A" class="card-border" />
+      <text x="85" y="52" class="card-text" font-size="15">Bill of Materials</text>
+      <text x="85" y="71" class="card-text" font-size="15">Parent →</text>
+      <text x="85" y="90" class="card-text" font-size="15">Component</text>
+    </g>
+
+    <!-- Cylinder 4: Production Schedules -->
+    <g id="cyl-production" transform="translate(680, 110)">
+      <path d="M 0 20 A 70 15 0 0 0 140 20 L 140 100 A 70 15 0 0 1 0 100 Z" fill="#203354" class="card-border" />
+      <ellipse cx="70" cy="20" rx="70" ry="15" fill="#2D446A" class="card-border" />
+      <text x="70" y="62" class="card-text" font-size="16">Production</text>
+      <text x="70" y="81" class="card-text" font-size="16">Schedules</text>
+    </g>
+
+    <!-- Cylinder 5: Purchase Order Lines -->
+    <g id="cyl-purchase" transform="translate(860, 110)">
+      <path d="M 0 20 A 70 15 0 0 0 140 20 L 140 100 A 70 15 0 0 1 0 100 Z" fill="#203354" class="card-border" />
+      <ellipse cx="70" cy="20" rx="70" ry="15" fill="#2D446A" class="card-border" />
+      <text x="70" y="58" class="card-text" font-size="15">Purchase</text>
+      <text x="70" y="77" class="card-text" font-size="15">Order</text>
+      <text x="70" y="96" class="card-text" font-size="15">Lines</text>
+    </g>
+  </g>
+
+  <!-- FLOW: SECTION 01 TO SECTION 02 -->
+  <g id="flow-sec01-to-sec02" marker-end="url(#arrow)">
+    <path d="M 665,270 L 665,306" class="connector" />
+  </g>
+
+  <!-- SECTION 02: EXASOL MPP COMPUTE LAYER -->
+  <g id="exasol-mpp-layer">
+    <rect x="270" y="310" width="790" height="320" rx="16" class="container-border" />
+    <text x="665" y="348" class="text-title">02 Exasol MPP Compute Layer</text>
+
+    <!-- Distributed Data & Join Execution Inner Container -->
+    <g id="distributed-execution">
+      <rect x="310" y="375" width="710" height="150" rx="14" class="container-border" stroke-dasharray="4, 4" />
+      <text x="665" y="402" class="text-sub" font-size="17" fill="#FFFFFF">Distributed Data &amp; Join Execution</text>
+
+      <!-- Slice 1 -->
+      <g id="slice-1" transform="translate(350, 420)">
+        <rect width="170" height="90" rx="12" fill="#263C58" class="card-border" />
+        <text x="85" y="35" class="card-text" font-size="15">Compute</text>
+        <text x="85" y="54" class="card-text" font-size="15">Slice 1 Local</text>
+        <text x="85" y="73" class="card-text" font-size="15">join work</text>
+      </g>
+
+      <!-- Slice 2 -->
+      <g id="slice-2" transform="translate(580, 420)">
+        <rect width="170" height="90" rx="12" fill="#263C58" class="card-border" />
+        <text x="85" y="35" class="card-text" font-size="15">Compute</text>
+        <text x="85" y="54" class="card-text" font-size="15">Slice 2 Local</text>
+        <text x="85" y="73" class="card-text" font-size="15">join work</text>
+      </g>
+
+      <!-- Slice 3 -->
+      <g id="slice-3" transform="translate(800, 420)">
+        <rect width="170" height="90" rx="12" fill="#263C58" class="card-border" />
+        <text x="85" y="35" class="card-text" font-size="15">Compute</text>
+        <text x="85" y="54" class="card-text" font-size="15">Slice 3 Local</text>
+        <text x="85" y="73" class="card-text" font-size="15">join work</text>
+      </g>
+    </g>
+
+    <!-- Join Strategy Bar -->
+    <g id="join-strategy-bar" transform="translate(310, 545)">
+      <rect width="710" height="40" rx="8" fill="#203354" class="card-border" />
+      <text x="355" y="26" class="card-text" font-size="16" font-weight="400">Join Strategy Distribution &amp; join-key alignment</text>
+    </g>
+  </g>
+
+  <!-- SECTION 03: RECURSIVE BOM EXPLOSION -->
+  <g id="recursive-bom">
+    <rect x="40" y="660" width="1020" height="350" rx="16" class="container-border" />
+    <text x="550" y="700" class="text-title">03 Recursive BOM Explosion</text>
+
+    <!-- Production Demand Parent Assembly -->
+    <g id="card-assembly" transform="translate(90, 750)">
+      <rect width="140" height="210" rx="16" fill="#4D3421" class="card-border" />
+      <text x="70" y="80" class="card-text" font-size="17">Production</text>
+      <text x="70" y="103" class="card-text" font-size="17">Demand</text>
+      <text x="70" y="126" class="card-text" font-size="17">Parent</text>
+      <text x="70" y="149" class="card-text" font-size="17">Assembly</text>
+    </g>
+
+    <!-- Expand BOM Level -->
+    <g id="card-expand-bom" transform="translate(350, 850)">
+      <rect width="240" height="90" rx="12" fill="#4D3421" class="card-border" />
+      <text x="120" y="40" class="card-text" font-size="17">Expand BOM Level</text>
+      <text x="120" y="65" class="card-text" font-size="17">Parent → Components</text>
+    </g>
+
+    <!-- Diamond: More component levels? -->
+    <g id="diamond-more-levels" transform="translate(680, 750)">
+      <!-- 200x120px Diamond -->
+      <path d="M 100 0 L 200 60 L 100 120 L 0 60 Z" fill="#582F1B" stroke="#FFFFFF" stroke-width="1.5" opacity="0.8" />
+      <text x="100" y="48" class="card-text" font-size="15">More</text>
+      <text x="100" y="68" class="card-text" font-size="15">component</text>
+      <text x="100" y="88" class="card-text" font-size="15">levels?</text>
+    </g>
+
+    <!-- Leaf Components Gross Material Demand -->
+    <g id="card-leaf" transform="translate(850, 830)">
+      <rect width="200" height="110" rx="14" fill="#4D3421" class="card-border" />
+      <text x="100" y="40" class="card-text" font-size="17">Leaf Components</text>
+      <text x="100" y="63" class="card-text" font-size="16">Gross Material</text>
+      <text x="100" y="86" class="card-text" font-size="16">Demand</text>
+    </g>
+
+    <!-- FLOWS inside SECTION 03 -->
+    <g id="flows-sec03" marker-end="url(#arrow)">
+      <!-- Line from Join Strategy going down, left, down into Expand BOM Level -->
+      <path d="M 645,585 L 645,715 L 385,715 L 385,846" class="connector" />
+      
+      <!-- Assembly card output to Expand BOM Level -->
+      <path d="M 230,855 L 285,855 L 285,910 L 346,910" class="connector" />
+
+      <!-- Expand BOM Level to More component levels? (diamond) -->
+      <path d="M 470,850 L 470,800 L 674,800" class="connector" />
+
+      <!-- Diamond NO connection to Leaf components -->
+      <path d="M 880,810 L 960,810 L 960,826" class="connector" />
+
+      <!-- Diamond YES feedback loop -->
+      <path d="M 780,870 L 780,900 L 596,900" class="connector-dashed" />
+    </g>
+    <!-- Non-marker dashed Yes connector arrow with text annotation (to prevent scaling bugs) -->
+    <text x="635" y="907" class="label-text" font-size="16" text-anchor="middle" font-weight="500">— Yes —</text>
+    <text x="975" y="798" class="label-text" font-size="17" text-anchor="middle" font-weight="500">No</text>
+  </g>
+
+  <!-- LEFT MARGIN FLOW: Production Schedule -->
+  <g id="left-schedule-flow" marker-end="url(#arrow)">
+    <path d="M 150,270 L 150,744" class="connector-dashed" />
+    <text x="120" y="470" class="label-text" font-size="16" font-weight="500" text-anchor="end">Production</text>
+    <text x="120" y="493" class="label-text" font-size="16" font-weight="500" text-anchor="end">Schedule</text>
+  </g>
+
+  <!-- SECTION 04: INVENTORY AND SHORTAGE ANALYTICS -->
+  <g id="inventory-analytics">
+    <rect x="40" y="1050" width="1020" height="410" rx="16" class="container-border" />
+    <text x="550" y="1090" class="text-title">04 Inventory and Shortage analytics</text>
+
+    <!-- True Available-to-Promise Box -->
+    <g id="card-true-atp" transform="translate(180, 1130)">
+      <rect width="250" height="90" rx="12" fill="#1C4724" class="card-border" />
+      <text x="125" y="35" class="card-text" font-size="16">True Available-to</text>
+      <text x="125" y="56" class="card-text" font-size="16">Promise WMS –</text>
+      <text x="125" y="77" class="card-text" font-size="16">Allocations – Hold</text>
+    </g>
+
+    <!-- Harmonized Inbound Box -->
+    <g id="card-harmonized-inbound" transform="translate(495, 1130)">
+      <rect width="240" height="90" rx="12" fill="#1C4724" class="card-border" />
+      <text x="120" y="45" class="card-text" font-size="16">Harmonized Inbound</text>
+      <text x="120" y="68" class="card-text" font-size="16">Purchase Orders/ASN</text>
+    </g>
+
+    <!-- Net Material Shortage elongated box -->
+    <g id="card-net-shortage" transform="translate(170, 1260)">
+      <rect width="790" height="80" rx="14" fill="#4B221B" class="card-border" />
+      <text x="395" y="40" class="card-text" font-size="18">Net Material Shortage</text>
+      <text x="395" y="62" class="card-text" font-size="15" opacity="0.8">Demand – Available Supply</text>
+    </g>
+
+    <!-- Prioritized Shortages elongated box -->
+    <g id="card-prioritized-shortages" transform="translate(170, 1370)">
+      <rect width="790" height="65" rx="12" fill="#592D2D" class="card-border" />
+      <text x="395" y="38" class="card-text" font-size="17">BOM Line Starvation Risk Prioritized Shortages</text>
+    </g>
+
+    <!-- FLOW CONNECTORS IN SECTION 04 -->
+    <g id="flows-sec04" marker-end="url(#arrow)">
+      <!-- ATP to Net Shortage -->
+      <path d="M 305,1220 L 305,1256" class="connector" />
+      
+      <!-- Inbound to Net Shortage -->
+      <path d="M 615,1220 L 615,1256" class="connector" />
+
+      <!-- Leaf components downward arrow through to the top right of Net Material Shortage -->
+      <path d="M 950,940 L 950,1100 L 920,1100 L 920,1256" class="connector" />
+
+      <!-- Net Shortage to Prioritized Shortages -->
+      <path d="M 565,1340 L 565,1366" class="connector" />
+    </g>
+  </g>
+</svg>
