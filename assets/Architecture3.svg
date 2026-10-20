@@ -1,22 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1760" width="100%" height="100%">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1490" width="100%" height="100%">
   <!-- Definitions for Markers and Styles -->
   <defs>
     <style>
-      .bg { fill: #121212; }
       .container-border { stroke: #FFFFFF; stroke-width: 1.5; fill: rgba(255, 255, 255, 0.02); opacity: 0.6; }
       .card-border { stroke: #FFFFFF; stroke-width: 1.5; fill: none; opacity: 0.8; }
-      .text-title { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 26px; fill: #FFFFFF; text-anchor: middle; font-weight: 500; opacity: 0.95; }
-      .text-sub { font-family: 'Inter', -apple-system, sans-serif; font-size: 19px; fill: #A0A0A0; text-anchor: middle; opacity: 0.85; }
-      .card-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 20px; fill: #FFFFFF; text-anchor: middle; font-weight: 500; }
-      .label-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 20px; fill: #FFFFFF; opacity: 0.9; }
-      .connector { fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-      .connector-dashed { fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-dasharray: 8, 8; stroke-linecap: round; stroke-linejoin: round; }
-      .arrow { fill: none; stroke: #FFFFFF; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .text-title { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 24px; fill: #FFFFFF; text-anchor: middle; font-weight: 600; opacity: 0.95; }
+      .text-sub { font-family: 'Inter', -apple-system, sans-serif; font-size: 17px; fill: #A0A0A0; text-anchor: middle; opacity: 0.85; }
+      .card-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 16px; fill: #FFFFFF; text-anchor: middle; font-weight: 500; }
+      .label-text { font-family: 'Inter', -apple-system, sans-serif; font-size: 16px; fill: #6DFFB0; opacity: 0.9; }
+      .connector { fill: none; stroke: #6DFFB0; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .connector-track { fill: none; stroke: rgba(109, 255, 176, 0.2); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+      .connector-dashed { fill: none; stroke: #6DFFB0; stroke-width: 1.8; stroke-dasharray: 6 6; stroke-linecap: round; stroke-linejoin: round; }
+      .flow { stroke-dasharray: 6 6; animation: mv 1.4s linear infinite; }
+      @keyframes mv { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -24; } }
     </style>
     
-    <!-- Arrowhead Marker -->
-    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 1 1 L 8 5 L 1 9" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- Mint Glow Arrowhead Marker (from cocoindex / Architecture1) -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#6DFFB0" />
     </marker>
   </defs>
 
@@ -24,7 +25,7 @@
   <!-- SECTION 01: SUPPLY CHAIN DATA -->
   <g id="supply-chain-data">
     <rect x="40" y="40" width="1020" height="230" rx="16" class="container-border" />
-    <text x="550" y="80" class="text-title">01 Supply chain Data</text>
+    <text x="550" y="80" class="text-title">01 Supply Chain Master Tables</text>
 
     <!-- Cylinders helper macros can be drawn using path -->
     <!-- Cylinder 1: Warehouse Inventory Ledger -->
@@ -73,13 +74,13 @@
 
   <!-- FLOW: SECTION 01 TO SECTION 02 -->
   <g id="flow-sec01-to-sec02" marker-end="url(#arrow)">
-    <path d="M 665,270 L 665,306" class="connector" />
+    <path d="M 665,270 L 665,306" class="connector flow" />
   </g>
 
   <!-- SECTION 02: EXASOL MPP COMPUTE LAYER -->
   <g id="exasol-mpp-layer">
     <rect x="270" y="310" width="790" height="320" rx="16" class="container-border" />
-    <text x="665" y="348" class="text-title">02 Exasol MPP Compute Layer</text>
+    <text x="665" y="348" class="text-title">02 Exasol MPP Partitioning &amp; Colocated Joins</text>
 
     <!-- Distributed Data & Join Execution Inner Container -->
     <g id="distributed-execution">
@@ -121,7 +122,7 @@
   <!-- SECTION 03: RECURSIVE BOM EXPLOSION -->
   <g id="recursive-bom">
     <rect x="40" y="660" width="1020" height="350" rx="16" class="container-border" />
-    <text x="550" y="700" class="text-title">03 Recursive BOM Explosion</text>
+    <text x="550" y="700" class="text-title">03 Recursive In-Memory BOM Explosion</text>
 
     <!-- Production Demand Parent Assembly -->
     <g id="card-assembly" transform="translate(90, 750)">
@@ -159,19 +160,19 @@
     <!-- FLOWS inside SECTION 03 -->
     <g id="flows-sec03" marker-end="url(#arrow)">
       <!-- Line from Join Strategy going down, left, down into Expand BOM Level -->
-      <path d="M 645,585 L 645,715 L 385,715 L 385,846" class="connector" />
+      <path d="M 645,585 L 645,715 L 385,715 L 385,846" class="connector flow" />
       
       <!-- Assembly card output to Expand BOM Level -->
-      <path d="M 230,855 L 285,855 L 285,910 L 346,910" class="connector" />
+      <path d="M 230,855 L 285,855 L 285,910 L 346,910" class="connector flow" />
 
       <!-- Expand BOM Level to More component levels? (diamond) -->
-      <path d="M 470,850 L 470,800 L 674,800" class="connector" />
+      <path d="M 470,850 L 470,800 L 674,800" class="connector flow" />
 
       <!-- Diamond NO connection to Leaf components -->
-      <path d="M 880,810 L 960,810 L 960,826" class="connector" />
+      <path d="M 880,810 L 960,810 L 960,826" class="connector flow" />
 
       <!-- Diamond YES feedback loop -->
-      <path d="M 780,870 L 780,900 L 596,900" class="connector-dashed" />
+      <path d="M 780,870 L 780,900 L 596,900" class="connector-dashed flow" />
     </g>
     <!-- Non-marker dashed Yes connector arrow with text annotation (to prevent scaling bugs) -->
     <text x="635" y="907" class="label-text" font-size="16" text-anchor="middle" font-weight="500">— Yes —</text>
@@ -180,7 +181,7 @@
 
   <!-- LEFT MARGIN FLOW: Production Schedule -->
   <g id="left-schedule-flow" marker-end="url(#arrow)">
-    <path d="M 150,270 L 150,744" class="connector-dashed" />
+    <path d="M 150,270 L 150,744" class="connector-dashed flow" />
     <text x="120" y="470" class="label-text" font-size="16" font-weight="500" text-anchor="end">Production</text>
     <text x="120" y="493" class="label-text" font-size="16" font-weight="500" text-anchor="end">Schedule</text>
   </g>
@@ -188,7 +189,7 @@
   <!-- SECTION 04: INVENTORY AND SHORTAGE ANALYTICS -->
   <g id="inventory-analytics">
     <rect x="40" y="1050" width="1020" height="410" rx="16" class="container-border" />
-    <text x="550" y="1090" class="text-title">04 Inventory and Shortage analytics</text>
+    <text x="550" y="1090" class="text-title">04 True ATP &amp; Starvation Risk Analytics</text>
 
     <!-- True Available-to-Promise Box -->
     <g id="card-true-atp" transform="translate(180, 1130)">
@@ -221,16 +222,16 @@
     <!-- FLOW CONNECTORS IN SECTION 04 -->
     <g id="flows-sec04" marker-end="url(#arrow)">
       <!-- ATP to Net Shortage -->
-      <path d="M 305,1220 L 305,1256" class="connector" />
+      <path d="M 305,1220 L 305,1256" class="connector flow" />
       
       <!-- Inbound to Net Shortage -->
-      <path d="M 615,1220 L 615,1256" class="connector" />
+      <path d="M 615,1220 L 615,1256" class="connector flow" />
 
       <!-- Leaf components downward arrow through to the top right of Net Material Shortage -->
-      <path d="M 950,940 L 950,1100 L 920,1100 L 920,1256" class="connector" />
+      <path d="M 950,940 L 950,1100 L 920,1100 L 920,1256" class="connector flow" />
 
       <!-- Net Shortage to Prioritized Shortages -->
-      <path d="M 565,1340 L 565,1366" class="connector" />
+      <path d="M 565,1340 L 565,1366" class="connector flow" />
     </g>
   </g>
 </svg>
