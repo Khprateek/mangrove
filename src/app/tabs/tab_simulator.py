@@ -198,11 +198,23 @@ def render_scenario_simulator_tab(client: ChakanExasolClient, marts: dict) -> No
         delta_color="inverse",
     )
 
-    # 5. Visualizations with generous spacing
+    # 5. Visualizations with generous spacing & clean separation
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     col_v1, col_v2 = st.columns([1, 1])
 
     with col_v1:
+        st.markdown(
+            f"""
+            <div style="font-weight: 700; font-size: 0.92rem; color: {COLOR_TEXT_PRIMARY}; margin-bottom: 2px;">
+                Component Run Window Horizon (Baseline vs Chaos)
+            </div>
+            <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; margin-bottom: 8px;">
+                Available production hours per component before assembly line starvation
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         merged_bom = base_bom[["assembly_line_id", "component_part_num", "part_description", "hours_to_starvation_harmonized"]].rename(
             columns={"hours_to_starvation_harmonized": "baseline_run_hours"}
         ).merge(
@@ -217,7 +229,7 @@ def render_scenario_simulator_tab(client: ChakanExasolClient, marts: dict) -> No
             go.Bar(
                 x=merged_bom["component_part_num"],
                 y=merged_bom["baseline_run_hours"],
-                name="Baseline Available Hours",
+                name="Baseline Hours",
                 marker_color=COLOR_BRAND_PRIMARY,
             )
         )
@@ -225,7 +237,7 @@ def render_scenario_simulator_tab(client: ChakanExasolClient, marts: dict) -> No
             go.Bar(
                 x=merged_bom["component_part_num"],
                 y=merged_bom["simulated_run_hours"],
-                name="Simulated Available Hours (Post-Shock)",
+                name="Post-Shock Hours",
                 marker_color=COLOR_DANGER,
             )
         )
@@ -233,44 +245,100 @@ def render_scenario_simulator_tab(client: ChakanExasolClient, marts: dict) -> No
             y=48.0,
             line_dash="dash",
             line_color=COLOR_BRAND_PRIMARY,
-            annotation_text="48h Full Run Buffer",
-            annotation_position="top left",
+            annotation_text=" 48h Safety Target",
+            annotation_position="top right",
+            annotation_font=dict(size=9.5, color=COLOR_BRAND_PRIMARY),
         )
-        fig_horizon = apply_mangrove_theme(fig_horizon, height=380)
+        fig_horizon = apply_mangrove_theme(fig_horizon, height=390)
         fig_horizon.update_layout(
-            title="Component Run Window Horizon (Baseline vs Chaos)",
-            xaxis_title="Component SKU",
-            yaxis_title="Available Production Hours",
             barmode="group",
+            margin=dict(l=36, r=16, t=28, b=85),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1.0,
+                font=dict(size=10, color=COLOR_TEXT_SECONDARY),
+            ),
+            xaxis=dict(
+                tickangle=-45,
+                tickfont=dict(size=9, color=COLOR_TEXT_SECONDARY),
+                title=None,
+            ),
+            yaxis=dict(
+                title=dict(text="Available Hours", font=dict(size=10, color=COLOR_TEXT_SECONDARY)),
+                tickfont=dict(size=10, color=COLOR_TEXT_SECONDARY),
+            ),
         )
         st.plotly_chart(fig_horizon, use_container_width=True)
 
     with col_v2:
+        st.markdown(
+            f"""
+            <div style="font-weight: 700; font-size: 0.92rem; color: {COLOR_TEXT_PRIMARY}; margin-bottom: 2px;">
+                Disruption Factor Exposure Attribution Waterfall
+            </div>
+            <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; margin-bottom: 8px;">
+                Step-by-step risk escalation from baseline deficit to compound shock
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         wf_data = sim_results["waterfall_data"]
-        stages = [d["Stage"] for d in wf_data]
+        label_map = {
+            "1. Baseline True Shortage": "1. Baseline<br>Shortage",
+            "2. Logistics Transit Drift": "2. Transit<br>Drift",
+            "3. Quarantine Defect Spike": "3. Quarantine<br>Defects",
+            "4. Surge Output Demand": "4. Demand<br>Surge",
+            "Total Simulated Exposure": "Total Net<br>Exposure",
+        }
+        stages = [label_map.get(d["Stage"], d["Stage"]) for d in wf_data]
         amounts = [d["Amount"] for d in wf_data]
+        amounts_cr = [round(a / 10_000_000.0, 2) for a in amounts]
         measures = [d["Type"] for d in wf_data]
-        text_amounts = [format_inr_crore_lakh(a) for a in amounts]
+
+        text_amounts = []
+        for i, a in enumerate(amounts):
+            if abs(a) > 1000 or measures[i] == "total":
+                text_amounts.append(format_inr_crore_lakh(a))
+            else:
+                text_amounts.append("")
 
         fig_wf = go.Figure(
             go.Waterfall(
-                name="Disruption Factor Attribution",
+                name="Attribution",
                 orientation="v",
                 measure=measures,
                 x=stages,
                 textposition="outside",
                 text=text_amounts,
-                y=amounts,
-                connector={"line": {"color": COLOR_BORDER}},
+                y=amounts_cr,
+                cliponaxis=False,
+                textfont=dict(size=10, color=COLOR_TEXT_PRIMARY),
+                connector={"line": {"color": COLOR_BORDER, "width": 1.5, "dash": "dot"}},
                 decreasing={"marker": {"color": COLOR_BRAND_PRIMARY}},
                 increasing={"marker": {"color": COLOR_DANGER}},
                 totals={"marker": {"color": "#8B2626"}},
             )
         )
-        fig_wf = apply_mangrove_theme(fig_wf, height=380)
+        fig_wf = apply_mangrove_theme(fig_wf, height=390)
+        max_cr = max(amounts_cr) if amounts_cr else 6.0
         fig_wf.update_layout(
-            title="Disruption Factor Exposure Attribution Waterfall",
-            yaxis_title="Exposure (INR)",
+            margin=dict(l=44, r=16, t=28, b=65),
+            xaxis=dict(
+                tickangle=0,
+                tickfont=dict(size=9.5, color=COLOR_TEXT_SECONDARY),
+                title=None,
+            ),
+            yaxis=dict(
+                title=dict(text="Escalated Exposure (₹ Cr)", font=dict(size=10, color=COLOR_TEXT_SECONDARY)),
+                tickfont=dict(size=10, color=COLOR_TEXT_SECONDARY),
+                ticksuffix=" Cr",
+                tickprefix="₹",
+                range=[0, max(max_cr * 1.25, 6.0)],
+            ),
         )
         st.plotly_chart(fig_wf, use_container_width=True)
 
