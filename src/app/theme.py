@@ -452,7 +452,7 @@ def apply_mangrove_theme(fig: go.Figure, height: int = 400) -> go.Figure:
             title_font=dict(color=COLOR_TEXT_PRIMARY, size=11),
         ),
         height=height,
-        margin=dict(l=24, r=24, t=44, b=24),
+        margin=dict(l=36, r=20, t=28, b=50),
         legend=dict(
             orientation="h",
             yanchor="bottom",

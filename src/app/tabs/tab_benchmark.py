@@ -10,6 +10,8 @@ from src.app.theme import (
     COLOR_BRAND_ACCENT,
     COLOR_BRAND_PRIMARY,
     COLOR_DANGER,
+    COLOR_TEXT_PRIMARY,
+    COLOR_TEXT_SECONDARY,
     apply_mangrove_theme,
 )
 from src.benchmarks.scale_benchmark import (
@@ -92,6 +94,18 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
     col_chart1, col_chart2 = st.columns(2)
 
     with col_chart1:
+        st.markdown(
+            f"""
+            <div style="font-weight: 700; font-size: 0.92rem; color: {COLOR_TEXT_PRIMARY}; margin-bottom: 2px;">
+                Execution Latency Scaling Curve (Lower is Better)
+            </div>
+            <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; margin-bottom: 8px;">
+                Columnar in-memory execution vs exponential row-by-row ETL latency
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         # Latency Scaling Curve
         fig_lat = go.Figure()
         fig_lat.add_trace(
@@ -99,7 +113,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                 x=df_bench["batch_rows"],
                 y=df_bench["exasol_latency_ms"],
                 mode="lines+markers",
-                name="Exasol Columnar (In-Memory MPP)",
+                name="Exasol Columnar",
                 line=dict(color=COLOR_BRAND_PRIMARY, width=3),
                 marker=dict(size=8),
             )
@@ -109,7 +123,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                 x=df_bench["batch_rows"],
                 y=df_bench["legacy_latency_ms"],
                 mode="lines+markers",
-                name="Legacy Row-by-Row ETL (Total)",
+                name="Legacy ETL Total",
                 line=dict(color=COLOR_DANGER, width=3, dash="solid"),
                 marker=dict(size=8),
             )
@@ -120,7 +134,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                     x=df_bench["batch_rows"],
                     y=df_bench["legacy_cpu_ms"],
                     mode="lines+markers",
-                    name="Legacy ETL (Pure CPU Compute)",
+                    name="Legacy Pure CPU",
                     line=dict(color="#A66B20", width=2, dash="dot"),
                     marker=dict(size=6),
                 )
@@ -129,25 +143,46 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
             y=150.0,
             line_dash="dash",
             line_color=COLOR_BRAND_ACCENT,
-            annotation_text="150ms Real-Time In-DB SLA Target",
-            annotation_position="top left",
+            annotation_text=" 150ms In-DB SLA",
+            annotation_position="bottom right",
+            annotation_font=dict(size=9.5, color=COLOR_BRAND_ACCENT),
         )
         fig_lat = apply_mangrove_theme(fig_lat, height=380)
         fig_lat.update_layout(
-            title="Execution Latency Scaling Curve (Lower is Better)",
-            xaxis_title="Inbound ASN Stream Scale (Rows)",
-            yaxis_title="Execution Latency (Milliseconds)",
+            margin=dict(l=36, r=16, t=28, b=45),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1.0,
+                font=dict(size=10, color=COLOR_TEXT_SECONDARY),
+            ),
+            xaxis_title="Inbound Stream Scale (Rows)",
+            yaxis_title="Execution Latency (ms)",
         )
         st.plotly_chart(fig_lat, use_container_width=True)
 
     with col_chart2:
+        st.markdown(
+            f"""
+            <div style="font-weight: 700; font-size: 0.92rem; color: {COLOR_TEXT_PRIMARY}; margin-bottom: 2px;">
+                Throughput & Speedup Multiplier (Higher is Better)
+            </div>
+            <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; margin-bottom: 8px;">
+                Measured rows/second throughput and relative columnar acceleration factor
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
         # Throughput & Speedup Multiplier
         fig_tp = go.Figure()
         fig_tp.add_trace(
             go.Bar(
                 x=df_bench["batch_rows"].astype(str) + " Rows",
                 y=df_bench["exasol_throughput_rows_sec"],
-                name="Exasol Throughput (Rows/s)",
+                name="Exasol Throughput",
                 marker_color=COLOR_BRAND_PRIMARY,
                 yaxis="y",
             )
@@ -156,7 +191,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
             go.Bar(
                 x=df_bench["batch_rows"].astype(str) + " Rows",
                 y=df_bench["legacy_throughput_rows_sec"],
-                name="Legacy ETL (Rows/s)",
+                name="Legacy Throughput",
                 marker_color="#8E9E93",
                 yaxis="y",
             )
@@ -165,7 +200,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
             go.Scatter(
                 x=df_bench["batch_rows"].astype(str) + " Rows",
                 y=df_bench["speedup_factor"],
-                name="Speedup Factor (X)",
+                name="Speedup Factor",
                 mode="lines+markers+text",
                 text=[f"{s:.1f}x" for s in df_bench["speedup_factor"]],
                 textposition="top center",
@@ -176,10 +211,18 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
         )
         fig_tp = apply_mangrove_theme(fig_tp, height=380)
         fig_tp.update_layout(
-            title="Throughput (Rows/Sec) & Relative Speedup Acceleration",
+            margin=dict(l=36, r=36, t=28, b=45),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1.0,
+                font=dict(size=10, color=COLOR_TEXT_SECONDARY),
+            ),
             xaxis_title="Inbound Batch Size Tier",
-            yaxis=dict(title="Throughput (Rows / Sec)"),
-            yaxis2=dict(title="Speedup Factor (X)", overlaying="y", side="right", showgrid=False),
+            yaxis=dict(title="Throughput (Rows/s)"),
+            yaxis2=dict(title="Speedup (X)", overlaying="y", side="right", showgrid=False),
             barmode="group",
         )
         st.plotly_chart(fig_tp, use_container_width=True)

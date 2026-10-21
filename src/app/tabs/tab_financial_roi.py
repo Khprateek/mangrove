@@ -11,6 +11,7 @@ from src.app.theme import (
     COLOR_BRAND_SOFT,
     COLOR_DANGER,
     COLOR_TEXT_PRIMARY,
+    COLOR_TEXT_SECONDARY,
     COLOR_WARNING,
     apply_mangrove_theme,
     format_inr_crore_lakh,
@@ -110,12 +111,25 @@ def render_financial_roi_tab(client: ChakanExasolClient, marts: dict) -> None:
         )
     )
 
+    st.markdown("<div style='margin-top: 1.25rem;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div style="font-weight: 700; font-size: 0.92rem; color: {COLOR_TEXT_PRIMARY}; margin-bottom: 2px;">
+            Financial Blast Radius by Assembly Line (Inaction Stoppage vs. Freight Intervention)
+        </div>
+        <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; margin-bottom: 8px;">
+            Comparative financial risk: idle plant depreciation, unproduced vehicles, and emergency mitigation freight
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     fig_fin = go.Figure()
     fig_fin.add_trace(
         go.Bar(
             x=line_rollup["assembly_line_id"],
             y=line_rollup["revenue_at_risk_net_inr"],
-            name="Unproduced Vehicle Revenue (Rs)",
+            name="Unproduced Vehicle Risk",
             marker_color=COLOR_DANGER,
         )
     )
@@ -123,7 +137,7 @@ def render_financial_roi_tab(client: ChakanExasolClient, marts: dict) -> None:
         go.Bar(
             x=line_rollup["assembly_line_id"],
             y=line_rollup["plant_idle_cost_inr"],
-            name="Plant Idle Labor & Depreciation Penalty (Rs)",
+            name="Plant Idle Penalty",
             marker_color=COLOR_WARNING,
         )
     )
@@ -131,16 +145,25 @@ def render_financial_roi_tab(client: ChakanExasolClient, marts: dict) -> None:
         go.Bar(
             x=line_rollup["assembly_line_id"],
             y=line_rollup["expedited_freight_cost_inr"],
-            name="Emergency Hot-Shot Freight Cost (Rs)",
+            name="Expedited Freight Cost",
             marker_color=COLOR_BRAND_PRIMARY,
         )
     )
     fig_fin = apply_mangrove_theme(fig_fin, height=380)
     fig_fin.update_layout(
         barmode="stack",
-        title="Financial Blast Radius by Assembly Line (Inaction Stoppage vs. Freight Intervention)",
+        title=None,
+        margin=dict(l=36, r=16, t=28, b=45),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1.0,
+            font=dict(size=10, color=COLOR_TEXT_SECONDARY),
+        ),
         xaxis_title="Assembly Line",
-        yaxis_title="Total Financial Exposure (INR)",
+        yaxis_title="Financial Exposure (INR)",
     )
     st.plotly_chart(fig_fin, use_container_width=True)
 

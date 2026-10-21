@@ -10,6 +10,8 @@ from src.app.theme import (
     COLOR_BRAND_ACCENT,
     COLOR_BRAND_PRIMARY,
     COLOR_DANGER,
+    COLOR_TEXT_PRIMARY,
+    COLOR_TEXT_SECONDARY,
     COLOR_WARNING,
     apply_mangrove_theme,
     format_inr_crore_lakh,
@@ -28,22 +30,64 @@ def render_phantom_inventory_tab(marts: dict) -> None:
         "at Chakan Plant-1 Stores (`CHAKAN-PLT1-STORE`)."
     )
 
+    st.markdown("<div style='margin-top: 1.25rem;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        f"""
+        <div style="font-weight: 700; font-size: 0.92rem; color: {COLOR_TEXT_PRIMARY}; margin-bottom: 2px;">
+            Component Stock Breakdown: True Pickable ATP vs. Phantom Ledger Drift
+        </div>
+        <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; margin-bottom: 8px;">
+            Physical warehouse stock reconciled against phantom inventory and quality-hold quarantine bins
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    rename_map = {
+        "true_pickable_atp_qty": "True Pickable ATP",
+        "phantom_inventory_qty": "Phantom Stock",
+        "allocated_to_prod_qty": "Allocated to Prod",
+        "quality_hold_qty": "Quality Hold",
+    }
+    plot_df = inv_df.rename(columns=rename_map)
+
     fig_inv = px.bar(
-        inv_df,
+        plot_df,
         x="internal_part_num",
-        y=["true_pickable_atp_qty", "phantom_inventory_qty", "allocated_to_prod_qty", "quality_hold_qty"],
-        title="Component Stock Breakdown: True Pickable ATP vs. Phantom Ledger Drift",
-        labels={"value": "Units in Base UOM", "internal_part_num": "Component SKU", "variable": "Stock Category"},
+        y=list(rename_map.values()),
+        labels={"value": "Units in Base UOM", "internal_part_num": "Component SKU", "variable": "Category"},
         color_discrete_map={
-            "true_pickable_atp_qty": COLOR_BRAND_PRIMARY,
-            "phantom_inventory_qty": COLOR_DANGER,
-            "allocated_to_prod_qty": COLOR_BRAND_ACCENT,
-            "quality_hold_qty": COLOR_WARNING,
+            "True Pickable ATP": COLOR_BRAND_PRIMARY,
+            "Phantom Stock": COLOR_DANGER,
+            "Allocated to Prod": COLOR_BRAND_ACCENT,
+            "Quality Hold": COLOR_WARNING,
         },
         barmode="group",
-        height=380,
+        height=390,
     )
-    fig_inv = apply_mangrove_theme(fig_inv, height=380)
+    fig_inv = apply_mangrove_theme(fig_inv, height=390)
+    fig_inv.update_layout(
+        title=None,
+        margin=dict(l=36, r=16, t=28, b=85),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1.0,
+            title=None,
+            font=dict(size=10, color=COLOR_TEXT_SECONDARY),
+        ),
+        xaxis=dict(
+            tickangle=-45,
+            tickfont=dict(size=9, color=COLOR_TEXT_SECONDARY),
+            title=None,
+        ),
+        yaxis=dict(
+            title=dict(text="Units in Base UOM", font=dict(size=10, color=COLOR_TEXT_SECONDARY)),
+            tickfont=dict(size=10, color=COLOR_TEXT_SECONDARY),
+        ),
+    )
     st.plotly_chart(fig_inv, use_container_width=True)
 
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
