@@ -294,15 +294,47 @@ def inject_minimalist_theme() -> None:
         }}
 
         /* Selectboxes & Inputs */
-        [data-baseweb="select"] {{
+        [data-testid="stSelectbox"] {
+            margin-top: 4px !important;
+            margin-bottom: 12px !important;
+        }
+        [data-baseweb="select"] {
             border-radius: 8px !important;
-        }}
-        [data-baseweb="select"] > div {{
-            background-color: {COLOR_SURFACE} !important;
-            border-color: {COLOR_BORDER} !important;
+        }
+        [data-baseweb="select"] > div {
+            background-color: #FFFFFF !important;
+            border: 1px solid #C6DBC3 !important;
             border-radius: 8px !important;
-            color: {COLOR_TEXT_PRIMARY} !important;
-        }}
+            box-shadow: 0 1px 3px rgba(24, 61, 50, 0.05) !important;
+        }
+        [data-baseweb="select"] div,
+        [data-baseweb="select"] span,
+        [data-baseweb="select"] p {
+            color: #26332C !important;
+            font-weight: 600 !important;
+            font-size: 0.88rem !important;
+        }
+        [data-baseweb="select"] svg {
+            fill: #2F6B4F !important;
+        }
+        /* Dropdown Popover Menu */
+        [data-baseweb="popover"],
+        [data-baseweb="menu"] {
+            background-color: #FFFFFF !important;
+            border: 1px solid #C6DBC3 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 16px rgba(24, 61, 50, 0.12) !important;
+        }
+        [data-baseweb="menu"] li {
+            color: #26332C !important;
+            font-size: 0.85rem !important;
+            padding: 8px 12px !important;
+        }
+        [data-baseweb="menu"] li:hover,
+        [data-baseweb="menu"] li[aria-selected="true"] {
+            background-color: #E8F2E5 !important;
+            color: #2F6B4F !important;
+        }
 
         /* Sliders */
         [data-testid="stSlider"] {{

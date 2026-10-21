@@ -83,10 +83,52 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
     if len(filtered_df) == 0:
         filtered_df = triage_df
 
-    # 2. Fast-Resolution Workbench (Top of Tab 1)
+    # 1. Prioritized Quarantined Stream Table (Top of Tab 1)
     st.markdown(
         f"""
         <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 10px; margin-bottom: 8px;">
+            PRIORITIZED INBOUND DISPATCH QUEUE
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    def format_verdict_badge(row: pd.Series) -> str:
+        verdict = row["operational_verdict"]
+        net_risk = row["revenue_at_risk_net_inr"]
+        if net_risk > 0:
+            return "🔴 Line Halt Threat"
+        if verdict in ["FALSE_STARVATION_CLEARED_BY_UDF", "HARMONIZED_BUFFER_RESTORED"]:
+            return "🟢 Cleared by UDF"
+        return "🟡 Monitored"
+
+    display_df = pd.DataFrame(
+        {
+            "Urgency": filtered_df.apply(format_verdict_badge, axis=1),
+            "ASN ID": filtered_df["asn_line_id"],
+            "PO Ref": filtered_df["po_number_ref"],
+            "Supplier": filtered_df["supplier_name"] + " (" + filtered_df["tier_level"] + ")",
+            "Resolved Part": filtered_df["resolved_part_num"],
+            "Inbound vs PO": filtered_df["harmonized_shipped_qty"].apply(lambda v: f"{safe_float(v):,.0f}")
+            + " / "
+            + filtered_df["po_ordered_qty"].apply(lambda v: f"{safe_float(v):,.0f}")
+            + " "
+            + filtered_df["canonical_uom"],
+            "Target Line": filtered_df["affected_lines"],
+            "Hours to Halt": filtered_df["min_hours_to_stop_harmonized"].apply(lambda v: f"{safe_float(v):.1f}h"),
+            "True Net Risk": filtered_df["revenue_at_risk_net_inr"].apply(format_inr_crore_lakh),
+            "Mitigation ROI": filtered_df["mitigation_roi_x"].apply(
+                lambda v: f"{safe_float(v):,.0f}x" if safe_float(v) > 0 else "-"
+            ),
+            "Status": filtered_df["harmonization_state"],
+        }
+    )
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+    # 2. Fast-Resolution Workbench (Directly below Queue)
+    st.markdown(
+        f"""
+        <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 20px; margin-bottom: 8px;">
             1-CLICK RESOLUTION WORKBENCH
         </div>
         """,
@@ -195,48 +237,6 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
             )
             st.success(f"Authorized emergency shortfall cover and updated Exasol in {write_ms:.2f} ms.")
             st.rerun()
-
-    # 3. Prioritized Quarantined Stream Table
-    st.markdown(
-        f"""
-        <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 22px; margin-bottom: 8px;">
-            PRIORITIZED INBOUND DISPATCH QUEUE
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    def format_verdict_badge(row: pd.Series) -> str:
-        verdict = row["operational_verdict"]
-        net_risk = row["revenue_at_risk_net_inr"]
-        if net_risk > 0:
-            return "🔴 Line Halt Threat"
-        if verdict in ["FALSE_STARVATION_CLEARED_BY_UDF", "HARMONIZED_BUFFER_RESTORED"]:
-            return "🟢 Cleared by UDF"
-        return "🟡 Monitored"
-
-    display_df = pd.DataFrame(
-        {
-            "Urgency": filtered_df.apply(format_verdict_badge, axis=1),
-            "ASN ID": filtered_df["asn_line_id"],
-            "PO Ref": filtered_df["po_number_ref"],
-            "Supplier": filtered_df["supplier_name"] + " (" + filtered_df["tier_level"] + ")",
-            "Resolved Part": filtered_df["resolved_part_num"],
-            "Inbound vs PO": filtered_df["harmonized_shipped_qty"].apply(lambda v: f"{safe_float(v):,.0f}")
-            + " / "
-            + filtered_df["po_ordered_qty"].apply(lambda v: f"{safe_float(v):,.0f}")
-            + " "
-            + filtered_df["canonical_uom"],
-            "Target Line": filtered_df["affected_lines"],
-            "Hours to Halt": filtered_df["min_hours_to_stop_harmonized"].apply(lambda v: f"{safe_float(v):.1f}h"),
-            "True Net Risk": filtered_df["revenue_at_risk_net_inr"].apply(format_inr_crore_lakh),
-            "Mitigation ROI": filtered_df["mitigation_roi_x"].apply(
-                lambda v: f"{safe_float(v):,.0f}x" if safe_float(v) > 0 else "-"
-            ),
-            "Status": filtered_df["harmonization_state"],
-        }
-    )
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
 
     # 4. Active Overrides with 1-Click Rollback Control
     ov_active = client.tables.get("ASN_PLANNER_OVERRIDES", pd.DataFrame())
