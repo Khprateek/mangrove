@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import streamlit as st
+from PIL import Image
 
 from src.app.components import (
     render_header,
@@ -52,9 +53,11 @@ def get_client() -> ChakanExasolClient:
 
 def main() -> None:
     """Main application lifecycle orchestrating layout, components, and tabs."""
+    logo_path = PROJECT_ROOT / "assets" / "logo.png"
+    logo = Image.open(logo_path)
     st.set_page_config(
-        page_title="Mangrove | Inbound Triage & Starvation Engine (Exasol Personal)",
-        page_icon="🌿",
+        page_title="Mangrove",
+        page_icon=logo,
         layout="wide",
         initial_sidebar_state="expanded",
     )
