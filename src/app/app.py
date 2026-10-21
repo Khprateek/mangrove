@@ -12,7 +12,6 @@ from src.app.components import (
     render_header,
     render_kpi_header,
     render_sidebar,
-    render_telemetry_banner,
 )
 from src.app.tabs import (
     render_bom_horizon_tab,
@@ -66,7 +65,6 @@ def main() -> None:
 
     render_sidebar(client, marts, project_root=PROJECT_ROOT)
     render_header(project_root=PROJECT_ROOT)
-    render_telemetry_banner(marts)
     render_kpi_header(marts, client)
 
     st.markdown("---")

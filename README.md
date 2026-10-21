@@ -7,7 +7,7 @@
     <img src="https://img.shields.io/badge/ExaThon%20India-2026%20Open%20Build-blue?style=flat-square&logo=exasol" alt="ExaThon 2026" />
     <img src="https://img.shields.io/badge/Track%2003-Factories%2C%20Fleets%20%26%20Supply%20Chains-orange?style=flat-square" alt="Track 03" />
     <img src="https://img.shields.io/badge/Exasol%20Personal-In--Memory%20Columnar%20MPP-blueviolet?style=flat-square&logo=database" alt="Exasol Personal" />
-    <img src="https://img.shields.io/badge/Pytest-12%2F12%20Verified-brightgreen?style=flat-square&logo=pytest" alt="Pytest" />
+    <img src="https://img.shields.io/badge/Pytest-15%2F15%20Verified-brightgreen?style=flat-square&logo=pytest" alt="Pytest" />
     <img src="https://img.shields.io/badge/Speedup-35.4x%20to%2054.4x%20Columnar-success?style=flat-square" alt="Speedup" />
     <img src="https://img.shields.io/badge/Turnkey-Docker%20Compose%20Ready-blue?style=flat-square&logo=docker" alt="Docker Compose" />
     <img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT" />

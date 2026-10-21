@@ -37,6 +37,7 @@ def render_kpi_header(marts: dict, client: ChakanExasolClient) -> None:
     phantom_units = int(pd.to_numeric(inv_df["phantom_inventory_qty"], errors="coerce").fillna(0.0).sum())
     pending_count = int((triage_df["harmonization_state"] == "UDF_HARMONIZED_PENDING_APPROVAL").sum())
 
+    st.markdown("<div style='margin-top: 1.25rem;'></div>", unsafe_allow_html=True)
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric(
         "48h Scheduled Output",

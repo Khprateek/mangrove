@@ -97,7 +97,9 @@ What `bootstrap_exasol_schema_and_data()` executes and verifies:
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
-The test suite in [`tests/test_harmonization.py`](../tests/test_harmonization.py) verifies (12/12 test coverage):
+The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine and cockpit UI (15/15 test coverage across 2 test suites):
+
+### Engine & UDF Test Suite (`tests/test_harmonization.py`)
 1. `test_uom_normalization_pack_and_weight_inversions`: Pack multipliers (`BOX_100`, `BAG_250`, `CRATE_50`) and weight-to-piece conversions (`MT` $\to$ `KG`, `MT` $\to$ `EA`).
 2. `test_supplier_sku_drift_and_jaro_winkler_resolution`: Exact, hyphen-normalized, vendor catalog alias, and Jaro-Winkler ($\ge 0.85$) fuzzy SKU resolution.
 3. `test_adaptive_ngram_prefiltering_and_safety_fallback`: Boundary-padded bigrams/trigrams for sub-millisecond filtering plus 0.00% false-negative safety fallback.
@@ -110,6 +112,11 @@ The test suite in [`tests/test_harmonization.py`](../tests/test_harmonization.py
 10. `test_scale_benchmark_suite`: Verifies pure CPU benchmark (`network_hop_penalty_ms = 0.0`) across 500 to 10,000 rows.
 11. `test_broken_connection_raises_explicit_errors`: Confirms broken DB connections raise `ExasolBootstrapError` / `ExasolWriteError` instead of silently passing.
 12. `test_exasol_views_match_pandas_mirror`: Confirms `compute_analytical_marts(source="exasol")` and `compute_analytical_marts(source="pandas")` match to `0.00 INR` across all 10 financial KPIs.
+
+### UI & Cockpit Smoke Test Suite (`tests/test_cockpit_smoke.py`)
+13. `test_theme_tokens_and_formatting_utilities`: Validates color tokens, safe float coercion, and Indian Rupee formatting helpers (`Rs XX.XX Cr`, `Rs XX.XX L`).
+14. `test_tab_module_exports_and_callables`: Ensures all 7 domain tab modules export valid render callables.
+15. `test_streamlit_cockpit_headless_execution`: End-to-end integration test executing the complete Streamlit Cockpit app via official `AppTest` with zero unhandled exceptions.
 
 ---
 
