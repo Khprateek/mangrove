@@ -8,7 +8,6 @@ import streamlit as st
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
-    COLOR_BRAND_SOFT,
     COLOR_DANGER,
     COLOR_SURFACE,
     COLOR_TEXT_PRIMARY,

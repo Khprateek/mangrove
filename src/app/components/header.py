@@ -20,8 +20,6 @@ def render_header(project_root: Path | None = None) -> None:
     if project_root is None:
         project_root = Path(__file__).resolve().parents[3]
     logo_path = project_root / "assets" / "logo.png"
-    if not logo_path.exists():
-        logo_path = project_root / "assets" / "logo.svg"
 
     col_logo, col_title, col_meta = st.columns([0.65, 6.35, 4.0])
     with col_logo:

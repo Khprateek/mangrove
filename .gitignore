@@ -38,6 +38,3 @@ logs/
 .idea/
 .DS_Store
 Thumbs.db
-
-# Assets
-assets/cocoindex.svg

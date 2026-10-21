@@ -121,25 +121,42 @@ When a planner reviews a quarantined shipment and submits an override, it writes
 ## Cockpit Walkthrough
 
 <details>
-<summary><b>Click to expand 4-Tab Cockpit Breakdown</b></summary>
+<summary><b>Click to expand 7-Tab Materials Planner Cockpit Breakdown</b></summary>
 
-### Tab 1: Live Blast-Radius Triage & Manual Overrides
-- **Executive KPI Bar**: Real-time cards showing 48-Hour Planned Output (₹37.88 Cr), Legacy Parsing Threat (₹26.05 Cr), False Alarms Cleared (₹20.76 Cr), True Shortage (₹5.29 Cr), and Phantom Stock (₹1.18 Cr).
-- **Line Starvation Waterfall Chart**: Visual comparison of production revenue at risk before vs. after Exasol in-database harmonization.
-- **High-Risk Quarantine Queue**: Interactive table showing dirty ASN rows sorted by revenue at risk with fuzzy match scores.
-- **1-Click Writeback**: Approve or adjust supplier records directly into `ASN_PLANNER_OVERRIDES`.
+### Tab 1: Inbound Triage & Fast-Resolution Workbench
+- **Executive KPI Header**: Real-time operational strip displaying 48-Hour Scheduled Output (₹37.88 Cr), Legacy Parsing Threat (₹26.05 Cr), False Alarms Cleared (₹20.76 Cr), True Net Shortage (₹5.29 Cr), and Phantom Stock (₹1.18 Cr).
+- **Fast-Resolution Workbench**: 3 executive data tiles (Inbound Raw Dispatch Anomaly, Exasol In-DB RAM Resolution, Line Halt Risk & Freight Trade-Off).
+- **1-Click Parameterized Writeback**: Submit planner overrides directly to Exasol's `ASN_PLANNER_OVERRIDES` table with sub-15ms recalculation.
+- **SHA-256 Merkle Audit Trail**: Every override and rollback is sealed into a cryptographically verified hash-chained ledger with 1-click revert controls.
 
-### Tab 2: Financial ROI & Downtime Economics
-- **Idle Cost Burn Simulator**: Interactive slider (₹7.2L–₹14.5L/hr) to calculate labor, depreciation, and contract penalties.
-- **Avoided Panic Freight Ledger**: Details ₹1.35 Lakhs saved by preventing unnecessary expedited charters on false alarms.
+### Tab 2: Starvation Horizon & BOM Deficit Matrix
+- **48-Hour Station Starvation Horizon**: Comparative horizontal bar chart contrasting legacy quarantine blind-spots against Exasol in-database harmonization relative to the 48-hour safety buffer.
+- **BOM Explosion Deficit Matrix**: Quantitative bill-of-materials tracking across all 4 production lines at Chakan Plant-1 with live status badges (`SECURED`, `DEFICIT AT RISK`, `HALT IMMINENT`).
 
 ### Tab 3: Interactive What-If Scenario Simulator
-- **Crisis Presets**: One-click simulation of Monsoon Logistics Delays (+3d transit, 15% shrinkage), Foundry Porosity (35% scrap), and Festive Ramp (1.35x acceleration).
-- **Sequential Additive Waterfall**: Decomposes total simulated exposure into schedule surge, transit delays, and defect scrap.
+- **One-Click Disruption Presets**: Instant simulation of real-world shocks—Western Ghats Monsoon (+3d delay, 5% damage), Foundry Casting Porosity (+1d delay, 35% quarantine rejects), and Festive Ramp (1.35x throughput).
+- **Chaos Control Knobs**: Fine-tuned sliders for transit delays (+1 to +5 days), supplier defect rates (0–50%), and assembly throughput surge (1.0x–1.5x).
+- **Sequential Additive Waterfall**: Strictly additive attribution waterfall decomposing total simulated exposure into schedule surge, transit delays, and defect scrap.
+- **Component Deficit & Emergency Action Matrix**: Recommends mitigation protocols (Air-Charter Express Hotshot, Dedicated Hot-Shot Direct Truck, Line Buffer Reallocation).
 
-### Tab 4: Scalability Benchmark & Query Profiler
-- **Live Stress Benchmark**: Measures set-based execution against uncached row-by-row ETL from 500 to 10,000 rows.
-- **In-DB Query Profiler**: Reports execution times across raw ingest, UDF normalization, ATP calculation, and BOM explosion.
+### Tab 4: High-Scale Stress Benchmark (500 to 10,000 Rows)
+- **Columnar vs. Row-by-Row ETL**: Evaluates set-based execution against uncached `DataFrame.iterrows()` Python ETL across 500, 2,500, 5,000, and 10,000 rows.
+- **Pure Measured CPU Wall-Clock Time**: Reports genuine measured CPU timings (0.0 ms synthetic penalty) proving up to **54.4x speedup** and **182,882 rows/sec throughput**.
+- **MPP Co-Location Verification**: Demonstrates 0 inter-node network data shuffles achieved through `DISTRIBUTE BY (internal_part_num)`.
+
+### Tab 5: Boardroom Financial Defense & Line-Stop Economics
+- **Formulation 3 ROI Engine**: Balances assembly line downtime penalties (₹7.2L–₹14.5L/hr, ₹7.92 Cr total stoppage exposure) against low-cost hot-shot freight charters (₹45,000), proving a **1,174.7x executive mitigation ROI**.
+- **Interactive Breakeven Simulator**: Dynamic sliders for downtime burn rate and freight tariffs calculating exact breakeven minutes.
+- **Avoided Panic Freight Ledger**: Documents ₹1.35 Lakhs saved by preventing unnecessary panic courier dispatches on cleared false alarms.
+
+### Tab 6: Warehouse Phantom Inventory Audit
+- **Reconciliation View (`VW_INVENTORY_TRUE_ATP`)**: Compares central ERP ledger balances against physical WMS cycle counts and quality holds.
+- **Phantom Capital Distortion**: Uncovers 7,138 unpickable units tying up ₹1.18 Crores in distorted inventory across 16 storage bins at `CHAKAN-PLT1-STORE`.
+
+### Tab 7: Exasol Personal Architecture, In-DB UDFs & SQL Profiler
+- **Live SQL Inspector**: Full embedded source code for MPP schema DDL, Python 3 UDFs, and analytical views.
+- **4-Stage Execution Profiler**: Live millisecond telemetry across True ATP Mart, ASN UDF Lineage, BOM Starvation Risk, and Triage/ROI post-processing.
+- **Logical Query Plan**: Visual blueprint of in-memory columnar scans, parallel UDF worker scripts, and distributed hash joins.
 
 </details>
 

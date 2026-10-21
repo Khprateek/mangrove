@@ -19,13 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application modules and deterministic data
+# Copy application modules, scripts, configuration, and static assets
 COPY src/ ./src/
-COPY data/ ./data/
 COPY assets/ ./assets/
 COPY docs/ ./docs/
 COPY scripts/ ./scripts/
 COPY .env.example ./.env
+
+# Deterministically bake synthetic ERP master & 498-row ASN chaos dataset (Seed 202610)
+RUN python -m src.data_generator.generate_all --output-dir data/raw --extra-asns 480
 
 EXPOSE 8501
 

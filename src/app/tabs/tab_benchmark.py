@@ -10,8 +10,6 @@ from src.app.theme import (
     COLOR_BRAND_ACCENT,
     COLOR_BRAND_PRIMARY,
     COLOR_DANGER,
-    COLOR_TEXT_PRIMARY,
-    COLOR_TEXT_SECONDARY,
     apply_mangrove_theme,
 )
 from src.benchmarks.scale_benchmark import (

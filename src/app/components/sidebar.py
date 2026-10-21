@@ -14,8 +14,6 @@ def render_sidebar(client: ChakanExasolClient, marts: dict, project_root: Path |
     if project_root is None:
         project_root = Path(__file__).resolve().parents[3]
     logo_path = project_root / "assets" / "logo.png"
-    if not logo_path.exists():
-        logo_path = project_root / "assets" / "logo.svg"
     if logo_path.exists():
         st.sidebar.image(str(logo_path), width=52)
     st.sidebar.markdown(

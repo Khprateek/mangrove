@@ -10,7 +10,6 @@ Orchestrates the turnkey launch of Exasol In-Memory Core & Streamlit Cockpit:
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import socket
 import sys
 import time

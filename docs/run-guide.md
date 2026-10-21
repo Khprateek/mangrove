@@ -97,17 +97,19 @@ What `bootstrap_exasol_schema_and_data()` executes and verifies:
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
-The test suite in [`tests/test_harmonization.py`](../tests/test_harmonization.py) verifies:
+The test suite in [`tests/test_harmonization.py`](../tests/test_harmonization.py) verifies (12/12 test coverage):
 1. `test_uom_normalization_pack_and_weight_inversions`: Pack multipliers (`BOX_100`, `BAG_250`, `CRATE_50`) and weight-to-piece conversions (`MT` $\to$ `KG`, `MT` $\to$ `EA`).
 2. `test_supplier_sku_drift_and_jaro_winkler_resolution`: Exact, hyphen-normalized, vendor catalog alias, and Jaro-Winkler ($\ge 0.85$) fuzzy SKU resolution.
-3. `test_multiformat_date_parsing`: `DD/MM/YYYY`, `MM/DD/YYYY`, ISO `YYYY-MM-DD`, and Unix epoch disambiguation.
-4. `test_blast_radius_analytical_marts`: End-to-end mart calculation, planner override writeback (`ASN-L-9011`), and state idempotency on reset.
-5. `test_financial_roi_and_downtime_cost_engine`: Downtime burn rates, freight costs, and ROI calculations.
-6. `test_telemetry_and_query_profiler`: Stage timing instrumentation and distribution key metadata.
-7. `test_what_if_scenario_simulation_additive_waterfall`: Verifies null shock (`0` delta) and confirms sequential waterfall stages sum identically to total simulated exposure.
-8. `test_scale_benchmark_suite`: Verifies pure CPU benchmark (`network_hop_penalty_ms = 0.0`) across 500 to 10,000 rows.
-9. `test_broken_connection_raises_explicit_errors`: Confirms broken DB connections raise `ExasolBootstrapError` / `ExasolWriteError` instead of silently passing.
-10. `test_exasol_views_match_pandas_mirror`: Confirms `compute_analytical_marts(source="exasol")` and `compute_analytical_marts(source="pandas")` match to `0.00 INR` across all 10 financial KPIs.
+3. `test_adaptive_ngram_prefiltering_and_safety_fallback`: Boundary-padded bigrams/trigrams for sub-millisecond filtering plus 0.00% false-negative safety fallback.
+4. `test_multiformat_date_parsing`: `DD/MM/YYYY`, `MM/DD/YYYY`, ISO `YYYY-MM-DD`, and Unix epoch disambiguation.
+5. `test_blast_radius_analytical_marts`: End-to-end mart calculation, planner override writeback (`ASN-L-9011`), and state idempotency on reset.
+6. `test_cryptographic_audit_trail_and_rollback`: SHA-256 Merkle-chained audit ledger, selective override rollback, and mathematical chain validation.
+7. `test_financial_roi_and_downtime_cost_engine`: Downtime burn rates, freight costs, and ROI calculations.
+8. `test_telemetry_and_query_profiler`: Stage timing instrumentation and distribution key metadata.
+9. `test_what_if_scenario_simulation_additive_waterfall`: Verifies null shock (`0` delta) and confirms sequential waterfall stages sum identically to total simulated exposure.
+10. `test_scale_benchmark_suite`: Verifies pure CPU benchmark (`network_hop_penalty_ms = 0.0`) across 500 to 10,000 rows.
+11. `test_broken_connection_raises_explicit_errors`: Confirms broken DB connections raise `ExasolBootstrapError` / `ExasolWriteError` instead of silently passing.
+12. `test_exasol_views_match_pandas_mirror`: Confirms `compute_analytical_marts(source="exasol")` and `compute_analytical_marts(source="pandas")` match to `0.00 INR` across all 10 financial KPIs.
 
 ---
 

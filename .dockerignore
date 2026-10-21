@@ -10,6 +10,7 @@ __pycache__/
 .local_notes/
 scratch/
 pitch/
+data/
 .env
 .env.*
 !.env.example
