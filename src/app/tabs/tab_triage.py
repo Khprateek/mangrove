@@ -113,9 +113,11 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
         verdict = row["operational_verdict"]
         if net_risk > 0:
             return "🔴 Line Threat"
-        if verdict in ["FALSE_STARVATION_CLEARED_BY_UDF", "HARMONIZED_BUFFER_RESTORED"]:
-            return "🟢 Cleared by UDF"
-        return "🟡 Duplicate"
+        if verdict == "FALSE_STARVATION_CLEARED_BY_UDF":
+            return "🟢 False Alarm Cleared"
+        if verdict == "HARMONIZED_BUFFER_RESTORED":
+            return "🟢 Buffer Restored"
+        return "🟡 Duplicate Suppressed"
 
     def format_raw_payload(row: pd.Series) -> str:
         uom = str(row["raw_shipped_uom"])
@@ -129,11 +131,16 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
 
     def format_legacy_alarm(row: pd.Series) -> str:
         alarm = safe_float(row["revenue_at_risk_legacy_inr"])
-        return f"DROPPED ({format_inr_crore_lakh(alarm)})" if alarm > 0 else "DROPPED (Zero Stock)"
+        return f"REJECTED ({format_inr_crore_lakh(alarm)})" if alarm > 0 else "REJECTED AT GATE (Dirty Data)"
 
     def format_true_net_risk(row: pd.Series) -> str:
         net = safe_float(row["revenue_at_risk_net_inr"])
-        return format_inr_crore_lakh(net) if net > 0 else "Rs 0.00 (Cleared)"
+        alarm = safe_float(row["revenue_at_risk_legacy_inr"])
+        if net > 0:
+            return format_inr_crore_lakh(net)
+        if alarm > 0:
+            return "Rs 0.00 (Cleared)"
+        return "Rs 0.00 (Unblocked)"
 
     display_df = pd.DataFrame(
         {
@@ -144,7 +151,7 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
             "Defect Mode": filtered_df["anomaly_type"].map(DEFECT_LABELS).fillna(filtered_df["anomaly_type"]),
             "Harmonized In-DB": filtered_df.apply(format_harmonized_part, axis=1),
             "Target Line": filtered_df["affected_lines"],
-            "Legacy ERP Alarm": filtered_df.apply(format_legacy_alarm, axis=1),
+            "Legacy ERP Status": filtered_df.apply(format_legacy_alarm, axis=1),
             "True Net Risk": filtered_df.apply(format_true_net_risk, axis=1),
         }
     )
