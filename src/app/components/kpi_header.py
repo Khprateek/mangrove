@@ -37,26 +37,26 @@ def render_kpi_header(marts: dict, client: ChakanExasolClient) -> None:
     phantom_units = int(pd.to_numeric(inv_df["phantom_inventory_qty"], errors="coerce").fillna(0.0).sum())
     pending_count = int((triage_df["harmonization_state"] == "UDF_HARMONIZED_PENDING_APPROVAL").sum())
 
-    st.markdown("<div style='margin-top: 1.25rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 0.5rem;'></div>", unsafe_allow_html=True)
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric(
-        "48h Scheduled Output",
+        "Scheduled Exposure",
         format_inr_crore_lakh(total_scheduled_val),
         f"{int(sched_units.sum()):,} Units (4 Lines)",
     )
     c2.metric(
-        "Legacy Blind-Spot Risk",
+        "Legacy Blind Spots",
         format_inr_crore_lakh(legacy_risk_val),
         f"{len(triage_df)} Quarantined ASNs",
         delta_color="inverse",
     )
     c3.metric(
-        "Cleared by Exasol UDFs",
+        "Cleared Exposure",
         format_inr_crore_lakh(cleared_by_udf_val),
         "↗ Harmonized in RAM",
     )
     c4.metric(
-        "True Net Shortage",
+        "Net Shortage",
         format_inr_crore_lakh(net_risk_val),
         f"{pending_count} Actionable Deficits",
         delta_color="inverse" if net_risk_val > 0 else "normal",
@@ -72,11 +72,11 @@ def render_kpi_header(marts: dict, client: ChakanExasolClient) -> None:
     if roi:
         st.markdown(
             f"""
-            <div style="background-color: {COLOR_SURFACE}; border-left: 4px solid {COLOR_BRAND_PRIMARY}; border-top: 1px solid {COLOR_BORDER}; border-right: 1px solid {COLOR_BORDER}; border-bottom: 1px solid {COLOR_BORDER}; padding: 12px 18px; border-radius: 10px; margin-top: 16px; margin-bottom: 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 0.80rem; box-shadow: 0 1px 4px rgba(24, 61, 50, 0.04);">
-                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; letter-spacing: 0.6px; font-size: 0.74rem;">BUSINESS DEFENSE &amp; ROI</span>
-                <span style="color: {COLOR_TEXT_SECONDARY};">Total Stoppage Exposure: <b style="color: {COLOR_DANGER}; font-size: 0.85rem;">{format_inr_crore_lakh(roi.get('total_stoppage_exposure_inr', 0))}</b></span>
+            <div style="background-color: {COLOR_SURFACE}; border-left: 4px solid {COLOR_BRAND_PRIMARY}; border-top: 1px solid {COLOR_BORDER}; border-right: 1px solid {COLOR_BORDER}; border-bottom: 1px solid {COLOR_BORDER}; padding: 8px 16px; border-radius: 9px; margin-top: 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; box-shadow: 0 1px 3px rgba(24, 61, 50, 0.03);">
+                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; letter-spacing: 0.6px; font-size: 0.72rem;">BUSINESS DEFENSE &amp; ROI</span>
+                <span style="color: {COLOR_TEXT_SECONDARY};">Total Stoppage Exposure: <b style="color: {COLOR_DANGER}; font-size: 0.82rem;">{format_inr_crore_lakh(roi.get('total_stoppage_exposure_inr', 0))}</b></span>
                 <span style="color: {COLOR_TEXT_SECONDARY};">Emergency Freight: <b style="color: {COLOR_TEXT_PRIMARY};">{format_inr_crore_lakh(roi.get('benchmark_freight_inr', 45000))}</b></span>
-                <span style="color: {COLOR_TEXT_SECONDARY};">Executive ROI: <b style="color: {COLOR_BRAND_PRIMARY}; font-size: 0.95rem;">{roi.get('headline_roi_x', 1175):,.0f}x</b></span>
+                <span style="color: {COLOR_TEXT_SECONDARY};">Executive ROI: <b style="color: {COLOR_BRAND_PRIMARY}; font-size: 0.90rem;">{roi.get('headline_roi_x', 1175):,.0f}x</b></span>
                 <span style="color: {COLOR_TEXT_SECONDARY};">Avoided Panic Freight: <b style="color: {COLOR_BRAND_PRIMARY}; font-weight: 700;">{format_inr_crore_lakh(roi.get('avoided_panic_freight_inr', 135000))}</b></span>
             </div>
             """,

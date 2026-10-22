@@ -73,15 +73,15 @@ def inject_minimalist_theme() -> None:
             background-color: {COLOR_BACKGROUND} !important;
         }}
 
-        /* Main Container Spacing & Generous Breathing Room */
+        /* Main Container Spacing & Generous Breathing Room with Compact Header */
         .main .block-container {{
             max-width: 1440px !important;
-            padding: 2.25rem 3rem 4.5rem 3rem !important;
+            padding: 1.25rem 2.5rem 3.5rem 2.5rem !important;
         }}
 
         /* Column Horizontal Spacing */
         [data-testid="stHorizontalBlock"] {{
-            gap: 1.25rem !important;
+            gap: 1.15rem !important;
         }}
 
         /* Standardize Headings & Spacing */
@@ -121,53 +121,73 @@ def inject_minimalist_theme() -> None:
         hr {{
             border: none !important;
             border-top: 1px solid {COLOR_BORDER} !important;
-            margin: 2rem 0 !important;
+            margin: 1.25rem 0 !important;
         }}
 
-        /* Elevated Clean White Metric Cards with Generous Spacing */
+        /* Elevated Clean White Metric Cards with Compact Footprint */
         [data-testid="stMetric"] {{
             background-color: {COLOR_SURFACE} !important;
             border: 1px solid {COLOR_BORDER} !important;
             border-radius: 12px !important;
-            padding: 18px 22px !important;
-            box-shadow: 0 1px 4px rgba(24, 61, 50, 0.04) !important;
+            padding: 12px 18px !important;
+            box-shadow: 0 1px 3px rgba(24, 61, 50, 0.03) !important;
             transition: all 0.2s ease-in-out !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
-            min-height: 108px !important;
+            min-height: 94px !important;
         }}
         [data-testid="stMetric"]:hover {{
             border-color: {COLOR_BRAND_ACCENT} !important;
             box-shadow: 0 4px 12px rgba(24, 61, 50, 0.08) !important;
         }}
         [data-testid="stMetricLabel"] {{
-            font-size: 0.78rem !important;
-            font-weight: 600 !important;
+            font-size: 0.74rem !important;
+            font-weight: 700 !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.6px !important;
+            letter-spacing: 0.5px !important;
             color: {COLOR_TEXT_SECONDARY} !important;
-            margin-bottom: 6px !important;
+            margin-bottom: 4px !important;
+            white-space: normal !important;
+            word-wrap: break-word !important;
+        }}
+        [data-testid="stMetricLabel"] > div {{
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            overflow: visible !important;
         }}
         [data-testid="stMetricValue"] {{
-            font-size: 1.65rem !important;
+            font-size: 1.55rem !important;
             font-weight: 700 !important;
             color: {COLOR_TEXT_PRIMARY} !important;
-            line-height: 1.2 !important;
+            line-height: 1.15 !important;
         }}
         [data-testid="stMetricDelta"] {{
-            font-size: 0.80rem !important;
+            font-size: 0.76rem !important;
             font-weight: 600 !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
-            margin-top: 6px !important;
+            margin-top: 4px !important;
         }}
 
-        /* Hero Positive Metric Card: Pale Sage (Card 3 in Top KPI Bar) */
+        /* Operational Color Semantics for Top Metric Cards */
+        /* Card 3: Cleared Exposure (Green - Positive Cleared Outcome) */
         .main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {{
             background-color: {COLOR_BRAND_SOFT} !important;
             border: 1px solid #C6DBC3 !important;
+        }}
+        .main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="column"]:nth-child(3) [data-testid="stMetricValue"] {{
+            color: {COLOR_BRAND_PRIMARY} !important;
+        }}
+
+        /* Card 4: Net Shortage (Red - Confirmed Operational Deficit) */
+        .main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="column"]:nth-child(4) [data-testid="stMetric"] {{
+            background-color: #FDF4F4 !important;
+            border: 1px solid #F5C6C6 !important;
+        }}
+        .main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {{
+            color: {COLOR_DANGER} !important;
         }}
 
         /* Sidebar: Deep Mangrove Forest Styling */

@@ -70,8 +70,6 @@ def main() -> None:
     render_header(project_root=PROJECT_ROOT)
     render_kpi_header(marts, client)
 
-    st.markdown("---")
-
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
         [
             "1. Inbound Triage",
