@@ -63,15 +63,15 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
     with col_t_filter:
         urgency_filter = st.radio(
             "Filter Stream:",
-            ["🔴 Active Line Threats", "All Quarantined", "🟢 Cleared by UDFs"],
+            ["All Quarantined (13 ASNs)", "🔴 Active Threats (7)", "🟢 Cleared by UDF (6)"],
             horizontal=True,
             label_visibility="collapsed",
         )
 
     # Apply quick filter
-    if urgency_filter == "🔴 Active Line Threats":
+    if urgency_filter == "🔴 Active Threats (7)":
         filtered_df = triage_df[triage_df["revenue_at_risk_net_inr"] > 0]
-    elif urgency_filter == "🟢 Cleared by UDFs":
+    elif urgency_filter == "🟢 Cleared by UDF (6)":
         filtered_df = triage_df[
             triage_df["operational_verdict"].isin(
                 ["FALSE_STARVATION_CLEARED_BY_UDF", "HARMONIZED_BUFFER_RESTORED"]
@@ -93,34 +93,59 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
         unsafe_allow_html=True,
     )
 
+    DEFECT_LABELS = {
+        "SKU_DRIFT_AND_UOM_BOX": "Alias SKU + Box-100",
+        "SKU_DRIFT_AND_UOM_BAG": "Fuzzy SKU + Bag-250",
+        "EPOCH_DATE_AND_UOM_BOX": "Corrupt Unix Date + Box",
+        "SKU_HYPHEN_STRIPPED": "Stripped Hyphen (OCR)",
+        "OCR_SKU_ALIAS_AND_BOX": "OCR Vendor Code + Box",
+        "UOM_MT_VS_KG_CLEAN_QTY": "MT to KG Multiplier",
+        "SPLIT_PO_AND_UOM_CRATE": "Crate-50 + Split Shortage",
+        "SPLIT_PO_SHORT_SHIPMENT": "Split PO Short-Shipment",
+        "UOM_MT_VS_KG_SHORTAGE": "MT to KG + Shortage",
+        "SKU_ALIAS_AND_SHORT_QTY": "Catalog Alias + Shortage",
+        "DUPLICATE_ASN_RETRANSMIT": "Duplicate Retransmit",
+        "WEIGHT_MT_TO_EA_INVERSION": "Weight MT to Piece (EA)",
+    }
+
     def format_verdict_badge(row: pd.Series) -> str:
+        net_risk = safe_float(row["revenue_at_risk_net_inr"])
         verdict = row["operational_verdict"]
-        net_risk = row["revenue_at_risk_net_inr"]
         if net_risk > 0:
-            return "🔴 Line Halt Threat"
+            return "🔴 Line Threat"
         if verdict in ["FALSE_STARVATION_CLEARED_BY_UDF", "HARMONIZED_BUFFER_RESTORED"]:
             return "🟢 Cleared by UDF"
-        return "🟡 Monitored"
+        return "🟡 Duplicate"
+
+    def format_raw_payload(row: pd.Series) -> str:
+        uom = str(row["raw_shipped_uom"])
+        qty = safe_float(row["raw_shipped_qty"])
+        qty_str = f"{qty:.3f}" if uom == "MT" else f"{qty:,.0f}"
+        return f"{row['raw_supplier_sku']} ({qty_str} {uom})"
+
+    def format_harmonized_part(row: pd.Series) -> str:
+        qty = safe_float(row["harmonized_shipped_qty"])
+        return f"{row['resolved_part_num']} ({qty:,.0f} {row['canonical_uom']})"
+
+    def format_legacy_alarm(row: pd.Series) -> str:
+        alarm = safe_float(row["revenue_at_risk_legacy_inr"])
+        return f"DROPPED ({format_inr_crore_lakh(alarm)})" if alarm > 0 else "DROPPED (Zero Stock)"
+
+    def format_true_net_risk(row: pd.Series) -> str:
+        net = safe_float(row["revenue_at_risk_net_inr"])
+        return format_inr_crore_lakh(net) if net > 0 else "Rs 0.00 (Cleared)"
 
     display_df = pd.DataFrame(
         {
-            "Urgency": filtered_df.apply(format_verdict_badge, axis=1),
+            "Verdict": filtered_df.apply(format_verdict_badge, axis=1),
             "ASN ID": filtered_df["asn_line_id"],
-            "PO Ref": filtered_df["po_number_ref"],
-            "Supplier": filtered_df["supplier_name"] + " (" + filtered_df["tier_level"] + ")",
-            "Resolved Part": filtered_df["resolved_part_num"],
-            "Inbound vs PO": filtered_df["harmonized_shipped_qty"].apply(lambda v: f"{safe_float(v):,.0f}")
-            + " / "
-            + filtered_df["po_ordered_qty"].apply(lambda v: f"{safe_float(v):,.0f}")
-            + " "
-            + filtered_df["canonical_uom"],
+            "Supplier": filtered_df["supplier_name"],
+            "Raw Payload (Defect)": filtered_df.apply(format_raw_payload, axis=1),
+            "Defect Mode": filtered_df["anomaly_type"].map(DEFECT_LABELS).fillna(filtered_df["anomaly_type"]),
+            "Harmonized In-DB": filtered_df.apply(format_harmonized_part, axis=1),
             "Target Line": filtered_df["affected_lines"],
-            "Hours to Halt": filtered_df["min_hours_to_stop_harmonized"].apply(lambda v: f"{safe_float(v):.1f}h"),
-            "True Net Risk": filtered_df["revenue_at_risk_net_inr"].apply(format_inr_crore_lakh),
-            "Mitigation ROI": filtered_df["mitigation_roi_x"].apply(
-                lambda v: f"{safe_float(v):,.0f}x" if safe_float(v) > 0 else "-"
-            ),
-            "Status": filtered_df["harmonization_state"],
+            "Legacy ERP Alarm": filtered_df.apply(format_legacy_alarm, axis=1),
+            "True Net Risk": filtered_df.apply(format_true_net_risk, axis=1),
         }
     )
     st.dataframe(display_df, use_container_width=True, hide_index=True)
@@ -135,7 +160,11 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
         unsafe_allow_html=True,
     )
 
-    options = filtered_df["asn_line_id"].tolist()
+    shortage_ids = [
+        x for x in filtered_df["asn_line_id"].tolist()
+        if safe_float(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr'].values[0]) > 0
+    ]
+    options = shortage_ids if shortage_ids else filtered_df["asn_line_id"].tolist()
     selected_id = st.selectbox(
         "Select Shortage Record to Resolve:",
         options=options,
