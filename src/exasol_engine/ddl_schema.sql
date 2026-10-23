@@ -129,3 +129,19 @@ CREATE OR REPLACE TABLE ASN_PLANNER_OVERRIDES (
     resolved_at             TIMESTAMP NOT NULL,
     CONSTRAINT pk_asn_overrides PRIMARY KEY (asn_line_id) ENABLE
 );
+
+-- 9. Merkle-chained Audit Log (imported positionally from the AUDIT_LOG_LEDGER dataframe)
+CREATE OR REPLACE TABLE AUDIT_LOG_LEDGER (
+    event_id                VARCHAR(40) UTF8 NOT NULL,
+    event_type              VARCHAR(40) UTF8 NOT NULL,
+    asn_line_id             VARCHAR(40) UTF8,
+    resolved_part_num       VARCHAR(40) UTF8,
+    normalized_qty          DOUBLE,
+    normalized_uom          VARCHAR(20) UTF8,
+    audit_action            VARCHAR(60) UTF8,
+    operator_id             VARCHAR(60) UTF8,
+    event_ts                VARCHAR(30) UTF8,
+    sha256_hash             VARCHAR(64) UTF8 NOT NULL,
+    prev_hash               VARCHAR(100) UTF8 NOT NULL,
+    CONSTRAINT pk_audit_log PRIMARY KEY (event_id) ENABLE
+);

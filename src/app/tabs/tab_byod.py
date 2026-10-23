@@ -1,7 +1,7 @@
-"""Tab 8: Industrial Ingestion & Custom Bring-Your-Own-Data (BYOD) Studio.
+"""Tab 8: Bring-Your-Own-Data (BYOD) Inbound Studio.
 
-Allows automotive planners to stress-test Mangrove with dirty CSV/Excel dispatches,
-client-side anonymization, and authentic Chakan industrial presets.
+Upload (or pick a preset) inbound delivery batch, harmonize it through the same three
+UDFs the Exasol views use, and see how it changes the baseline starvation exposure.
 """
 
 from __future__ import annotations
@@ -12,19 +12,15 @@ import streamlit as st
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
-    COLOR_BRAND_SOFT,
-    COLOR_CANOPY_GREEN,
     COLOR_CARD_BG,
-    COLOR_DANGER,
     COLOR_INK_GREEN,
     COLOR_PALE_SAGE,
-    COLOR_SURFACE,
-    COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
     format_inr_crore_lakh,
 )
 from src.exasol_engine.custom_ingestor import (
-    anonymize_dataset,
+    PRESET_LABELS,
+    anonymize_frame,
     detect_and_map_columns,
     generate_expedite_manifest,
     generate_sap_migo_export,
@@ -34,181 +30,150 @@ from src.exasol_engine.custom_ingestor import (
 )
 from src.exasol_engine.db_client import ChakanExasolClient
 
+UPLOAD_OPTION = "Upload your own delivery file (.csv, .tsv, .xlsx)"
+
 
 def render_byod_tab(client: ChakanExasolClient, marts: dict) -> None:
-    """Render the Industrial Ingestion and BYOD Studio."""
-    # 1. Enterprise Privacy & Security Trust Banner
+    """Render the BYOD inbound studio."""
     st.markdown(
         f"""
-        <div style="background-color: {COLOR_CARD_BG}; border: 1px solid {COLOR_BORDER}; border-left: 5px solid {COLOR_BRAND_PRIMARY}; border-radius: 12px; padding: 18px 24px; margin-bottom: 24px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div>
-                    <h3 style="margin: 0; color: {COLOR_BRAND_PRIMARY}; font-size: 1.25rem;">
-                        🏭 Industrial Ingestion & Bring-Your-Own-Data (BYOD) Studio
-                    </h3>
-                    <p style="margin: 4px 0 0 0; color: {COLOR_TEXT_SECONDARY}; font-size: 0.85rem;">
-                        Test dirty delivery dispatches against bill-of-materials explosion with in-memory privacy.
-                    </p>
-                </div>
-                <div>
-                    <span style="background-color: {COLOR_PALE_SAGE}; color: {COLOR_INK_GREEN}; font-weight: 700; font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; border: 1px solid {COLOR_BORDER};">
-                        🔒 ZERO-PERSISTENCE IN-MEMORY ISOLATION
-                    </span>
-                </div>
-            </div>
-            <p style="margin: 10px 0 0 0; color: {COLOR_TEXT_SECONDARY}; font-size: 0.8rem; line-height: 1.4;">
-                <b>Data Sovereignty Guarantee</b>: Any uploaded CSV/Excel file is processed purely in volatile RAM within this browser session. 
-                Zero records are persisted to disk or external servers. For corporate deployments, Mangrove deploys 100% on-premise inside your private subnet via <code>docker-compose.yml</code>.
+        <div style="background-color:{COLOR_CARD_BG}; border:1px solid {COLOR_BORDER}; border-left:5px solid {COLOR_BRAND_PRIMARY}; border-radius:12px; padding:16px 22px; margin-bottom:20px;">
+            <h3 style="margin:0; color:{COLOR_BRAND_PRIMARY}; font-size:1.2rem;">Bring-Your-Own-Data Inbound Studio</h3>
+            <p style="margin:4px 0 0 0; color:{COLOR_TEXT_SECONDARY}; font-size:0.85rem;">
+                Your batch is layered on top of the baseline ASN feed, so the numbers below are directly comparable with Tabs 1-7.
+                An empty batch reproduces the baseline exactly.
+            </p>
+            <p style="margin:8px 0 0 0; color:{COLOR_TEXT_SECONDARY}; font-size:0.78rem;">
+                <b>Privacy:</b> files are processed in memory for this session only and are never written to disk by the app.
+                With a live Exasol connection the rows are staged in a scratch table that is dropped immediately afterwards.
+                Presets below use only synthetic suppliers and parts.
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    # 2. Ingestion Source Selection
-    source_mode = st.radio(
-        "Select Ingestion Source",
-        options=[
-            "Preset: Tata Motors Chakan Inbound (Mixed Packaging UOMs & OCR Suffixes)",
-            "Preset: Bharat Forge Foundry (Casting Revisions & Scrap Short-Shipments)",
-            "Preset: Bosch Powertrain Electronics (Epoch Timestamps & Sensor Harnesses)",
-            "Upload Custom Delivery Dispatch (.CSV, .TSV, .XLSX)",
-        ],
-        index=0,
-        horizontal=False,
-    )
+    source = st.radio("Inbound source", options=[*PRESET_LABELS.values(), UPLOAD_OPTION], index=0)
 
     raw_df: pd.DataFrame | None = None
-    source_name = "TATA_CHAKAN_CORRIDOR"
-
-    if "Tata Motors" in source_mode:
-        source_name = "TATA_CHAKAN_CORRIDOR"
-        raw_df = get_industrial_scenario_preset("TATA_CHAKAN_CORRIDOR")
-    elif "Bharat Forge" in source_mode:
-        source_name = "BHARAT_FORGE_FOUNDRY"
-        raw_df = get_industrial_scenario_preset("BHARAT_FORGE_FOUNDRY")
-    elif "Bosch" in source_mode:
-        source_name = "BOSCH_POWERTRAIN_ELECTRONICS"
-        raw_df = get_industrial_scenario_preset("BOSCH_POWERTRAIN_ELECTRONICS")
-    else:
-        source_name = "CUSTOM_UPLOAD"
-        uploaded_file = st.file_uploader(
-            "Upload Delivery Dispatch / Challan / ASN File",
-            type=["csv", "tsv", "xlsx", "xls"],
-            help="Upload your supplier delivery schedule or challan export. Data stays purely in-memory.",
-        )
-        if uploaded_file is not None:
-            raw_bytes = uploaded_file.read()
-            raw_df = parse_custom_inbound_stream(raw_bytes, uploaded_file.name)
+    if source == UPLOAD_OPTION:
+        st.caption("Rows are matched to open purchase orders by PO number, so include a PO column for best resolution.")
+        uploaded = st.file_uploader("Delivery / challan / ASN file", type=["csv", "tsv", "xlsx", "xls"])
+        if uploaded is not None:
+            raw_df = parse_custom_inbound_stream(uploaded.read(), uploaded.name)
         else:
-            st.info("👆 Upload a CSV or Excel file to begin custom blast-radius analysis, or choose one of the industrial presets above.")
+            st.info("Upload a file, or choose a preset above.")
+    else:
+        key = next(k for k, v in PRESET_LABELS.items() if v == source)
+        raw_df = get_industrial_scenario_preset(key)
 
-    if raw_df is not None and len(raw_df) > 0:
-        st.markdown("---")
+    if raw_df is None or len(raw_df) == 0:
+        return
 
-        # 3. Smart Column Mapping & Anonymization Options
-        col_opts1, col_opts2 = st.columns([2, 1], gap="medium")
-
-        with col_opts1:
-            st.markdown(f"#### 📋 Raw Inbound Preview (`{len(raw_df)}` rows)")
-            st.dataframe(raw_df.head(6), use_container_width=True, height=180)
-
-        with col_opts2:
-            st.markdown("#### 🛡️ Privacy & Column Controls")
-            anonymize_toggle = st.checkbox(
-                "🔒 Client-Side Anonymizer",
-                value=False,
-                help="Mask supplier names and internal codes into anonymous tokens (e.g. SUP-ANON-01, SKU-ANON-01) while preserving exact MRP graph mathematics.",
-            )
-
-            with st.expander("⚙️ Advanced Column Mapping"):
-                st.caption("Auto-detected standard headers. Adjust only if necessary:")
-                mapped_cols, used_mapping = detect_and_map_columns(raw_df)
-                for canon, src in used_mapping.items():
-                    st.text(f"• {canon} ➔ {src}")
-
-        # Apply anonymization if selected
-        dataset_to_process = raw_df
-        if anonymize_toggle:
-            dataset_to_process, anon_meta = anonymize_dataset(raw_df)
-            st.info(f"🛡️ Data Anonymized: {anon_meta['anonymized_suppliers_count']} suppliers and {anon_meta['anonymized_skus_count']} SKUs mapped to privacy tokens.")
-
-        # 4. In-Database Harmonization Trigger
-        if st.button("⚡ Execute In-Database Harmonization & Blast Radius Engine", type="primary", use_container_width=True):
-            with st.spinner("Executing Python UDFs & BOM explosion..."):
-                results = harmonize_and_evaluate_inbound(dataset_to_process, client)
-                st.session_state["byod_results"] = results
-                st.session_state["byod_source"] = source_name
-
-        # 5. Display Harmonization Results if Available
-        if "byod_results" in st.session_state:
-            res = st.session_state["byod_results"]
-            summary = res["summary"]
-            harmo_df = res["harmonized_df"]
-            shortage_df = res["shortage_df"]
-
-            st.markdown("---")
-            st.markdown("### 📊 Operational Triage & Blast Radius Summary")
-
-            # KPI Metric Banner
-            m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-            with m_col1:
-                st.metric("Total Inbound Value", format_inr_crore_lakh(summary["total_shipped_value_inr"]))
-            with m_col2:
-                st.metric("False Alarms Cleared", format_inr_crore_lakh(summary["false_alarms_cleared_inr"]), delta="Cleared by UDFs")
-            with m_col3:
-                net_short = summary["net_shortage_deficit_inr"]
-                st.metric("Net Shortage Deficit", format_inr_crore_lakh(net_short), delta=f"-{format_inr_crore_lakh(net_short)}" if net_short > 0 else "Fully Stocked", delta_color="inverse")
-            with m_col4:
-                st.metric("Avg Resolution Confidence", f"{summary['avg_confidence'] * 100:.1f}%", help="Calculated via Jaro-Winkler metric across all lines.")
-
-            # Threatened Lines Alert
-            threatened = summary.get("threatened_lines", [])
-            if threatened:
-                st.error(
-                    f"🚨 **Catastrophic Starvation Warning**: Assembly lines **{', '.join(threatened)}** face critical component deficits! "
-                    f"Total Stoppage Exposure: **{format_inr_crore_lakh(summary['total_stoppage_exposure_inr'])}**."
-                )
+    st.markdown("---")
+    left, right = st.columns([2, 1], gap="medium")
+    with left:
+        st.markdown(f"#### Raw inbound preview ({len(raw_df)} rows)")
+        st.dataframe(raw_df.head(8), use_container_width=True, height=220)
+    with right:
+        st.markdown("#### Options")
+        mask = st.checkbox(
+            "Mask identifiers in results and exports",
+            value=False,
+            help="Replaces supplier, SKU, PO and ASN identifiers with tokens in the displayed table and downloads. "
+            "Resolution itself always runs on the real identifiers.",
+        )
+        with st.expander("Detected column mapping"):
+            _, used = detect_and_map_columns(raw_df)
+            if used:
+                for canon, src in used.items():
+                    st.text(f"{canon}  <-  {src}")
             else:
-                st.success("✅ **Zero Line Starvations**: Inbound shipments and True ATP physical stock satisfy all active assembly schedules!")
+                st.text("No headers matched; defaults applied.")
 
-            # Detailed Harmonization Grid
-            st.markdown("#### 🔍 Line-by-Line In-Database Harmonization Ledger")
-            display_cols = [
-                "asn_number",
-                "supplier_id",
-                "supplier_part_num",
-                "resolved_part_num",
-                "sku_match_method",
-                "sku_confidence",
-                "raw_qty",
-                "raw_uom",
-                "normalized_qty",
-                "normalized_uom",
-                "status",
-            ]
-            st.dataframe(harmo_df[display_cols], use_container_width=True, height=240)
+    if st.button("Harmonize batch and evaluate impact", type="primary", use_container_width=True):
+        with st.spinner("Running SKU resolution, UOM normalization and date parsing..."):
+            st.session_state["byod_result"] = harmonize_and_evaluate_inbound(raw_df, client, marts)
+            st.session_state["byod_source"] = source
 
-            # 6. Actionable 1-Click Exports
-            st.markdown("#### 📤 Actionable Operational Exports")
-            exp_col1, exp_col2 = st.columns(2)
+    result = st.session_state.get("byod_result")
+    if not result or st.session_state.get("byod_source") != source:
+        return
 
-            with exp_col1:
-                sap_csv = generate_sap_migo_export(harmo_df)
-                st.download_button(
-                    "📥 Download SAP MIGO / ME21N Clean Inbound Feed (CSV)",
-                    data=sap_csv,
-                    file_name="mangrove_sap_migo_cleared.csv",
-                    mime="text/csv",
-                    use_container_width=True,
-                )
+    summary, harmo, shortage, engine = result["summary"], result["harmonized_df"], result["shortage_df"], result["engine"]
 
-            with exp_col2:
-                expedite_txt = generate_expedite_manifest(summary, shortage_df)
-                st.download_button(
-                    "📄 Download Emergency Supplier Expedite Directive (MD)",
-                    data=expedite_txt,
-                    file_name="mangrove_emergency_expedite_directive.md",
-                    mime="text/markdown",
-                    use_container_width=True,
-                )
+    if engine["engine"] == "EXASOL_UDF":
+        st.success("Executed inside Exasol: the three Python UDFs ran against a scratch staging table.")
+    else:
+        st.warning(f"Engine: local UDF-parity logic. {engine.get('fallback_reason') or ''}")
+
+    st.markdown("### Impact on 48-hour starvation exposure")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Legacy ERP view (with batch)", format_inr_crore_lakh(summary["legacy_risk_with_batch_inr"]))
+    c2.metric(
+        "After harmonization",
+        format_inr_crore_lakh(summary["net_risk_with_batch_inr"]),
+        delta=f"{format_inr_crore_lakh(abs(summary['net_risk_change_vs_baseline_inr']))} "
+        f"{'lower' if summary['net_risk_change_vs_baseline_inr'] < 0 else 'higher'} than baseline",
+        delta_color="inverse",
+    )
+    c3.metric("False alarms cleared", format_inr_crore_lakh(summary["false_alarm_cleared_inr"]))
+    c4.metric(
+        "Batch value recovered",
+        format_inr_crore_lakh(summary["batch_value_recovered_inr"]),
+        help="Inbound value the legacy ETL would have rejected but the UDFs resolved.",
+    )
+    st.caption(
+        f"Baseline without this batch: legacy {format_inr_crore_lakh(summary['baseline_legacy_risk_inr'])}, "
+        f"harmonized {format_inr_crore_lakh(summary['baseline_net_risk_inr'])}. "
+        "Legacy model: a row is visible only if its SKU is an exact catalog key and its UOM already equals the base UOM."
+    )
+
+    counts = summary["status_counts"]
+    st.markdown(
+        f"<div style='background:{COLOR_PALE_SAGE}; color:{COLOR_INK_GREEN}; border-radius:8px; padding:8px 14px; font-size:0.85rem;'>"
+        + " &nbsp;|&nbsp; ".join(f"<b>{k.replace('_', ' ').title()}</b>: {v}" for k, v in counts.items())
+        + f" &nbsp;|&nbsp; <b>Avg SKU confidence</b>: {summary['avg_confidence'] * 100:.1f}%</div>",
+        unsafe_allow_html=True,
+    )
+    if counts.get("NEEDS_PLANNER_REVIEW"):
+        st.info("Rows marked NEEDS PLANNER REVIEW (confidence below 0.85 or unknown part) are not counted as inbound stock.")
+
+    if summary["threatened_lines"]:
+        st.error(f"Lines still short after harmonization: {', '.join(summary['threatened_lines'])}")
+    else:
+        st.success("No assembly line is short after harmonization.")
+
+    display = harmo.copy()
+    if mask:
+        display, _ = anonymize_frame(display)
+
+    st.markdown("#### Line-by-line harmonization ledger")
+    cols = [
+        "asn_number", "supplier_id", "supplier_part_num", "resolved_part_num", "sku_match_method",
+        "sku_confidence", "raw_qty", "raw_uom", "normalized_qty", "canonical_uom", "harmonized_eta_date", "status",
+    ]
+    st.dataframe(display[cols], use_container_width=True, height=280)
+
+    if len(shortage):
+        st.markdown("#### Components still short")
+        st.dataframe(shortage, use_container_width=True, height=200)
+
+    st.markdown("#### Exports")
+    e1, e2 = st.columns(2)
+    with e1:
+        st.download_button(
+            "Download goods-receipt style CSV (SAP-like field names, illustrative)",
+            data=generate_sap_migo_export(display),
+            file_name="mangrove_goods_receipt.csv",
+            mime="text/csv",
+            use_container_width=True,
+        )
+    with e2:
+        st.download_button(
+            "Download expedite review note (Markdown)",
+            data=generate_expedite_manifest(summary, shortage),
+            file_name="mangrove_expedite_note.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )

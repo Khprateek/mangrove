@@ -1,6 +1,6 @@
 """Voice of the Industry & Live Telemetry Hub Component.
 
-Renders verified practitioner reviews, interactive feedback submission,
+Renders community feedback, interactive feedback submission,
 aggregate community metrics, and real-time mobile push webhook controls.
 """
 
@@ -39,27 +39,26 @@ def render_feedback_hub_section(project_root: Any = None) -> None:
     chain = get_all_feedback()
     is_valid_chain, chain_msg = verify_feedback_chain()
 
+    total = summary.get("total_reviews", 0)
+    if total:
+        rating_html = (
+            f'<span style="font-size: 1.3rem; font-weight: 700; color: {COLOR_BRAND_PRIMARY};">{summary["avg_rating"]}</span>'
+            f'<span style="font-size: 0.8rem; color: {COLOR_TEXT_SECONDARY};"> / 5.0 from {total} review{"s" if total != 1 else ""}</span>'
+        )
+    else:
+        rating_html = f'<span style="font-size: 0.85rem; color: {COLOR_TEXT_SECONDARY};">No reviews yet</span>'
+
     st.markdown(
         f"""
-        <div style="background-color: {COLOR_CARD_BG}; border: 1px solid {COLOR_BORDER}; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+        <div style="background-color: {COLOR_CARD_BG}; border: 1px solid {COLOR_BORDER}; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
                 <div>
-                    <h3 style="margin: 0; color: {COLOR_BRAND_PRIMARY}; font-size: 1.25rem;">
-                        🌿 Voice of the Industry & Community Pulse
-                    </h3>
+                    <h3 style="margin: 0; color: {COLOR_BRAND_PRIMARY}; font-size: 1.2rem;">Community Feedback</h3>
                     <p style="margin: 4px 0 0 0; color: {COLOR_TEXT_SECONDARY}; font-size: 0.85rem;">
-                        Verified reviews from automotive materials planners, plant directors, and supply chain evaluators.
+                        Self-reported comments from people who tried the cockpit. Roles and organizations are not verified.
                     </p>
                 </div>
-                <div style="display: flex; gap: 16px; align-items: center;">
-                    <div style="text-align: right;">
-                        <span style="font-size: 1.4rem; font-weight: 700; color: {COLOR_BRAND_PRIMARY};">⭐ {summary.get('avg_rating', 5.0)}</span>
-                        <span style="font-size: 0.8rem; color: {COLOR_TEXT_SECONDARY};"> / 5.0</span>
-                        <div style="font-size: 0.75rem; color: {COLOR_CANOPY_GREEN}; font-weight: 600;">
-                            {summary.get('total_reviews', 0)} Verified Reviews ({summary.get('stars_5_pct', 100)}% 5-Star)
-                        </div>
-                    </div>
-                </div>
+                <div style="text-align: right;">{rating_html}</div>
             </div>
         </div>
         """,
@@ -69,8 +68,8 @@ def render_feedback_hub_section(project_root: Any = None) -> None:
     col1, col2 = st.columns([1, 1], gap="large")
 
     with col1:
-        st.markdown("#### ✍️ Submit Practitioner Verdict / Peer Review")
-        st.caption("Leave your critique or operational feedback. Submissions are cryptographically signed.")
+        st.markdown("#### Leave feedback")
+        st.caption("Critique and suggestions are welcome. Entries are stored in an append-only, hash-chained log.")
 
         with st.form("industry_feedback_form", clear_on_submit=True):
             r_col1, r_col2 = st.columns(2)
@@ -120,7 +119,7 @@ def render_feedback_hub_section(project_root: Any = None) -> None:
                 height=110,
             )
 
-            submit_btn = st.form_submit_button("🚀 Cryptographically Sign & Post Review", use_container_width=True)
+            submit_btn = st.form_submit_button("Submit feedback", use_container_width=True)
 
             if submit_btn:
                 if not feedback_text.strip():
@@ -129,17 +128,19 @@ def render_feedback_hub_section(project_root: Any = None) -> None:
                     new_block = record_feedback(
                         rating=rating_choice,
                         persona=persona_choice,
-                        organization=org_input if org_input.strip() else "Verified Community Evaluator",
+                        organization=org_input if org_input.strip() else "Not provided",
                         feedback_text=feedback_text.strip(),
                         scenario_tested=scenario_choice,
                     )
-                    st.success(f"Review cryptographically recorded in Block #{new_block['index']}! SHA: {new_block['hash'][:16]}...")
+                    st.success(f"Thanks! Recorded as entry #{new_block['index']}.")
                     st.rerun()
 
     with col2:
-        st.markdown("#### 📜 Verified Practitioner Review Wall")
-        st.caption(f"Cryptographic Integrity: {'✅ ' + chain_msg if is_valid_chain else '❌ ' + chain_msg}")
+        st.markdown("#### Recent feedback")
+        st.caption(f"Log integrity: {chain_msg}" if is_valid_chain else f"Log integrity check FAILED: {chain_msg}")
 
+        if not chain:
+            st.info("No feedback yet. Be the first to leave a comment.")
         # Display reviews in reverse chronological order
         reversed_chain = list(reversed(chain))
         for block in reversed_chain[:4]:
@@ -159,7 +160,7 @@ def render_feedback_hub_section(project_root: Any = None) -> None:
                     </p>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: {COLOR_TEXT_SECONDARY};">
                         <span>Module: <b>{block.get('scenario_tested', 'Cockpit')}</b></span>
-                        <code style="font-size: 0.7rem; color: {COLOR_CANOPY_GREEN};">Block #{block.get('index')} • {block.get('hash', '')[:10]}</code>
+                        <code style="font-size: 0.7rem; color: {COLOR_CANOPY_GREEN};">Entry #{block.get('index')} • {block.get('hash', '')[:10]}</code>
                     </div>
                 </div>
                 """,

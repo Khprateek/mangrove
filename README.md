@@ -158,11 +158,12 @@ When a planner reviews a quarantined shipment and submits an override, it writes
 - **4-Stage Execution Profiler**: Live millisecond telemetry across True ATP Mart, ASN UDF Lineage, BOM Starvation Risk, and Triage/ROI post-processing.
 - **Logical Query Plan**: Visual blueprint of in-memory columnar scans, parallel UDF worker scripts, and distributed hash joins.
 
-### Tab 8: Industrial Ingestion & BYOD Studio
-- **Zero-Persistence In-Memory Privacy**: Ingest arbitrary CSV/Excel delivery challans into volatile RAM with certified client-side privacy and zero disk persistence.
-- **3 Authentic Industrial Presets**: One-click evaluation of Tata Motors Chakan Inbound (mixed packaging UOMs & stripped OCR barcodes), Bharat Forge Foundry (metallurgical suffix drift & casting scrap shortfalls), and Bosch Powertrain Electronics (Unix epoch dates & sensor harnesses).
-- **Client-Side Data Sanitizer**: 1-click anonymization masking vendor names and part numbers into synthetic tokens (`SUP-ANON-01`, `SKU-ANON-01`) while preserving exact MRP graph integrity.
-- **Actionable Operational Exports**: 1-click generation of SAP ME21N / MIGO clean goods receipt CSVs and emergency supplier expedite directives.
+### Tab 8: Bring-Your-Own-Data Inbound Studio
+- **Layered on the baseline**: an uploaded (or preset) delivery batch is added on top of the baseline ASN feed and the same starvation formula as `VW_BOM_LINE_STARVATION_RISK` is re-evaluated, so results are directly comparable with Tabs 1-7. An empty batch reproduces the baseline exactly (covered by a test).
+- **Runs the same three UDFs**: with a live Exasol connection the rows are staged in a scratch table and `UDF_RESOLVE_SUPPLIER_SKU`, `UDF_NORMALIZE_UOM` and `UDF_PARSE_ASN_DATE` execute inside Exasol; otherwise the identical logic in `harmonizer_core.py` runs locally. The UI states which engine ran.
+- **Conservative handling**: duplicate transmissions and low-confidence matches (< 0.85) are flagged `NEEDS_PLANNER_REVIEW` and are not counted as inbound stock.
+- **3 synthetic presets** built from the dataset's real open POs (packaging chaos, SKU revisions, EV weight units and epoch dates), a smart column mapper for arbitrary files, optional identifier masking for the displayed table and exports, and a goods-receipt style CSV export (SAP-like field names, illustrative only).
+- **Community feedback**: a small append-only, hash-chained feedback log. It starts empty; roles and organizations are self-reported and unverified.
 
 </details>
 
@@ -222,7 +223,7 @@ Copy-Item .env.example .env
 python -m src.data_generator.generate_all --extra-asns 480
 ```
 
-### 3. Run Verification Tests (23/23 Verified)
+### 3. Run Verification Tests (32 passed with Exasol running)
 ```bash
 python -m pytest -v
 ```

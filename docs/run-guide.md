@@ -97,7 +97,7 @@ What `bootstrap_exasol_schema_and_data()` executes and verifies:
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
-The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine, cockpit UI, and BYOD telemetry (23/23 test coverage across 3 test suites):
+The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine, cockpit UI, and BYOD telemetry (3 test suites; run `python -m pytest -v` for the current count):
 
 ### Engine & UDF Test Suite (`tests/test_harmonization.py`)
 1. `test_uom_normalization_pack_and_weight_inversions`: Pack multipliers (`BOX_100`, `BAG_250`, `CRATE_50`) and weight-to-piece conversions (`MT` $\to$ `KG`, `MT` $\to$ `EA`).
@@ -120,13 +120,13 @@ The test suite in [`tests/`](../tests/) verifies full-stack coverage across data
 16. `test_streamlit_cockpit_headless_execution`: End-to-end integration test executing the complete Streamlit Cockpit app via official `AppTest` with zero unhandled exceptions.
 17. `test_perspective_switcher_toggle_lifecycle`: Verifies segmented pill execution mode toggle with zero widget instantiation conflicts.
 
-### BYOD Industrial Ingestion & Telemetry Test Suite (`tests/test_byod_and_telemetry.py`)
-18. `test_feedback_ledger_cryptographic_chain`: SHA-256 Merkle hash chaining, tamper detection, and summary statistics.
-19. `test_industrial_scenario_presets_and_harmonization`: Verifies Tata Motors, Bharat Forge, and Bosch industrial presets through in-DB harmonization.
-20. `test_column_auto_mapping_and_synonyms`: Smart column mapping across messy delivery dispatch headers.
-21. `test_dataset_anonymization_privacy_guarantee`: Client-side data masking of vendor names and SKUs into privacy tokens.
-22. `test_export_manifest_and_sap_migo_generation`: Formatted SAP ME21N / MIGO goods receipt CSV and emergency expedite directive.
-23. `test_webhook_dispatcher_graceful_handling`: Non-blocking push notification dispatcher to Discord/Slack webhooks.
+### BYOD Inbound & Feedback Log Test Suite (`tests/test_byod_and_telemetry.py`)
+- Feedback log starts empty (no placeholder reviews), hash-chain verification and tamper detection.
+- Presets contain no real company names; each preset harmonizes and can only reduce exposure.
+- An empty batch reproduces the baseline KPIs exactly (`legacy_risk_inr`, `net_risk_inr`).
+- Duplicate and low-confidence rows are not counted; UOM normalization sanity (`BOX_100`, `MT` to `KG`).
+- Engine reporting: no connection and a failing Exasol connection both fall back to local UDF-parity logic and say why.
+- Column auto-mapping, display-only identifier masking, exports, and webhook failure handling.
 
 ---
 

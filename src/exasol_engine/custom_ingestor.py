@@ -1,13 +1,29 @@
-"""Industrial Ingestion & Custom Bring-Your-Own-Data (BYOD) Engine.
+"""Bring-Your-Own-Data (BYOD) ingestion: harmonize an uploaded inbound batch and
+measure its effect on the existing Chakan baseline.
 
-Enables automotive materials planners to stress-test Mangrove with arbitrary CSV/Excel
-delivery dispatches, client-side anonymization, and 3 realistic industrial chaos presets.
+Design (so the numbers stay comparable with Tabs 1-7):
+
+* The uploaded rows are layered ON TOP of the baseline ASN feed. Per-component
+  baseline inbound quantities (legacy-visible and harmonized), true ATP and the
+  production requirement come from the baseline ``bom_risk_mart``. The batch's
+  quantities are added and the exact same starvation formula as
+  ``VW_BOM_LINE_STARVATION_RISK`` is re-evaluated. An empty batch therefore
+  reproduces the baseline KPIs exactly.
+* Harmonization (SKU resolution, UOM normalization, date parsing) runs through the
+  same three Python UDFs that the Exasol views use. When a live Exasol connection is
+  available the rows are staged in a scratch table and the UDFs execute INSIDE Exasol
+  (engine = ``EXASOL_UDF``). Otherwise the identical logic in ``harmonizer_core.py``
+  runs locally (engine = ``PYTHON_UDF_PARITY``). The engine used is always reported.
+* "Legacy ETL" is modelled conservatively: a row is visible to the legacy system only
+  if its SKU is already an exact ITEM_MASTER key and its UOM already equals the
+  item's base UOM.
 """
 
 from __future__ import annotations
 
 import io
 import re
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,12 +31,12 @@ import numpy as np
 import pandas as pd
 
 from src.exasol_engine.harmonizer_core import (
-    jaro_winkler_similarity,
     normalize_uom_quantity,
     parse_asn_date,
     resolve_supplier_sku,
 )
 
+CONFIDENCE_THRESHOLD = 0.85
 
 CANONICAL_COLUMNS = [
     "asn_number",
@@ -42,32 +58,34 @@ COLUMN_SYNONYMS = {
     "expected_delivery_date": ["expected_delivery_date", "eta", "delivery_date", "expected_date", "challan_date", "dispatch_date", "date", "arrival_date"],
 }
 
+PRESET_LABELS = {
+    "PACKAGING_CHAOS": "Preset A: Fasteners, bearings & bar stock (packaging chaos, OCR-stripped SKUs, duplicate)",
+    "SKU_REVISIONS": "Preset B: Castings & gears (SKU revisions, vendor aliases, bulk crates)",
+    "EV_UNITS_AND_DATES": "Preset C: EV laminations & copper (weight units, epoch dates)",
+}
 
+
+# --------------------------------------------------------------------------- parsing
 def parse_custom_inbound_stream(file_bytes: bytes, filename: str) -> pd.DataFrame:
-    """Parse raw uploaded file bytes (CSV or Excel) into a pandas DataFrame."""
+    """Parse raw uploaded file bytes (CSV, TSV or Excel) into a DataFrame (in memory only)."""
     fn_lower = filename.lower()
     bio = io.BytesIO(file_bytes)
     if fn_lower.endswith((".xlsx", ".xls")):
         return pd.read_excel(bio)
-    elif fn_lower.endswith(".tsv"):
+    if fn_lower.endswith(".tsv"):
         return pd.read_csv(bio, sep="\t")
-    else:
-        # Default CSV
-        try:
-            return pd.read_csv(bio)
-        except Exception:
-            bio.seek(0)
-            return pd.read_csv(bio, sep=";")
+    try:
+        return pd.read_csv(bio)
+    except Exception:
+        bio.seek(0)
+        return pd.read_csv(bio, sep=";")
 
 
 def detect_and_map_columns(
     df: pd.DataFrame,
     custom_mapping: dict[str, str] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, str]]:
-    """Detect and map arbitrary column headers to standard canonical schema.
-
-    Returns the mapped DataFrame and the mapping dictionary used.
-    """
+    """Map arbitrary column headers onto the canonical inbound schema."""
     mapping: dict[str, str] = {}
     normalized_cols = {re.sub(r"[^a-z0-9_]", "", str(c).strip().lower().replace(" ", "_")): c for c in df.columns}
 
@@ -85,377 +103,365 @@ def detect_and_map_columns(
                 mapping[canonical] = normalized_cols[clean_syn]
                 break
 
-    mapped_df = pd.DataFrame()
+    mapped_df = pd.DataFrame(index=df.index)
     for canonical in CANONICAL_COLUMNS:
         if canonical in mapping:
             mapped_df[canonical] = df[mapping[canonical]]
+        elif canonical == "asn_number":
+            mapped_df[canonical] = [f"ASN-BYOD-{i + 1:04d}" for i in range(len(df))]
+        elif canonical == "po_number_ref":
+            mapped_df[canonical] = ""
+        elif canonical == "supplier_id":
+            mapped_df[canonical] = "UNKNOWN"
+        elif canonical == "supplier_part_num":
+            mapped_df[canonical] = ""
+        elif canonical == "shipped_qty":
+            mapped_df[canonical] = 0.0
+        elif canonical == "shipped_uom":
+            mapped_df[canonical] = "EA"
         else:
-            # Fallback safe defaults if column is absent
-            if canonical == "asn_number":
-                mapped_df[canonical] = [f"ASN-BYOD-{i+1:04d}" for i in range(len(df))]
-            elif canonical == "po_number_ref":
-                mapped_df[canonical] = [f"PO-AUTO-{i+1:04d}" for i in range(len(df))]
-            elif canonical == "supplier_id":
-                mapped_df[canonical] = "SUP-BYOD-EXT"
-            elif canonical == "supplier_part_num":
-                mapped_df[canonical] = "UNSPECIFIED-SKU"
-            elif canonical == "shipped_qty":
-                mapped_df[canonical] = 0.0
-            elif canonical == "shipped_uom":
-                mapped_df[canonical] = "EA"
-            elif canonical == "expected_delivery_date":
-                mapped_df[canonical] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            mapped_df[canonical] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Clean numeric shipped_qty
     mapped_df["shipped_qty"] = pd.to_numeric(
         mapped_df["shipped_qty"].astype(str).str.replace(r"[^\d.-]", "", regex=True),
         errors="coerce",
     ).fillna(0.0)
-
-    # Clean strings
     for str_col in ["asn_number", "po_number_ref", "supplier_id", "supplier_part_num", "shipped_uom", "expected_delivery_date"]:
         mapped_df[str_col] = mapped_df[str_col].astype(str).str.strip()
 
-    return mapped_df, mapping
+    return mapped_df.reset_index(drop=True), mapping
+
+
+# --------------------------------------------------------------------------- privacy
+def _tokenize(series: pd.Series, prefix: str, width: int) -> tuple[pd.Series, int]:
+    mapping: dict[str, str] = {}
+    for value in series.unique():
+        mapping[value] = f"{prefix}-{len(mapping) + 1:0{width}d}"
+    return series.map(mapping), len(mapping)
+
+
+def anonymize_frame(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Replace vendor/SKU/PO/ASN identifiers with stable tokens in whichever columns exist.
+
+    Used for the DISPLAYED and EXPORTED copy only. Resolution always runs on the real
+    identifiers; masking before resolution would make every SKU unresolvable.
+    """
+    out = df.copy()
+    spec = [
+        ("supplier_id", "SUP-ANON", 2, "anonymized_suppliers_count"),
+        ("supplier_part_num", "SKU-ANON", 3, "anonymized_skus_count"),
+        ("po_number_ref", "PO-ANON", 4, "anonymized_pos_count"),
+        ("asn_number", "ASN-ANON", 4, "anonymized_asns_count"),
+    ]
+    meta: dict[str, Any] = {"privacy_status": "DISPLAY_AND_EXPORT_MASKED"}
+    for col, prefix, width, meta_key in spec:
+        if col in out.columns:
+            out[col], meta[meta_key] = _tokenize(out[col].astype(str), prefix, width)
+    return out, meta
 
 
 def anonymize_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Mask sensitive enterprise identifiers into deterministic anonymous tokens.
-
-    Preserves mathematical groupings and identical token mappings.
-    """
-    anon_df = df.copy()
-
-    supplier_map: dict[str, str] = {}
-    sku_map: dict[str, str] = {}
-    po_map: dict[str, str] = {}
-    asn_map: dict[str, str] = {}
-
-    for s in anon_df["supplier_id"].unique():
-        supplier_map[s] = f"SUP-ANON-{len(supplier_map)+1:02d}"
-
-    for p in anon_df["supplier_part_num"].unique():
-        sku_map[p] = f"SKU-ANON-{len(sku_map)+1:03d}"
-
-    for po in anon_df["po_number_ref"].unique():
-        po_map[po] = f"PO-ANON-{len(po_map)+1:04d}"
-
-    for a in anon_df["asn_number"].unique():
-        asn_map[a] = f"ASN-ANON-{len(asn_map)+1:04d}"
-
-    anon_df["supplier_id"] = anon_df["supplier_id"].map(supplier_map)
-    anon_df["supplier_part_num"] = anon_df["supplier_part_num"].map(sku_map)
-    anon_df["po_number_ref"] = anon_df["po_number_ref"].map(po_map)
-    anon_df["asn_number"] = anon_df["asn_number"].map(asn_map)
-
-    metadata = {
-        "anonymized_suppliers_count": len(supplier_map),
-        "anonymized_skus_count": len(sku_map),
-        "anonymized_pos_count": len(po_map),
-        "anonymized_asns_count": len(asn_map),
-        "privacy_status": "CERTIFIED_IN_MEMORY_ANONYMIZED",
-    }
-
-    return anon_df, metadata
+    """Backward-compatible wrapper around :func:`anonymize_frame`."""
+    return anonymize_frame(df)
 
 
+# --------------------------------------------------------------------------- presets
 def get_industrial_scenario_preset(preset_key: str) -> pd.DataFrame:
-    """Generate realistic un-redacted industrial stress datasets modeled after Chakan plants."""
-    key = preset_key.upper().strip()
+    """Synthetic inbound batches that reference REAL open POs of the baseline dataset.
 
-    if key == "TATA_CHAKAN_CORRIDOR":
-        # Mixed packaging UOMs, loose fasteners, stripped OCR hyphens
+    All suppliers, parts and PO numbers come from the synthetic ERP master, so every
+    row can be resolved and valued. ASN numbers are tagged ``ASN-DEMO-*`` and never
+    collide with the baseline feed.
+    """
+    key = preset_key.upper().strip()
+    cols = CANONICAL_COLUMNS
+    if key == "PACKAGING_CHAOS":
         rows = [
-            {"asn_number": "ASN-TT-8901", "po_number_ref": "PO-7701", "supplier_id": "SUP-CHAKAN-FASTENERS", "supplier_part_num": "ENG-BLT-M12-109", "shipped_qty": 35.0, "shipped_uom": "BOX_100", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-TT-8902", "po_number_ref": "PO-7702", "supplier_id": "SUP-CHAKAN-FASTENERS", "supplier_part_num": "M12X15HT109", "shipped_qty": 20.0, "shipped_uom": "BOX_100", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-TT-8903", "po_number_ref": "PO-7703", "supplier_id": "SUP-BHARAT-BEARINGS", "supplier_part_num": "ENG-BRG-6204-01", "shipped_qty": 500.0, "shipped_uom": "EA", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-TT-8904", "po_number_ref": "PO-7704", "supplier_id": "SUP-BHARAT-BEARINGS", "supplier_part_num": "6204ZZ", "shipped_qty": 12.0, "shipped_uom": "CRATE_50", "expected_delivery_date": "2026-10-25"},
-            {"asn_number": "ASN-TT-8905", "po_number_ref": "PO-7705", "supplier_id": "SUP-MAHINDRA-FORGINGS", "supplier_part_num": "ENGCRD42CR04", "shipped_qty": 8.0, "shipped_uom": "BAG_250", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-TT-8906", "po_number_ref": "PO-7706", "supplier_id": "SUP-MAHINDRA-FORGINGS", "supplier_part_num": "ENG-CRD-42CR-04", "shipped_qty": 450.0, "shipped_uom": "EA", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-TT-8907", "po_number_ref": "PO-7707", "supplier_id": "SUP-CHAKAN-FASTENERS", "supplier_part_num": "M12-BLT-OCR", "shipped_qty": 15.0, "shipped_uom": "BOX_100", "expected_delivery_date": "2026-10-25"},
-            {"asn_number": "ASN-TT-8908", "po_number_ref": "PO-7708", "supplier_id": "SUP-KALYANI-STEELS", "supplier_part_num": "RAW-STL-42CR-B", "shipped_qty": 4.5, "shipped_uom": "MT", "expected_delivery_date": "2026-10-24"},
+            ("ASN-DEMO-A-01", "PO-2026-8802", "SUP-T2-203", "ENG-BLT-M12-109", 40, "BOX_100", "10/24/2026"),
+            ("ASN-DEMO-A-02", "PO-2026-8802", "SUP-T2-203", "M12X15HT109", 30, "BOX_100", "10/24/2026"),
+            ("ASN-DEMO-A-03", "PO-2026-8801", "SUP-T2-204", "6204ZZ", 12, "CRATE_50", "10/25/2026"),
+            ("ASN-DEMO-A-04", "PO-2026-8801", "SUP-T2-204", "ENG-BRG-6204-01", 500, "EA", "10/24/2026"),
+            ("ASN-DEMO-A-05", "PO-2026-8803", "SUP-T2-202", "ENGCRD42CR04", 450, "EA", "24/10/2026"),
+            ("ASN-DEMO-A-06", "PO-2026-8816", "SUP-T3-301", "42CRMO4BILLET", 4.5, "MT", "24/10/2026"),
+            ("ASN-DEMO-A-01", "PO-2026-8802", "SUP-T2-203", "ENG-BLT-M12-109", 40, "BOX_100", "10/24/2026"),
+            ("ASN-DEMO-A-07", "PO-2026-8802", "SUP-T2-203", "ZZ-UNKNOWN-77", 10, "EA", "10/24/2026"),
         ]
-    elif key == "BHARAT_FORGE_FOUNDRY":
-        # Suffix drift, metallurgical revisions, casting short-shipments
+    elif key == "SKU_REVISIONS":
         rows = [
-            {"asn_number": "ASN-BF-4411", "po_number_ref": "PO-9911", "supplier_id": "SUP-BHARAT-FORGE-FOUNDRY", "supplier_part_num": "DUCHUB14", "shipped_qty": 280.0, "shipped_uom": "EA", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-BF-4412", "po_number_ref": "PO-9912", "supplier_id": "SUP-BHARAT-FORGE-FOUNDRY", "supplier_part_num": "AXL-HUB-DUC-14-REV2", "shipped_qty": 120.0, "shipped_uom": "EA", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-BF-4413", "po_number_ref": "PO-9913", "supplier_id": "SUP-BHARAT-FORGE-FOUNDRY", "supplier_part_num": "AXL-HUB-DUC-14", "shipped_qty": 80.0, "shipped_uom": "EA", "expected_delivery_date": "2026-10-25"},
-            {"asn_number": "ASN-BF-4414", "po_number_ref": "PO-9914", "supplier_id": "SUP-PUNE-GEAR-TECH", "supplier_part_num": "TRN-GER-HEL-34", "shipped_qty": 650.0, "shipped_uom": "EA", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-BF-4415", "po_number_ref": "PO-9915", "supplier_id": "SUP-PUNE-GEAR-TECH", "supplier_part_num": "HSRHEL34", "shipped_qty": 10.0, "shipped_uom": "CRATE_50", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-BF-4416", "po_number_ref": "PO-9916", "supplier_id": "SUP-TALWADE-CASTINGS", "supplier_part_num": "AXL-SEL-FKM-85", "shipped_qty": 900.0, "shipped_uom": "EA", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-BF-4417", "po_number_ref": "PO-9917", "supplier_id": "SUP-TALWADE-CASTINGS", "supplier_part_num": "FKM85SEAL", "shipped_qty": 25.0, "shipped_uom": "BOX_100", "expected_delivery_date": "2026-10-25"},
+            ("ASN-DEMO-B-01", "PO-2026-8810", "SUP-T2-207", "DUCHUB14", 280, "EA", "24/10/2026"),
+            ("ASN-DEMO-B-02", "PO-2026-8810", "SUP-T2-207", "AXL-HUB-DUC-14-REV2", 120, "EA", "24/10/2026"),
+            ("ASN-DEMO-B-03", "PO-2026-8810", "SUP-T2-207", "AXL-HUB-DUC-14", 80, "EA", "25/10/2026"),
+            ("ASN-DEMO-B-04", "PO-2026-8807", "SUP-T2-205", "HSRHEL34", 10, "CRATE_50", "24/10/2026"),
+            ("ASN-DEMO-B-05", "PO-2026-8807", "SUP-T2-205", "TRN-GER-HEL-34", 650, "EA", "24/10/2026"),
+            ("ASN-DEMO-B-06", "PO-2026-8812", "SUP-T3-302", "FKM85SEAL", 25, "BOX_100", "10/25/2026"),
+        ]
+    elif key == "EV_UNITS_AND_DATES":
+        rows = [
+            ("ASN-DEMO-C-01", "PO-2026-8813", "SUP-T2-208", "STALAM01SIL", 2, "MT", "1761264000"),
+            ("ASN-DEMO-C-02", "PO-2026-8813", "SUP-T2-208", "EVC-STA-LAM-01", 1500, "KG", "24/10/2026"),
+            ("ASN-DEMO-C-03", "PO-2026-8814", "SUP-T3-303", "CUHAIRPIN04", 1.2, "MT", "24/10/2026"),
+            ("ASN-DEMO-C-04", "PO-2026-8815", "SUP-T1-104", "EVC-MAG-NDF-48", 30, "BOX_100", "2026-10-25"),
         ]
     else:
-        # BOSCH_POWERTRAIN_ELECTRONICS: Epoch timestamp drift, EV copper windings, stator laminations
-        rows = [
-            {"asn_number": "ASN-BS-1021", "po_number_ref": "PO-8821", "supplier_id": "SUP-BOSCH-CHAKAN-SYS", "supplier_part_num": "EVC-STA-LAM-01", "shipped_qty": 400.0, "shipped_uom": "EA", "expected_delivery_date": "1761264000"},  # Epoch timestamp
-            {"asn_number": "ASN-BS-1022", "po_number_ref": "PO-8822", "supplier_id": "SUP-BOSCH-CHAKAN-SYS", "supplier_part_num": "STALAM01SIL", "shipped_qty": 6.0, "shipped_uom": "CRATE_50", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-BS-1023", "po_number_ref": "PO-8823", "supplier_id": "SUP-STERLITE-COPPER", "supplier_part_num": "EVC-WND-CU-04", "shipped_qty": 1500.0, "shipped_uom": "EA", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-BS-1024", "po_number_ref": "PO-8824", "supplier_id": "SUP-STERLITE-COPPER", "supplier_part_num": "CUHAIRPIN04", "shipped_qty": 15.0, "shipped_uom": "BOX_100", "expected_delivery_date": "2026-10-25"},
-            {"asn_number": "ASN-BS-1025", "po_number_ref": "PO-8825", "supplier_id": "SUP-CHAKAN-FASTENERS", "supplier_part_num": "ENG-BLT-M12-109", "shipped_qty": 50.0, "shipped_uom": "BOX_100", "expected_delivery_date": "2026-10-24"},
-            {"asn_number": "ASN-BS-1026", "po_number_ref": "PO-8826", "supplier_id": "SUP-BHARAT-BEARINGS", "supplier_part_num": "6204ZZ", "shipped_qty": 20.0, "shipped_uom": "BOX_100", "expected_delivery_date": "2026-10-24"},
-        ]
-
-    return pd.DataFrame(rows)
+        raise ValueError(f"Unknown preset: {preset_key}")
+    return pd.DataFrame(rows, columns=cols)
 
 
-def harmonize_and_evaluate_inbound(
-    df: pd.DataFrame,
-    client: Any,
-) -> dict[str, Any]:
-    """Execute In-DB Python UDF harmonization and BOM blast-radius on arbitrary inbound data."""
-    clean_df, _ = detect_and_map_columns(df)
-    item_master = client.tables.get("ITEM_MASTER")
-    bom = client.tables.get("BILL_OF_MATERIALS")
-    schedules = client.tables.get("PRODUCTION_SCHEDULES")
-    ledger = client.tables.get("WAREHOUSE_INVENTORY_LEDGER")
+# --------------------------------------------------------------------------- harmonization
+def _legacy_visible(raw_sku: str, raw_uom: str, base_uom: str | None, catalog: set[str]) -> bool:
+    """Would a legacy ETL accept this row as-is?"""
+    return bool(base_uom) and raw_sku in catalog and raw_uom.strip().upper() == str(base_uom).strip().upper()
 
-    # Item master lookup dictionary
-    item_catalog: dict[str, dict[str, Any]] = {}
-    if item_master is not None:
-        for _, row in item_master.iterrows():
-            item_catalog[str(row["internal_part_num"]).strip()] = {
-                "base_uom": str(row.get("base_uom", "EA")).strip(),
-                "unit_cost_inr": float(row.get("standard_cost_inr", 1500.0)),
-                "pack_size_ea": float(row.get("pack_size_ea", 100.0)),
-                "unit_weight_kg": float(row.get("unit_weight_kg", 1.0)),
-                "part_description": str(row.get("part_description", "")),
-            }
 
-    po_lines = client.tables.get("PURCHASE_ORDER_LINES")
-    po_catalog: dict[str, str] = {}
-    if po_lines is not None:
-        po_col = "po_number" if "po_number" in po_lines.columns else "po_number_ref"
-        for _, po_row in po_lines.iterrows():
-            po_catalog[str(po_row[po_col]).strip()] = str(po_row["internal_part_num"]).strip()
+def _finalize(rows: pd.DataFrame, catalog: set[str]) -> pd.DataFrame:
+    """Derive visibility, counted quantity, value and status from resolved rows."""
+    df = rows.copy()
+    df["legacy_visible_qty"] = [
+        float(q) if (seq == 1 and _legacy_visible(str(s), str(u), b, catalog)) else 0.0
+        for q, seq, s, u, b in zip(df["raw_qty"], df["transmission_seq"], df["supplier_part_num"], df["raw_uom"], df["canonical_uom"])
+    ]
+    df["harmonized_qty"] = [
+        float(nq) if (seq == 1 and conf >= CONFIDENCE_THRESHOLD and part in catalog) else 0.0
+        for nq, seq, conf, part in zip(df["normalized_qty"], df["transmission_seq"], df["sku_confidence"], df["resolved_part_num"])
+    ]
+    df["line_value_inr"] = (df["harmonized_qty"] * df["unit_cost_inr"].fillna(0.0)).round(2)
 
-    # Line-by-line harmonization
-    resolved_rows = []
-    for _, r in clean_df.iterrows():
-        raw_sku = str(r["supplier_part_num"]).strip()
-        raw_qty = float(r["shipped_qty"])
-        raw_uom = str(r["shipped_uom"]).strip()
-        raw_date = str(r["expected_delivery_date"]).strip()
-        po_ref = str(r["po_number_ref"]).strip()
+    def status(r: pd.Series) -> str:
+        if r["transmission_seq"] > 1:
+            return "DUPLICATE_SUPPRESSED"
+        if r["harmonized_qty"] == 0.0:
+            return "NEEDS_PLANNER_REVIEW"
+        if r["legacy_visible_qty"] > 0.0:
+            return "CLEAN_PASSTHROUGH"
+        return "HARMONIZED_BY_UDF"
 
-        # Look up expected part from PO if available
-        expected_po_part = po_catalog.get(po_ref)
+    df["status"] = df.apply(status, axis=1)
+    return df
 
-        # 1. Resolve SKU: Exact master match or Jaro-Winkler resolution
-        if raw_sku in item_catalog:
-            resolved_part = raw_sku
-            match_method = "EXACT_CATALOG_MATCH"
-            confidence = 1.00
-        else:
-            resolved_part, match_method, confidence = resolve_supplier_sku(raw_sku, po_part_num=expected_po_part)
 
-            # If still unresolved, check fuzzy similarity directly against ITEM_MASTER keys
-            if match_method == "UNRESOLVED" or confidence < 0.85:
-                alnum_raw = re.sub(r"[^A-Z0-9]", "", raw_sku.upper())
-                best_cat_part = None
-                best_jw = 0.0
-                for cat_sku in item_catalog:
-                    alnum_cat = re.sub(r"[^A-Z0-9]", "", cat_sku)
-                    if alnum_raw == alnum_cat:
-                        best_cat_part = cat_sku
-                        best_jw = 0.98
-                        match_method = "HYPHEN_NORMALIZED"
-                        break
-                    score = jaro_winkler_similarity(alnum_raw, alnum_cat)
-                    if score > best_jw:
-                        best_jw = score
-                        best_cat_part = cat_sku
+def _harmonize_python(batch: pd.DataFrame, tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    """Local execution of the same logic as the three Exasol UDFs (parity path)."""
+    items = tables["ITEM_MASTER"].set_index("internal_part_num")
+    po_part = tables["PURCHASE_ORDER_LINES"].drop_duplicates("po_number").set_index("po_number")["internal_part_num"].to_dict()
+    sup_fmt = tables["SUPPLIER_MASTER"].set_index("supplier_id")["default_date_format"].to_dict()
+    catalog = set(items.index)
 
-                if best_cat_part and best_jw >= 0.85:
-                    resolved_part = best_cat_part
-                    match_method = match_method if match_method != "UNRESOLVED" else "JARO_WINKLER_CATALOG"
-                    confidence = round(best_jw, 2)
+    seq_counter: dict[tuple, int] = {}
+    out = []
+    for _, r in batch.iterrows():
+        sku, uom, po = str(r["supplier_part_num"]), str(r["shipped_uom"]), str(r["po_number_ref"])
+        key = (r["asn_number"], po, sku, float(r["shipped_qty"]))
+        seq_counter[key] = seq_counter.get(key, 0) + 1
 
-        # 2. Get target UOM from catalog
-        cat_entry = item_catalog.get(resolved_part, {"base_uom": "EA", "unit_cost_inr": 1500.0, "pack_size_ea": 100.0, "unit_weight_kg": 1.0})
-        tgt_uom = cat_entry["base_uom"]
-
-        # 3. Normalize UOM
-        norm_qty = normalize_uom_quantity(
-            raw_qty,
-            raw_uom,
-            tgt_uom,
-            pack_size_ea=cat_entry["pack_size_ea"],
-            unit_weight_kg=cat_entry["unit_weight_kg"],
+        expected = po_part.get(po)
+        resolved, method, conf = resolve_supplier_sku(sku, po_part_num=expected)
+        item = items.loc[resolved] if resolved in items.index else None
+        base_uom = None if item is None else str(item["base_uom"])
+        norm_qty = (
+            normalize_uom_quantity(
+                float(r["shipped_qty"]), uom, base_uom,
+                pack_size_ea=float(item["standard_pack_size_ea"]), unit_weight_kg=float(item["unit_weight_kg"]),
+            )
+            if item is not None else float(r["shipped_qty"])
         )
-
-        # 4. Parse Date
-        parsed_dt = parse_asn_date(raw_date)
-        iso_date = parsed_dt.isoformat() if parsed_dt else raw_date
-
-        # 5. Determine operational verdict
-        unit_val = cat_entry["unit_cost_inr"]
-        line_val = norm_qty * unit_val
-
-        # False alarm detection
-        is_false_alarm = False
-        if raw_uom.upper() != tgt_uom.upper() or match_method in {"ALIAS_EXACT", "FUZZY_JARO_WINKLER", "ADAPTIVE_NGRAM_REFINED"}:
-            is_false_alarm = True
-
-        resolved_rows.append({
-            "asn_number": r["asn_number"],
-            "po_number_ref": r["po_number_ref"],
-            "supplier_id": r["supplier_id"],
-            "supplier_part_num": raw_sku,
-            "resolved_part_num": resolved_part,
-            "sku_match_method": match_method,
-            "sku_confidence": confidence,
-            "raw_qty": raw_qty,
-            "raw_uom": raw_uom,
-            "normalized_qty": norm_qty,
-            "normalized_uom": tgt_uom,
-            "raw_date": raw_date,
-            "harmonized_date": iso_date,
-            "line_value_inr": line_val,
-            "is_false_alarm": is_false_alarm,
-            "status": "HARMONIZED" if confidence >= 0.85 else "FLAGGED_LOW_CONFIDENCE",
+        eta = parse_asn_date(str(r["expected_delivery_date"]), sup_fmt.get(str(r["supplier_id"]), "YYYY-MM-DD"))
+        out.append({
+            "asn_number": r["asn_number"], "po_number_ref": po, "supplier_id": r["supplier_id"],
+            "supplier_part_num": sku, "resolved_part_num": resolved, "sku_match_method": method,
+            "sku_confidence": float(conf), "raw_qty": float(r["shipped_qty"]), "raw_uom": uom,
+            "normalized_qty": float(norm_qty), "canonical_uom": base_uom,
+            "unit_cost_inr": None if item is None else float(item["standard_cost_inr"]),
+            "harmonized_eta_date": str(eta), "transmission_seq": seq_counter[key],
         })
+    return _finalize(pd.DataFrame(out), catalog)
 
-    harmonized_df = pd.DataFrame(resolved_rows)
 
-    # Calculate True ATP and Starvation against active schedules
-    shortage_rows = []
-    total_false_alarms_cleared_inr = 0.0
-    total_shortage_deficit_inr = 0.0
-    total_stoppage_exposure_inr = 0.0
-    threatened_lines: set[str] = set()
-
-    if bom is not None and schedules is not None and ledger is not None:
-        # True ATP calculation
-        ledger_clean = ledger.copy()
-        counted_col = "wms_physical_counted_qty" if "wms_physical_counted_qty" in ledger_clean.columns else "wms_counted_qty"
-        alloc_col = "allocated_to_prod_qty" if "allocated_to_prod_qty" in ledger_clean.columns else "wms_allocated_qty"
-        hold_col = "quality_hold_qty"
-
-        ledger_clean["true_atp"] = np.maximum(
-            0.0,
-            ledger_clean[counted_col] - ledger_clean[alloc_col] - ledger_clean[hold_col],
+def _harmonize_exasol(batch: pd.DataFrame, client: Any) -> pd.DataFrame:
+    """Run the three UDFs inside Exasol against a scratch staging table."""
+    schema = client.schema
+    stage = f"BYOD_STAGE_{uuid.uuid4().hex[:10].upper()}"
+    stage_df = pd.DataFrame({
+        "ROW_ID": np.arange(1, len(batch) + 1),
+        "ASN_NUMBER": batch["asn_number"].astype(str).values,
+        "PO_NUMBER_REF": batch["po_number_ref"].astype(str).values,
+        "SUPPLIER_ID": batch["supplier_id"].astype(str).values,
+        "RAW_SKU": batch["supplier_part_num"].astype(str).values,
+        "RAW_QTY": batch["shipped_qty"].astype(float).values,
+        "RAW_UOM": batch["shipped_uom"].astype(str).values,
+        "RAW_ETA": batch["expected_delivery_date"].astype(str).values,
+    })
+    try:
+        client.conn.execute(
+            f"CREATE TABLE {schema}.{stage} (ROW_ID DECIMAL(9,0), ASN_NUMBER VARCHAR(80), PO_NUMBER_REF VARCHAR(80), "
+            f"SUPPLIER_ID VARCHAR(80), RAW_SKU VARCHAR(120), RAW_QTY DOUBLE, RAW_UOM VARCHAR(40), RAW_ETA VARCHAR(60))"
         )
-        atp_by_part = ledger_clean.groupby("internal_part_num")["true_atp"].sum().to_dict()
+        client.conn.import_from_pandas(stage_df, (schema, stage))
+        sql = f"""
+        WITH s AS (
+            SELECT st.ROW_ID, st.ASN_NUMBER, st.PO_NUMBER_REF, st.SUPPLIER_ID, st.RAW_SKU, st.RAW_QTY, st.RAW_UOM, st.RAW_ETA,
+                   p.internal_part_num AS po_part_num,
+                   COALESCE(sm.default_date_format, 'YYYY-MM-DD') AS date_fmt,
+                   ROW_NUMBER() OVER (PARTITION BY st.ASN_NUMBER, st.PO_NUMBER_REF, st.RAW_SKU, st.RAW_QTY ORDER BY st.ROW_ID) AS transmission_seq
+            FROM {schema}.{stage} st
+            LEFT JOIN {schema}.PURCHASE_ORDER_LINES p ON st.PO_NUMBER_REF = p.po_number
+            LEFT JOIN {schema}.SUPPLIER_MASTER sm ON st.SUPPLIER_ID = sm.supplier_id
+        ),
+        r AS (
+            SELECT s.*, {schema}.UDF_RESOLVE_SUPPLIER_SKU(s.RAW_SKU, s.po_part_num) FROM s
+        )
+        SELECT r.ROW_ID, r.ASN_NUMBER, r.PO_NUMBER_REF, r.SUPPLIER_ID, r.RAW_SKU, r.RAW_QTY, r.RAW_UOM,
+               r.transmission_seq, r.resolved_part_num, r.sku_match_method, r.sku_confidence,
+               im.base_uom AS canonical_uom, im.standard_cost_inr AS unit_cost_inr,
+               {schema}.UDF_NORMALIZE_UOM(r.RAW_QTY, r.RAW_UOM, im.base_uom, im.standard_pack_size_ea, im.unit_weight_kg) AS normalized_qty,
+               {schema}.UDF_PARSE_ASN_DATE(r.RAW_ETA, r.date_fmt) AS harmonized_eta_date
+        FROM r
+        LEFT JOIN {schema}.ITEM_MASTER im ON r.resolved_part_num = im.internal_part_num
+        ORDER BY r.ROW_ID
+        """
+        res = client._fetch_df(sql)
+    finally:
+        try:
+            client.conn.execute(f"DROP TABLE IF EXISTS {schema}.{stage}")
+        except Exception:
+            pass
 
-        # In-transit by part from current harmonized batch
-        inbound_by_part = harmonized_df.groupby("resolved_part_num")["normalized_qty"].sum().to_dict()
+    res.columns = [c.lower() for c in res.columns]
+    res = res.rename(columns={
+        "asn_number": "asn_number", "po_number_ref": "po_number_ref", "supplier_id": "supplier_id",
+        "raw_sku": "supplier_part_num", "raw_qty": "raw_qty", "raw_uom": "raw_uom",
+    })
+    res["transmission_seq"] = res["transmission_seq"].astype(int)
+    res["harmonized_eta_date"] = res["harmonized_eta_date"].astype(str)
+    for c in ("raw_qty", "normalized_qty", "sku_confidence", "unit_cost_inr"):
+        res[c] = pd.to_numeric(res[c], errors="coerce")
+    catalog = set(client.tables["ITEM_MASTER"]["internal_part_num"])
+    return _finalize(res.drop(columns=["row_id"]), catalog)
 
-        # Evaluate against active schedules
-        for _, sched in schedules.iterrows():
-            parent = str(sched["parent_part_num"]).strip()
-            line_id = str(sched["assembly_line_id"]).strip()
-            planned_units = float(sched["planned_output_units"])
-            unit_sales_val = float(sched["finished_unit_value_inr"])
-            hourly_downtime_rate = float(sched.get("hourly_downtime_rate_inr", 720000.0))
 
-            parent_bom = bom[bom["parent_part_num"] == parent]
-            for _, b in parent_bom.iterrows():
-                comp = str(b["component_part_num"]).strip()
-                qty_per = float(b["qty_per_assembly"])
-                scrap = float(b.get("scrap_allowance_pct", 0.02))
+def harmonize_batch(df: pd.DataFrame, client: Any) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Harmonize a batch, in Exasol when a live connection exists, else via local parity logic."""
+    batch, _ = detect_and_map_columns(df)
+    client.ensure_data_loaded()
+    info: dict[str, Any] = {"engine": "PYTHON_UDF_PARITY", "fallback_reason": None}
+    if getattr(client, "conn", None) is not None:
+        try:
+            return _harmonize_exasol(batch, client), {**info, "engine": "EXASOL_UDF"}
+        except Exception as exc:  # report, never hide
+            info["fallback_reason"] = f"Exasol execution failed ({type(exc).__name__}: {exc}); used local parity logic."
+    else:
+        info["fallback_reason"] = "No live Exasol connection; used local parity logic (same UDF source)."
+    return _harmonize_python(batch, client.tables), info
 
-                gross_req = round(planned_units * qty_per * (1.0 + scrap), 2)
-                cur_atp = atp_by_part.get(comp, 0.0)
-                inbound_qty = inbound_by_part.get(comp, 0.0)
 
-                # Legacy system (ignores fuzzy ASN stock)
-                legacy_deficit = max(0.0, gross_req - cur_atp)
-                legacy_rev_risk = min(planned_units, np.ceil(legacy_deficit / qty_per)) * unit_sales_val if legacy_deficit > 0 else 0.0
+# --------------------------------------------------------------------------- impact
+def _exposure(bom: pd.DataFrame, add_legacy: dict[str, float], add_harm: dict[str, float]) -> pd.DataFrame:
+    """Re-evaluate the VW_BOM_LINE_STARVATION_RISK formulas with extra inbound per component."""
+    b = bom.copy()
+    comp = b["component_part_num"]
+    atp = pd.to_numeric(b["true_pickable_atp_qty"], errors="coerce").fillna(0.0)
+    legacy_total = atp + pd.to_numeric(b["legacy_inbound_qty"], errors="coerce").fillna(0.0) + comp.map(add_legacy).fillna(0.0)
+    net_total = atp + pd.to_numeric(b["harmonized_inbound_qty"], errors="coerce").fillna(0.0) + comp.map(add_harm).fillna(0.0)
+    gross = pd.to_numeric(b["gross_required_qty"], errors="coerce").fillna(0.0)
+    per = pd.to_numeric(b["qty_per_assembly"], errors="coerce").replace(0, np.nan)
+    planned = pd.to_numeric(b["planned_output_units"], errors="coerce").fillna(0.0)
+    value = pd.to_numeric(b["finished_unit_value_inr"], errors="coerce").fillna(0.0)
 
-                # Harmonized system (includes UDF resolved inbound)
-                true_deficit = max(0.0, gross_req - (cur_atp + inbound_qty))
-                net_rev_risk = min(planned_units, np.ceil(true_deficit / qty_per)) * unit_sales_val if true_deficit > 0 else 0.0
+    def risk(total: pd.Series) -> tuple[pd.Series, pd.Series]:
+        deficit = (gross - total).clip(lower=0.0).round(2)
+        units = np.minimum(planned, np.ceil(deficit / per).fillna(0.0))
+        return deficit, (units * value).round(2)
 
-                cleared_risk = max(0.0, legacy_rev_risk - net_rev_risk)
-                total_false_alarms_cleared_inr += cleared_risk
-                total_shortage_deficit_inr += net_rev_risk
+    b["legacy_deficit_qty_b"], b["legacy_risk_inr"] = risk(legacy_total)
+    b["net_deficit_qty_b"], b["net_risk_inr"] = risk(net_total)
+    return b
 
-                if net_rev_risk > 0:
-                    threatened_lines.add(line_id)
-                    total_stoppage_exposure_inr += (hourly_downtime_rate * 4.0) + net_rev_risk
 
-                shortage_rows.append({
-                    "schedule_id": sched["schedule_id"],
-                    "assembly_line_id": line_id,
-                    "component_part_num": comp,
-                    "gross_required_qty": gross_req,
-                    "true_atp_qty": cur_atp,
-                    "inbound_harmonized_qty": inbound_qty,
-                    "legacy_risk_inr": legacy_rev_risk,
-                    "net_shortage_risk_inr": net_rev_risk,
-                    "cleared_by_udf_inr": cleared_risk,
-                })
+def evaluate_batch_impact(harmonized: pd.DataFrame, marts: dict[str, Any]) -> dict[str, Any]:
+    """Layer the harmonized batch on the baseline and return before/after exposure."""
+    bom = marts["bom_risk_mart"]
+    base = _exposure(bom, {}, {})
+    add_legacy = harmonized.groupby("resolved_part_num")["legacy_visible_qty"].sum().to_dict()
+    add_harm = harmonized.groupby("resolved_part_num")["harmonized_qty"].sum().to_dict()
+    after = _exposure(bom, add_legacy, add_harm)
 
-    shortage_df = pd.DataFrame(shortage_rows)
+    baseline_legacy = float(base["legacy_risk_inr"].sum())
+    baseline_net = float(base["net_risk_inr"].sum())
+    legacy_after = float(after["legacy_risk_inr"].sum())
+    net_after = float(after["net_risk_inr"].sum())
+    threatened = sorted(after.loc[after["net_risk_inr"] > 0, "assembly_line_id"].unique().tolist())
 
-    total_shipped_val = float(harmonized_df["line_value_inr"].sum())
+    legacy_val = float((harmonized["legacy_visible_qty"] * harmonized["unit_cost_inr"].fillna(0.0)).sum())
+    harm_val = float(harmonized["line_value_inr"].sum())
 
+    shortage = after.loc[after["net_risk_inr"] > 0, [
+        "schedule_id", "assembly_line_id", "component_part_num", "gross_required_qty",
+        "true_pickable_atp_qty", "net_deficit_qty_b", "net_risk_inr",
+    ]].rename(columns={"net_deficit_qty_b": "net_deficit_qty"})
+
+    status_counts = harmonized["status"].value_counts().to_dict()
     summary = {
-        "total_inbound_lines": len(harmonized_df),
-        "total_shipped_value_inr": total_shipped_val,
-        "false_alarms_cleared_inr": total_false_alarms_cleared_inr,
-        "net_shortage_deficit_inr": total_shortage_deficit_inr,
-        "total_stoppage_exposure_inr": total_stoppage_exposure_inr,
-        "threatened_lines": sorted(list(threatened_lines)),
-        "avg_confidence": round(float(harmonized_df["sku_confidence"].mean()), 3) if len(harmonized_df) > 0 else 1.0,
+        "batch_lines": int(len(harmonized)),
+        "status_counts": status_counts,
+        "baseline_legacy_risk_inr": baseline_legacy,
+        "baseline_net_risk_inr": baseline_net,
+        "legacy_risk_with_batch_inr": legacy_after,
+        "net_risk_with_batch_inr": net_after,
+        "false_alarm_cleared_inr": max(0.0, legacy_after - net_after),
+        "net_risk_change_vs_baseline_inr": net_after - baseline_net,
+        "batch_value_legacy_visible_inr": legacy_val,
+        "batch_value_harmonized_inr": harm_val,
+        "batch_value_recovered_inr": max(0.0, harm_val - legacy_val),
+        "threatened_lines": threatened,
+        "avg_confidence": round(float(harmonized["sku_confidence"].mean()), 3) if len(harmonized) else 0.0,
     }
-
-    return {
-        "harmonized_df": harmonized_df,
-        "shortage_df": shortage_df,
-        "summary": summary,
-    }
+    return {"summary": summary, "shortage_df": shortage.reset_index(drop=True), "harmonized_df": harmonized}
 
 
+def harmonize_and_evaluate_inbound(df: pd.DataFrame, client: Any, marts: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Harmonize an inbound batch and evaluate its impact on the baseline exposure."""
+    harmonized, info = harmonize_batch(df, client)
+    marts = marts if marts is not None else client.compute_analytical_marts()
+    result = evaluate_batch_impact(harmonized, marts)
+    result["engine"] = info
+    return result
+
+
+# --------------------------------------------------------------------------- exports
 def generate_sap_migo_export(harmonized_df: pd.DataFrame) -> str:
-    """Generate CSV string formatted for direct SAP MIGO / ME21N goods receipt upload."""
+    """CSV with SAP-style goods-receipt field names (illustrative mapping, not a certified SAP layout)."""
+    counted = harmonized_df[harmonized_df["harmonized_qty"] > 0]
     sap_df = pd.DataFrame({
-        "MANDT": "800",
-        "EBELN": harmonized_df["po_number_ref"],
-        "BOLNR": harmonized_df["asn_number"],
-        "MATNR": harmonized_df["resolved_part_num"],
-        "MENGE": harmonized_df["normalized_qty"],
-        "MEINS": harmonized_df["normalized_uom"],
-        "BUDAT": harmonized_df["harmonized_date"],
-        "LIFNR": harmonized_df["supplier_id"],
-        "BKTXT": "MANGROVE_EXASOL_CLEARED",
+        "EBELN": counted["po_number_ref"],
+        "BOLNR": counted["asn_number"],
+        "MATNR": counted["resolved_part_num"],
+        "MENGE": counted["harmonized_qty"],
+        "MEINS": counted["canonical_uom"],
+        "BUDAT": counted["harmonized_eta_date"],
+        "LIFNR": counted["supplier_id"],
+        "BKTXT": "MANGROVE_HARMONIZED",
     })
     return sap_df.to_csv(index=False)
 
 
 def generate_expedite_manifest(summary: dict[str, Any], shortage_df: pd.DataFrame) -> str:
-    """Generate an executive emergency expedite manifest for plant dispatch."""
+    """Plain-text expedite note listing components that remain short after harmonization."""
     lines = [
-        "# MANGROVE SCM: CRITICAL EXPEDITE DISPATCH MANIFEST",
+        "# MANGROVE: EXPEDITE REVIEW NOTE",
         f"**Generated**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
-        f"**Threatened Production Lines**: {', '.join(summary.get('threatened_lines', ['NONE']))}",
-        f"**Real Financial Shortage Risk**: INR {summary.get('net_shortage_deficit_inr', 0.0):,.2f}",
-        f"**Total Downtime & Stoppage Exposure**: INR {summary.get('total_stoppage_exposure_inr', 0.0):,.2f}",
+        f"**Lines still at risk after harmonization**: {', '.join(summary.get('threatened_lines', [])) or 'NONE'}",
+        f"**Net revenue at risk (with this batch)**: INR {summary.get('net_risk_with_batch_inr', 0.0):,.2f}",
         "",
-        "## Component Expedite Directives",
-        "| Schedule ID | Line | Missing Component | Gross Req | True ATP | Inbound Harmo | Net Deficit Value (INR) |",
-        "| :--- | :--- | :--- | :---: | :---: | :---: | :---: |",
+        "| Schedule | Line | Component | Gross req | True ATP | Net deficit | Revenue at risk (INR) |",
+        "| :--- | :--- | :--- | ---: | ---: | ---: | ---: |",
     ]
-
-    shortages_only = shortage_df[shortage_df["net_shortage_risk_inr"] > 0] if len(shortage_df) > 0 else pd.DataFrame()
-    if len(shortages_only) == 0:
-        lines.append("| ALL_LINES | OPERATIONAL | NO_SHORTAGE | - | - | - | 0.00 |")
+    if shortage_df is None or len(shortage_df) == 0:
+        lines.append("| - | - | none | - | - | - | 0.00 |")
     else:
-        for _, row in shortages_only.iterrows():
+        for _, row in shortage_df.iterrows():
             lines.append(
                 f"| {row['schedule_id']} | {row['assembly_line_id']} | {row['component_part_num']} | "
-                f"{row['gross_required_qty']:,.0f} | {row['true_atp_qty']:,.0f} | {row['inbound_harmonized_qty']:,.0f} | "
-                f"INR {row['net_shortage_risk_inr']:,.2f} |"
+                f"{row['gross_required_qty']:,.0f} | {row['true_pickable_atp_qty']:,.0f} | "
+                f"{row['net_deficit_qty']:,.0f} | {row['net_risk_inr']:,.2f} |"
             )
-
-    lines.extend([
-        "",
-        "### Operational Instructions:",
-        "1. Authorize emergency dedicated express transport for flagged shortage components.",
-        "2. Do NOT halt Line 1 or Line 3: Inbound shipments confirmed and harmonized in-database by Exasol UDFs.",
-        "3. Route this manifest to Materials Handling & Plant Inbound Gate for priority inspection.",
-    ])
-
+    lines += ["", "Rows with status NEEDS_PLANNER_REVIEW were NOT counted as inbound stock."]
     return "\n".join(lines)
