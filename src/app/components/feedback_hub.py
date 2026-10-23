@@ -6,7 +6,6 @@ aggregate community metrics, and real-time mobile push webhook controls.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import streamlit as st
@@ -57,6 +56,9 @@ def render_feedback_hub_section(project_root: Any = None) -> None:
                     <p style="margin: 4px 0 0 0; color: {COLOR_TEXT_SECONDARY}; font-size: 0.85rem;">
                         Self-reported comments from people who tried the cockpit. Roles and organizations are not verified.
                     </p>
+                    <div style="margin-top: 6px; font-size: 0.78rem; color: {COLOR_TEXT_SECONDARY};">
+                        💡 <i>Cloud Persistence Note: In hosted demo instances (e.g. Streamlit Cloud), container storage resets on restart; reviews are transmitted durably to the configured operational webhook.</i>
+                    </div>
                 </div>
                 <div style="text-align: right;">{rating_html}</div>
             </div>

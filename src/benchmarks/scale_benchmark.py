@@ -148,29 +148,48 @@ def benchmark_exasol_columnar(
 ) -> Dict[str, Any]:
     """
     Measures the set-based / vectorized analytical pipeline (`compute_analytical_marts`).
+    When connected to a live Exasol cluster, queries live database views and reports timing.
+    When offline, measures the vectorized set-based memory engine.
     Reports actual measured wall-clock time and actual DataFrame memory usage.
     """
-    test_tables = {k: v.copy() for k, v in tables.items()}
-    test_tables["ASN_LINES_RAW"] = asn_df.copy()
-    test_tables["ASN_PLANNER_OVERRIDES"] = pd.DataFrame(
-        columns=[
-            "asn_line_id",
-            "resolved_part_num",
-            "normalized_qty",
-            "normalized_uom",
-            "normalized_eta_date",
-            "resolution_action",
-            "resolved_by",
-            "resolved_at",
-        ]
-    )
+    engine_name = "Vectorized Set-Based Engine (Columnar Memory)"
+    is_live_db = False
+    marts = None
+    elapsed_ms = 0.0
 
-    test_client = ChakanExasolClient()
-    test_client.tables = test_tables
+    if client is not None and getattr(client, "conn", None) is not None:
+        try:
+            t0 = time.perf_counter()
+            marts = client.compute_analytical_marts(source="exasol")
+            elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+            engine_name = "Exasol Personal Engine (In-DB SQL Views & UDFs)"
+            is_live_db = True
+        except Exception:
+            is_live_db = False
 
-    t0 = time.perf_counter()
-    marts = test_client.compute_analytical_marts(source="pandas")
-    elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+    if not is_live_db or marts is None:
+        test_tables = {k: v.copy() for k, v in tables.items()}
+        test_tables["ASN_LINES_RAW"] = asn_df.copy()
+        test_tables["ASN_PLANNER_OVERRIDES"] = pd.DataFrame(
+            columns=[
+                "asn_line_id",
+                "resolved_part_num",
+                "normalized_qty",
+                "normalized_uom",
+                "normalized_eta_date",
+                "resolution_action",
+                "resolved_by",
+                "resolved_at",
+            ]
+        )
+
+        test_client = ChakanExasolClient()
+        test_client.tables = test_tables
+
+        t0 = time.perf_counter()
+        marts = test_client.compute_analytical_marts(source="pandas")
+        elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
+
     throughput = round(len(asn_df) / (elapsed_ms / 1000.0), 0) if elapsed_ms > 0 else 0
 
     # Measure actual columnar DataFrame memory usage across the input and output marts
@@ -181,7 +200,7 @@ def benchmark_exasol_columnar(
     ram_mb = round(col_mem_bytes / (1024.0 * 1024.0), 2)
 
     return {
-        "engine": "Set-Based / Columnar Pipeline",
+        "engine": engine_name,
         "batch_rows": len(asn_df),
         "total_latency_ms": elapsed_ms,
         "cpu_latency_ms": elapsed_ms,
@@ -190,6 +209,7 @@ def benchmark_exasol_columnar(
         "cpu_throughput_rows_sec": throughput,
         "network_shuffles": 0,
         "ram_footprint_mb": ram_mb,
+        "is_live_database": is_live_db,
     }
 
 

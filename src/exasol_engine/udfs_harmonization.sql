@@ -139,12 +139,29 @@ def _jaro_winkler(s1, s2, prefix_weight=0.1):
             break
     return round(min(1.0, jaro + prefix * prefix_weight * (1.0 - jaro)), 4)
 
+def _check_rev_mismatch(raw_sku, po_part):
+    m_raw = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z])$", raw_sku or "")
+    m_po = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z])$", po_part or "")
+    if m_raw and m_po:
+        stem_raw, rev_raw = m_raw.group(1), m_raw.group(2)
+        stem_po, rev_po = m_po.group(1), m_po.group(2)
+        alnum_stem_raw = re.sub(r"[^A-Z0-9]", "", stem_raw)
+        alnum_stem_po = re.sub(r"[^A-Z0-9]", "", stem_po)
+        if alnum_stem_raw and alnum_stem_raw == alnum_stem_po and rev_raw != rev_po:
+            return True
+    return False
+
 def run(ctx):
     cleaned_raw = (ctx.raw_sku or "").strip().upper()
     cleaned_po = (ctx.po_part_num or "").strip().upper()
 
     if cleaned_po and cleaned_raw == cleaned_po:
         ctx.emit(cleaned_po, "EXACT_MATCH", 1.00)
+        return
+
+    # Revision / Variant Collision Guard: Prevent auto-resolving conflicting ECO revisions
+    if cleaned_po and _check_rev_mismatch(cleaned_raw, cleaned_po):
+        ctx.emit(cleaned_raw, "REVISION_MISMATCH_SUSPECTED", 0.70)
         return
 
     alnum_raw = re.sub(r"[^A-Z0-9]", "", cleaned_raw)
@@ -166,8 +183,11 @@ def run(ctx):
             return
 
         jw_po = _jaro_winkler(alnum_raw, alnum_po)
-        if jw_po >= 0.85:
+        if jw_po >= 0.93:
             ctx.emit(cleaned_po, "JARO_WINKLER_FUZZY", round(jw_po, 2))
+            return
+        elif jw_po >= 0.85:
+            ctx.emit(cleaned_po, "FUZZY_MATCH_REVIEW_BAND", round(jw_po, 2))
             return
 
     if alnum_raw:
@@ -204,9 +224,13 @@ def run(ctx):
                     best_jw = score
                     best_alias_sku = canonical_sku
 
-        if best_alias_sku and best_jw >= 0.85:
-            ctx.emit(best_alias_sku, "JARO_WINKLER_FUZZY", round(best_jw, 2))
-            return
+        if best_alias_sku:
+            if best_jw >= 0.93:
+                ctx.emit(best_alias_sku, "JARO_WINKLER_FUZZY", round(best_jw, 2))
+                return
+            elif best_jw >= 0.85:
+                ctx.emit(best_alias_sku, "FUZZY_MATCH_REVIEW_BAND", round(best_jw, 2))
+                return
 
     if cleaned_po:
         ctx.emit(cleaned_po, "PO_LINEAGE_FALLBACK", 0.82)

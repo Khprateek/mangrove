@@ -41,6 +41,12 @@ def test_supplier_sku_drift_and_jaro_winkler_resolution() -> None:
     assert method_jw == "JARO_WINKLER_FUZZY"
     assert conf_jw >= 0.85
 
+    # Revision Collision Guard: Flag engineering revision conflicts for safety
+    sku_rev, method_rev, conf_rev = resolve_supplier_sku("ENG-CRK-42CR-02", "ENG-CRK-42CR-01")
+    assert sku_rev == "ENG-CRK-42CR-02"
+    assert method_rev == "REVISION_MISMATCH_SUSPECTED"
+    assert conf_rev < 0.85  # Below auto-resolve threshold -> routes to planner triage
+
 
 def test_adaptive_ngram_prefiltering_and_safety_fallback() -> None:
     # 1. Short code boundary padding guarantees non-empty bigrams
