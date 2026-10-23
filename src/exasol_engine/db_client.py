@@ -668,6 +668,16 @@ class ChakanExasolClient:
         po_merged = po_df.merge(po_rollup, on="po_number", how="left").fillna(
             {"legacy_inbound_qty": 0.0, "harmonized_inbound_qty": 0.0, "asn_shipment_count": 0}
         )
+        po_merged = (
+            po_merged.groupby("internal_part_num", as_index=False)
+            .agg(
+                po_number=("po_number", "first"),
+                supplier_id=("supplier_id", "first"),
+                ordered_qty=("ordered_qty", "sum"),
+                legacy_inbound_qty=("legacy_inbound_qty", "sum"),
+                harmonized_inbound_qty=("harmonized_inbound_qty", "sum"),
+            )
+        )
 
         bom_lvl1 = bom_df[bom_df["bom_level"] == 1].copy()
         risk_df = (

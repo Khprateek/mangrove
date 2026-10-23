@@ -21,28 +21,52 @@ def run(ctx):
     src = (ctx.raw_uom or "").strip().upper()
     tgt = (ctx.target_uom or "EA").strip().upper()
 
+    ea_synonyms = {"EA", "EACH", "PCS", "PIECES", "NOS", "UNITS", "NO"}
+    if src in ea_synonyms and tgt in ea_synonyms:
+        return round(qty, 2)
+
     if src == tgt:
         return round(qty, 2)
 
     pack_match = re.match(r"^(?:BOX|BAG|CRATE|PACK|PALLET)_(\d+)$", src)
-    if pack_match and tgt == "EA":
+    if pack_match and tgt in ea_synonyms:
         return round(qty * float(pack_match.group(1)), 2)
 
-    if src in ("BOX", "BAG", "CRATE", "PACK") and tgt == "EA":
-        mult = float(ctx.pack_size_ea) if ctx.pack_size_ea and ctx.pack_size_ea > 0 else 1.0
+    if src in ("BOX", "BAG", "CRATE", "PACK") and tgt in ea_synonyms:
+        mult = float(ctx.pack_size_ea) if ctx.pack_size_ea and ctx.pack_size_ea > 1.0 else 100.0
         return round(qty * mult, 2)
 
-    if src == "MT" and tgt == "KG":
+    if src in ("MT", "TON", "TONNE", "TONNES") and tgt == "KG":
         return round(qty * 1000.0, 2)
 
-    if src == "MT" and tgt == "EA" and ctx.unit_weight_kg and ctx.unit_weight_kg > 0:
+    if src == "KG" and tgt in ("MT", "TON", "TONNE"):
+        return round(qty / 1000.0, 3)
+
+    if src in ("G", "GM", "GRAM", "GRAMS") and tgt == "KG":
+        return round(qty / 1000.0, 3)
+
+    if src == "KG" and tgt in ("G", "GM", "GRAM", "GRAMS"):
+        return round(qty * 1000.0, 2)
+
+    if src in ("MT", "TON", "TONNE") and tgt in ea_synonyms and ctx.unit_weight_kg and ctx.unit_weight_kg > 0:
         return round((qty * 1000.0) / float(ctx.unit_weight_kg), 2)
 
-    if src == "KG" and tgt == "EA" and ctx.unit_weight_kg and ctx.unit_weight_kg > 0:
+    if src == "KG" and tgt in ea_synonyms and ctx.unit_weight_kg and ctx.unit_weight_kg > 0:
         return round(qty / float(ctx.unit_weight_kg), 2)
 
-    if src in ("LB", "LBS") and tgt == "KG":
+    if src in ("LB", "LBS", "POUND", "POUNDS") and tgt == "KG":
         return round(qty * 0.45359237, 2)
+
+    if src in ("LTR", "L", "LITER", "LITRE") and tgt in ("ML", "MILLILITER"):
+        return round(qty * 1000.0, 2)
+    if src in ("ML", "MILLILITER") and tgt in ("LTR", "L", "LITER", "LITRE"):
+        return round(qty / 1000.0, 3)
+
+    if src in ("BOX", "BAG", "CRATE", "PACK") and tgt == "KG":
+        if ctx.unit_weight_kg and ctx.unit_weight_kg > 0:
+            effective_pack = float(ctx.pack_size_ea) if ctx.pack_size_ea and ctx.pack_size_ea > 0 else 100.0
+            return round(qty * effective_pack * float(ctx.unit_weight_kg), 2)
+        return 0.0
 
     return round(qty, 2)
 /
@@ -175,20 +199,24 @@ def run(ctx):
         ctx.emit(ALIASES[alnum_raw], "VENDOR_CATALOG_ALIAS", 0.95)
         return
 
+    has_dim_conflict = False
     if cleaned_po:
         po_tokens = [t for t in cleaned_po.split("-") if len(t) >= 2]
-        matched = sum(1 for tok in po_tokens if tok in alnum_raw)
-        if po_tokens and matched >= max(1, len(po_tokens) - 1):
-            ctx.emit(cleaned_po, "PO_TOKEN_SIMILARITY", 0.89)
-            return
+        # Dimension Conflict Guard: Sizing/numerical tokens (M6 vs M12, 6204 vs 6205) MUST NOT conflict
+        has_dim_conflict = any(any(c.isdigit() for c in tok) and tok not in alnum_raw for tok in po_tokens)
+        if not has_dim_conflict:
+            matched = sum(1 for tok in po_tokens if tok in alnum_raw)
+            if len(po_tokens) >= 2 and matched >= len(po_tokens) - 1 and (matched / len(po_tokens)) >= 0.75:
+                ctx.emit(cleaned_po, "PO_TOKEN_SIMILARITY", 0.89)
+                return
 
-        jw_po = _jaro_winkler(alnum_raw, alnum_po)
-        if jw_po >= 0.93:
-            ctx.emit(cleaned_po, "JARO_WINKLER_FUZZY", round(jw_po, 2))
-            return
-        elif jw_po >= 0.85:
-            ctx.emit(cleaned_po, "FUZZY_MATCH_REVIEW_BAND", round(jw_po, 2))
-            return
+            jw_po = _jaro_winkler(alnum_raw, alnum_po)
+            if jw_po >= 0.93:
+                ctx.emit(cleaned_po, "JARO_WINKLER_FUZZY", round(jw_po, 2))
+                return
+            elif jw_po >= 0.85:
+                ctx.emit(cleaned_po, "FUZZY_MATCH_REVIEW_BAND", round(jw_po, 2))
+                return
 
     if alnum_raw:
         # Phase 1: Adaptive N-Gram Candidate Pre-Filtering (Fast Path)
@@ -232,7 +260,7 @@ def run(ctx):
                 ctx.emit(best_alias_sku, "FUZZY_MATCH_REVIEW_BAND", round(best_jw, 2))
                 return
 
-    if cleaned_po:
+    if cleaned_po and not has_dim_conflict:
         ctx.emit(cleaned_po, "PO_LINEAGE_FALLBACK", 0.82)
         return
 

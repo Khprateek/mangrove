@@ -133,12 +133,12 @@ LEFT JOIN CHAKAN_SCM.ASN_PLANNER_OVERRIDES ov
 CREATE OR REPLACE VIEW CHAKAN_SCM.VW_BOM_LINE_STARVATION_RISK AS
 WITH po_asn_rollup AS (
     SELECT
-        p.po_number,
         p.internal_part_num,
-        p.supplier_id,
-        p.ordered_qty,
-        p.ordered_uom,
-        p.promised_delivery_date,
+        MIN(p.po_number) AS po_number,
+        MIN(p.supplier_id) AS supplier_id,
+        SUM(p.ordered_qty) AS po_ordered_qty,
+        MIN(p.ordered_uom) AS ordered_uom,
+        MIN(p.promised_delivery_date) AS promised_delivery_date,
         COALESCE(SUM(h.legacy_visible_qty), 0.0) AS legacy_inbound_qty,
         COALESCE(SUM(h.harmonized_shipped_qty), 0.0) AS harmonized_inbound_qty,
         COUNT(h.asn_line_id) AS asn_shipment_count
@@ -147,12 +147,7 @@ WITH po_asn_rollup AS (
         ON p.po_number = h.po_number_ref
     WHERE p.po_line_status = 'OPEN'
     GROUP BY
-        p.po_number,
-        p.internal_part_num,
-        p.supplier_id,
-        p.ordered_qty,
-        p.ordered_uom,
-        p.promised_delivery_date
+        p.internal_part_num
 ),
 base_bom AS (
     SELECT
@@ -180,10 +175,10 @@ base_bom AS (
         inv.phantom_inventory_qty,
         pa.po_number,
         pa.supplier_id,
-        pa.ordered_qty AS po_ordered_qty,
+        pa.po_ordered_qty,
         COALESCE(pa.legacy_inbound_qty, 0.0) AS legacy_inbound_qty,
         COALESCE(pa.harmonized_inbound_qty, 0.0) AS harmonized_inbound_qty,
-        GREATEST(0.0, pa.ordered_qty - COALESCE(pa.harmonized_inbound_qty, 0.0)) AS supplier_short_shipped_qty,
+        GREATEST(0.0, pa.po_ordered_qty - COALESCE(pa.harmonized_inbound_qty, 0.0)) AS supplier_short_shipped_qty,
         (inv.true_pickable_atp_qty + COALESCE(pa.legacy_inbound_qty, 0.0)) AS legacy_total_available_qty,
         (inv.true_pickable_atp_qty + COALESCE(pa.harmonized_inbound_qty, 0.0)) AS harmonized_total_available_qty
     FROM CHAKAN_SCM.PRODUCTION_SCHEDULES ps

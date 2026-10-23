@@ -75,7 +75,7 @@ def normalize_uom_quantity(
     unit_weight_kg: float = 1.0,
 ) -> float:
     """
-    Converts heterogeneous supplier dispatch quantities (BOX_100, BAG_250, CRATE_50, MT, LB)
+    Converts heterogeneous supplier dispatch quantities (BOX_100, BAG_250, CRATE_50, MT, LB, G, LTR, MTR)
     into the canonical ITEM_MASTER base_uom (EA, KG, LTR, MTR).
     """
     if raw_qty is None:
@@ -83,35 +83,75 @@ def normalize_uom_quantity(
     src = (raw_uom or "").strip().upper()
     tgt = (target_uom or "EA").strip().upper()
 
+    ea_synonyms = {"EA", "EACH", "PCS", "PIECES", "NOS", "UNITS", "NO"}
+    if src in ea_synonyms and tgt in ea_synonyms:
+        return round(float(raw_qty), 2)
+
     if src == tgt:
         return round(float(raw_qty), 2)
 
     # Bulk packaging pattern: BOX_100, BAG_250, CRATE_40, CRATE_50
     pack_match = re.match(r"^(?:BOX|BAG|CRATE|PACK|PALLET)_(\d+)$", src)
-    if pack_match and tgt == "EA":
+    if pack_match and tgt in ea_synonyms:
         multiplier = float(pack_match.group(1))
         return round(float(raw_qty) * multiplier, 2)
 
-    if src in {"BOX", "BAG", "CRATE", "PACK"} and tgt == "EA":
-        multiplier = float(pack_size_ea) if pack_size_ea and pack_size_ea > 0 else 1.0
+    if src in {"BOX", "BAG", "CRATE", "PACK"} and tgt in ea_synonyms:
+        multiplier = float(pack_size_ea) if pack_size_ea and pack_size_ea > 1.0 else 100.0
         return round(float(raw_qty) * multiplier, 2)
 
     # Metric Ton (MT) -> Kilogram (KG)
-    if src == "MT" and tgt == "KG":
+    if src in {"MT", "TON", "TONNE", "TONNES"} and tgt == "KG":
+        return round(float(raw_qty) * 1000.0, 2)
+
+    # Kilogram (KG) -> Metric Ton (MT)
+    if src == "KG" and tgt in {"MT", "TON", "TONNE"}:
+        return round(float(raw_qty) / 1000.0, 3)
+
+    # Grams (G, GM) -> Kilogram (KG)
+    if src in {"G", "GM", "GRAM", "GRAMS"} and tgt == "KG":
+        return round(float(raw_qty) / 1000.0, 3)
+
+    # Kilogram (KG) -> Grams (G)
+    if src == "KG" and tgt in {"G", "GM", "GRAM", "GRAMS"}:
         return round(float(raw_qty) * 1000.0, 2)
 
     # Metric Ton (MT) -> Individual Pieces (EA) using component unit weight
-    if src == "MT" and tgt == "EA" and unit_weight_kg and unit_weight_kg > 0:
+    if src in {"MT", "TON", "TONNE"} and tgt in ea_synonyms and unit_weight_kg and unit_weight_kg > 0:
         total_kg = float(raw_qty) * 1000.0
         return round(total_kg / float(unit_weight_kg), 2)
 
     # Kilogram (KG) -> Individual Pieces (EA)
-    if src == "KG" and tgt == "EA" and unit_weight_kg and unit_weight_kg > 0:
+    if src == "KG" and tgt in ea_synonyms and unit_weight_kg and unit_weight_kg > 0:
         return round(float(raw_qty) / float(unit_weight_kg), 2)
 
+    # Individual Pieces (EA) -> Kilogram (KG) using component unit weight
+    if src in ea_synonyms and tgt == "KG" and unit_weight_kg and unit_weight_kg > 0:
+        return round(float(raw_qty) * float(unit_weight_kg), 2)
+
     # Pounds (LB) -> Kilogram (KG)
-    if src in {"LB", "LBS"} and tgt == "KG":
+    if src in {"LB", "LBS", "POUND", "POUNDS"} and tgt == "KG":
         return round(float(raw_qty) * 0.45359237, 2)
+
+    # Volume: Liter (LTR) <-> Milliliter (ML)
+    if src in {"LTR", "L", "LITER", "LITRE"} and tgt in {"ML", "MILLILITER"}:
+        return round(float(raw_qty) * 1000.0, 2)
+    if src in {"ML", "MILLILITER"} and tgt in {"LTR", "L", "LITER", "LITRE"}:
+        return round(float(raw_qty) / 1000.0, 3)
+
+    # Length: Meter (MTR) <-> Millimeter (MM)
+    if src in {"MTR", "M", "METER"} and tgt in {"MM", "MILLIMETER"}:
+        return round(float(raw_qty) * 1000.0, 2)
+    if src in {"MM", "MILLIMETER"} and tgt in {"MTR", "M", "METER"}:
+        return round(float(raw_qty) / 1000.0, 3)
+
+    # Cross-category guard: If discrete packaging (BOX, BAG) cannot be converted to weight (KG),
+    # do NOT silently return raw_qty (e.g., 10 BOX is NOT 10 KG)
+    if src in {"BOX", "BAG", "CRATE", "PACK"} and tgt == "KG":
+        if unit_weight_kg and unit_weight_kg > 0:
+            effective_pack = float(pack_size_ea) if pack_size_ea and pack_size_ea > 0 else 100.0
+            return round(float(raw_qty) * effective_pack * float(unit_weight_kg), 2)
+        return 0.0
 
     return round(float(raw_qty), 2)
 
@@ -224,17 +264,21 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
         mapped = KNOWN_SUPPLIER_SKU_ALIASES[alnum_raw]
         return mapped, "VENDOR_CATALOG_ALIAS", 0.95
 
+    has_dimension_conflict = False
     if cleaned_po:
         po_tokens = [t for t in cleaned_po.split("-") if len(t) >= 2]
-        matched_tokens = sum(1 for tok in po_tokens if tok in alnum_raw)
-        if po_tokens and matched_tokens >= max(1, len(po_tokens) - 1):
-            return cleaned_po, "PO_TOKEN_SIMILARITY", 0.89
+        # Dimension Conflict Guard: Sizing/numerical tokens (M6 vs M12, 6204 vs 6205) MUST NOT conflict
+        has_dimension_conflict = any(any(c.isdigit() for c in tok) and tok not in alnum_raw for tok in po_tokens)
+        if not has_dimension_conflict:
+            matched_tokens = sum(1 for tok in po_tokens if tok in alnum_raw)
+            if len(po_tokens) >= 2 and matched_tokens >= len(po_tokens) - 1 and (matched_tokens / len(po_tokens)) >= 0.75:
+                return cleaned_po, "PO_TOKEN_SIMILARITY", 0.89
 
-        jw_po = jaro_winkler_similarity(alnum_raw, alnum_po)
-        if jw_po >= 0.93:
-            return cleaned_po, "JARO_WINKLER_FUZZY", round(jw_po, 2)
-        elif jw_po >= 0.85:
-            return cleaned_po, "FUZZY_MATCH_REVIEW_BAND", round(jw_po, 2)
+            jw_po = jaro_winkler_similarity(alnum_raw, alnum_po)
+            if jw_po >= 0.93:
+                return cleaned_po, "JARO_WINKLER_FUZZY", round(jw_po, 2)
+            elif jw_po >= 0.85:
+                return cleaned_po, "FUZZY_MATCH_REVIEW_BAND", round(jw_po, 2)
 
     if alnum_raw:
         # Phase 1: Adaptive N-Gram Candidate Pre-Filtering (Fast Path)
@@ -279,7 +323,7 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
             elif best_jw >= 0.85:
                 return best_alias_sku, "FUZZY_MATCH_REVIEW_BAND", round(best_jw, 2)
 
-    if cleaned_po:
+    if cleaned_po and not has_dimension_conflict:
         return cleaned_po, "PO_LINEAGE_FALLBACK", 0.82
 
     return cleaned_raw, "UNRESOLVED", 0.00

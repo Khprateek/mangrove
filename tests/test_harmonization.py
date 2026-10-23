@@ -22,6 +22,10 @@ def test_uom_normalization_pack_and_weight_inversions() -> None:
     assert normalize_uom_quantity(12.0, "CRATE_50", "EA") == 600.0
     assert normalize_uom_quantity(3.15, "MT", "KG") == 3150.0
     assert normalize_uom_quantity(3.312, "MT", "EA", unit_weight_kg=18.4) == 180.0
+    # Extended conversions: Grams to KG, Pieces/Numbers to EA, fallback 100 EA for unverified BOX
+    assert normalize_uom_quantity(500.0, "G", "KG") == 0.5
+    assert normalize_uom_quantity(25.0, "NOS", "EA") == 25.0
+    assert normalize_uom_quantity(10.0, "BOX", "EA", pack_size_ea=1.0) == 1000.0  # 10 * 100 EA fallback
 
 
 def test_supplier_sku_drift_and_jaro_winkler_resolution() -> None:
@@ -46,6 +50,12 @@ def test_supplier_sku_drift_and_jaro_winkler_resolution() -> None:
     assert sku_rev == "ENG-CRK-42CR-02"
     assert method_rev == "REVISION_MISMATCH_SUSPECTED"
     assert conf_rev < 0.85  # Below auto-resolve threshold -> routes to planner triage
+
+    # Dimension Conflict Guard: Sizing/numerical tokens (M12 bolt vs M6 bolt) MUST NOT match
+    sku_m12, method_m12, conf_m12 = resolve_supplier_sku("FAST-12-M", "FAST-06-M")
+    assert sku_m12 == "FAST-12-M"
+    assert method_m12 == "UNRESOLVED"
+    assert conf_m12 == 0.0
 
 
 def test_adaptive_ngram_prefiltering_and_safety_fallback() -> None:
