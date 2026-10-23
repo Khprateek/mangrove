@@ -1,14 +1,17 @@
 """Executive Perspective & Engine Mode Switcher Component.
 
 Provides a dual-perspective A/B inspector for plant executives and hackathon judges:
-1. 🔴 Traditional ERP Baseline (Blind Panic): What SAP / Oracle sees without In-DB UDFs.
+1. 🔴 Traditional ERP Baseline (Panic State) [DEFAULT]:
+   - What SAP / Oracle sees without In-DB UDFs.
+   - 13 inbound ASNs rejected at factory gate due to raw packaging and SKU drift.
    - ₹26.05 Cr flagged as critical line-halt threat across 4 assembly lines.
-   - 13 quarantined shipments rejected due to packaging drift and alias SKUs.
-   - Plant shutdown countdown active (4.2 hours).
-2. 🟢 Mangrove Autonomous Engine (In-DB Active Guard): Real-time in-memory harmonization.
-   - Exasol Python 3 UDFs evaluate 589 rows in 136.1 ms across 8 MPP partitions.
+   - Completely blind to Phantom Inventory (assumes book stock is usable).
+   - Zero concept of 'Cleared Exposure' (all 13 lines in shutdown alert).
+2. 🟢 Mangrove Autonomous In-DB Engine (Exasol Active Guard):
+   - In-database Python 3 UDFs evaluate 589 rows in 136.1 ms across 8 MPP partitions.
    - ₹20.76 Cr of false alarms dissolved in RAM.
-   - True physical shortage isolated to ₹5.29 Cr, unlocking 1-click mitigation.
+   - True physical shortage isolated to ₹5.29 Cr on Line 3.
+   - True ATP algorithm isolates ₹1.18 Cr phantom stock locked in damaged bins.
 """
 
 from __future__ import annotations
@@ -23,28 +26,35 @@ from src.app.theme import (
     COLOR_SURFACE,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
-    COLOR_WARNING,
 )
 
-MODE_MANGROVE = "🟢 Mangrove Autonomous In-DB Guard"
 MODE_LEGACY = "🔴 Traditional ERP Baseline (Panic State)"
+MODE_MANGROVE = "🟢 Mangrove Autonomous In-DB Engine (Active Guard)"
 
 
 def render_perspective_switcher() -> str:
-    """Renders the executive perspective switcher bar and returns 'MANGROVE_ACTIVE' or 'TRADITIONAL_ERP'."""
+    """Renders the executive perspective switcher bar.
+
+    Defaults to Traditional ERP Baseline (Panic State) so viewers immediately witness
+    the legacy crisis before turning ON Mangrove.
+    Returns: 'TRADITIONAL_ERP' or 'MANGROVE_ACTIVE'.
+    """
     if "engine_perspective_mode" not in st.session_state:
-        st.session_state["engine_perspective_mode"] = MODE_MANGROVE
+        st.session_state["engine_perspective_mode"] = MODE_LEGACY
+
+    current_mode = st.session_state["engine_perspective_mode"]
+    is_mangrove = (current_mode == MODE_MANGROVE)
 
     # 1. Executive Toolbar Card
     st.markdown(
         f"""
-        <div style="background-color: {COLOR_SURFACE}; border: 1px solid {COLOR_BORDER}; border-radius: 10px; padding: 10px 16px; margin-top: 8px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(24, 61, 50, 0.03);">
+        <div style="background-color: {COLOR_SURFACE}; border: 1px solid {COLOR_BORDER}; border-radius: 10px; padding: 10px 16px; margin-top: 8px; margin-bottom: 8px; box-shadow: 0 1px 3px rgba(24, 61, 50, 0.03);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <div style="font-size: 0.72rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.7px; text-transform: uppercase;">
-                    EXECUTIVE PERSPECTIVE &amp; ENGINE MODE:
+                    SYSTEM MODE &amp; SCM PERSPECTIVE:
                 </div>
                 <div style="font-size: 0.70rem; color: {COLOR_TEXT_SECONDARY};">
-                    A/B Inspector: Compare Legacy ERP Blind Spots vs. Mangrove In-DB Autonomous Guard
+                    Executive A/B Inspector: Compare Traditional ERP Blind Spots vs. Mangrove In-DB Real-Time Guard
                 </div>
             </div>
         </div>
@@ -56,7 +66,8 @@ def render_perspective_switcher() -> str:
     with col_ctrl:
         selected_mode = st.radio(
             "Engine Perspective Switcher",
-            [MODE_MANGROVE, MODE_LEGACY],
+            [MODE_LEGACY, MODE_MANGROVE],
+            index=1 if is_mangrove else 0,
             horizontal=True,
             key="engine_perspective_mode",
             label_visibility="collapsed",
@@ -70,7 +81,7 @@ def render_perspective_switcher() -> str:
                 f"""
                 <div style="text-align: right; padding-top: 4px;">
                     <span style="background-color: {COLOR_BRAND_SOFT}; color: {COLOR_BRAND_PRIMARY}; font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: 1px solid #C6DBC3; letter-spacing: 0.4px;">
-                        🛡️ IN-DB ACTIVE GUARD: 136.1 MS &bull; &#x20B9;20.76 CR CLEARED
+                        🛡️ MANGROVE ACTIVE: 136.1 MS &bull; &#x20B9;20.76 CR CLEARED
                     </span>
                 </div>
                 """,
@@ -81,14 +92,14 @@ def render_perspective_switcher() -> str:
                 f"""
                 <div style="text-align: right; padding-top: 4px;">
                     <span style="background-color: #FDF4F4; color: {COLOR_DANGER}; font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: 1px solid #F5C6C6; letter-spacing: 0.4px;">
-                        ⚠️ LEGACY PANIC: 13 QUARANTINED LINES &bull; &#x20B9;26.05 CR HALT THREAT
+                        ⚠️ TRADITIONAL ERP: 13 REJECTED ASNs &bull; &#x20B9;26.05 CR HALT THREAT
                     </span>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-    # 2. Dramatic Scenario Callout Banner
+    # 2. Dramatic Scenario Callout Banner with 1-Click Toggle Action
     if not is_mangrove:
         st.markdown(
             f"""
@@ -108,10 +119,10 @@ def render_perspective_switcher() -> str:
             unsafe_allow_html=True,
         )
 
-        col_btn_engage, _ = st.columns([1.5, 2.5])
+        col_btn_engage, _ = st.columns([1.6, 2.4])
         with col_btn_engage:
             if st.button(
-                "⚡ Engage Mangrove In-DB Autonomous Engine (Harmonize in RAM)",
+                "⚡ Turn ON Mangrove In-DB Engine (Activate Exasol Defense)",
                 type="primary",
                 key="btn_engage_mangrove_hero",
                 use_container_width=True,
@@ -143,5 +154,15 @@ def render_perspective_switcher() -> str:
             """,
             unsafe_allow_html=True,
         )
+
+        col_btn_revert, _ = st.columns([1.4, 2.6])
+        with col_btn_revert:
+            if st.button(
+                "↩️ Switch to Traditional ERP (Inspect Blind Spots)",
+                key="btn_revert_to_legacy_hero",
+                use_container_width=True,
+            ):
+                st.session_state["engine_perspective_mode"] = MODE_LEGACY
+                st.rerun()
 
     return "MANGROVE_ACTIVE" if is_mangrove else "TRADITIONAL_ERP"

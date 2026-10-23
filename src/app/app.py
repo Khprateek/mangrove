@@ -87,15 +87,15 @@ def main() -> None:
     with tab1:
         render_triage_tab(client, marts, perspective_mode=perspective_mode)
     with tab2:
-        render_bom_horizon_tab(marts)
+        render_bom_horizon_tab(marts, perspective_mode=perspective_mode)
     with tab3:
-        render_scenario_simulator_tab(client, marts)
+        render_scenario_simulator_tab(client, marts, perspective_mode=perspective_mode)
     with tab4:
         render_scale_benchmark_tab(client, marts)
     with tab5:
-        render_financial_roi_tab(client, marts)
+        render_financial_roi_tab(client, marts, perspective_mode=perspective_mode)
     with tab6:
-        render_phantom_inventory_tab(marts)
+        render_phantom_inventory_tab(marts, perspective_mode=perspective_mode)
     with tab7:
         render_exasol_engine_tab(client, marts, project_root=PROJECT_ROOT)
 

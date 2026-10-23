@@ -9,6 +9,7 @@ import streamlit as st
 from src.app.theme import (
     COLOR_BRAND_ACCENT,
     COLOR_BRAND_PRIMARY,
+    COLOR_BRAND_SOFT,
     COLOR_DANGER,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
@@ -18,11 +19,43 @@ from src.app.theme import (
 )
 
 
-def render_phantom_inventory_tab(marts: dict) -> None:
-    """Render Tab 6: Warehouse Phantom Inventory Audit (VW_INVENTORY_TRUE_ATP)."""
+def render_phantom_inventory_tab(
+    marts: dict,
+    perspective_mode: str = "MANGROVE_ACTIVE",
+) -> None:
+    """Render Tab 6: Warehouse Phantom Inventory Audit (VW_INVENTORY_TRUE_ATP)
+
+    dynamically highlights the visibility difference between Traditional ERP and Mangrove.
+    """
+    is_mangrove = (perspective_mode == "MANGROVE_ACTIVE")
     inv_df: pd.DataFrame = marts["inventory_mart"].copy().sort_values(
         "phantom_inventory_value_inr", ascending=False
     )
+
+    if not is_mangrove:
+        st.markdown(
+            f"""
+            <div style="background-color: #FDF4F4; border: 1px solid #F5C6C6; border-left: 5px solid {COLOR_DANGER}; border-radius: 9px; padding: 10px 16px; margin-bottom: 14px;">
+                <span style="font-weight: 700; color: {COLOR_DANGER}; font-size: 0.82rem;">⚠️ TRADITIONAL ERP BLIND SPOT: ZERO PHANTOM VISIBILITY</span>
+                <div style="font-size: 0.76rem; color: #68756B; margin-top: 2px;">
+                    Traditional ERP assumes 100% of book inventory is usable: <code>Naive ATP = Book On-Hand</code>. It is completely blind to damaged bins and quality-hold quarantine crates. When assembly lines run out of parts, the ERP is surprised because "the system says it's in stock."
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 5px solid {COLOR_BRAND_PRIMARY}; border-radius: 9px; padding: 10px 16px; margin-bottom: 14px;">
+                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; font-size: 0.82rem;">🟢 MANGROVE TRUE ATP ENGINE: 13,855 PHANTOM UNITS (₹1.18 CR) DEDUCTED IN RAM</span>
+                <div style="font-size: 0.76rem; color: #68756B; margin-top: 2px;">
+                    Mangrove executes in-memory True ATP: <code>ATP = max(0, Q_wms - Q_allocated - Q_hold)</code>. Phantom units in damaged and QC-hold bins are quarantined before pickers reach the shelves.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.subheader("Warehouse Phantom Inventory Audit (`VW_INVENTORY_TRUE_ATP`)")
     st.caption(
@@ -101,9 +134,9 @@ def render_phantom_inventory_tab(marts: dict) -> None:
             "WMS Physical Count": inv_df["wms_physical_counted_qty"],
             "Allocated to Prod": inv_df["allocated_to_prod_qty"],
             "Quality Hold": inv_df["quality_hold_qty"],
-            "True Pickable ATP": inv_df["true_pickable_atp_qty"],
-            "Phantom Inventory Qty": inv_df["phantom_inventory_qty"],
-            "Phantom Capital Distortion": inv_df["phantom_inventory_value_inr"].apply(format_inr_crore_lakh),
+            "True Pickable ATP": inv_df["true_pickable_atp_qty"] if is_mangrove else inv_df["erp_system_on_hand_qty"],
+            "Phantom Inventory Qty": inv_df["phantom_inventory_qty"] if is_mangrove else ["0 (Unreported)"] * len(inv_df),
+            "Phantom Capital Distortion": inv_df["phantom_inventory_value_inr"].apply(format_inr_crore_lakh) if is_mangrove else ["Rs 0.00 (Blind Spot)"] * len(inv_df),
         }
     )
     st.dataframe(inv_table, use_container_width=True, hide_index=True)

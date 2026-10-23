@@ -34,6 +34,21 @@ DEFECT_LABELS = {
     "WEIGHT_MT_TO_EA_INVERSION": "Weight MT to Piece (EA)",
 }
 
+DEFECT_DESCRIPTIONS_LEGACY = {
+    "SKU_DRIFT_AND_UOM_BOX": "Unrecognized SKU Drift & Non-Standard Packaging (BOX_100)",
+    "SKU_DRIFT_AND_UOM_BAG": "Unrecognized SKU Drift & Bulk Bag Packaging (BAG_250)",
+    "EPOCH_DATE_AND_UOM_BOX": "Corrupt Unix Epoch Timestamp & Crate Inversion",
+    "SKU_HYPHEN_STRIPPED": "OCR Parsing Failure (Missing Hyphen in Part Number)",
+    "OCR_SKU_ALIAS_AND_BOX": "Unmapped Vendor Catalog Alias & Packaging Mismatch",
+    "UOM_MT_VS_KG_CLEAN_QTY": "Metric Ton to Kilogram Unit Conversion Mismatch",
+    "SPLIT_PO_AND_UOM_CRATE": "Unrecognized Crate Packaging & PO Short-Shipment",
+    "SPLIT_PO_SHORT_SHIPMENT": "Partial Delivery Shortfall against Active Purchase Order",
+    "UOM_MT_VS_KG_SHORTAGE": "Metric Ton Unit Inversion & Physical Weight Deficit",
+    "SKU_ALIAS_AND_SHORT_QTY": "Unrecognized Catalog Code & Confirmed Material Shortage",
+    "DUPLICATE_ASN_RETRANSMIT": "Duplicate Transmission ID Quarantined by Gate System",
+    "WEIGHT_MT_TO_EA_INVERSION": "Weight Metric Ton to Piece Conversion Mismatch",
+}
+
 
 def render_triage_tab(
     client: ChakanExasolClient,
@@ -42,7 +57,9 @@ def render_triage_tab(
 ) -> None:
     """Tab 1: Actionable Shortage-Risk Queue & 1-Click Fast-Resolution Workbench
 
-    dynamically renders from the active executive perspective (MANGROVE_ACTIVE vs TRADITIONAL_ERP).
+    dynamically renders authentic views depending on perspective:
+    - TRADITIONAL_ERP: Authentic legacy quarantine log (NO 'Harmonized In-DB' column).
+    - MANGROVE_ACTIVE: In-DB Harmonized triage workbench with UDF-resolved SKUs and True Net Risk.
     """
     is_mangrove = (perspective_mode == "MANGROVE_ACTIVE")
     triage_df: pd.DataFrame = marts["triage_queue"].copy()
@@ -67,22 +84,22 @@ def render_triage_tab(
 
     # Sort triage_df so highest true net risk is first
     triage_df = triage_df.sort_values(
-        by=["revenue_at_risk_net_inr", "min_hours_to_stop_harmonized"],
+        by=["revenue_at_risk_net_inr" if is_mangrove else "revenue_at_risk_legacy_inr", "min_hours_to_stop_harmonized"],
         ascending=[False, True],
     )
 
     # 1. Actionable Queue Header & Urgency Filter
-    col_t_title, col_t_filter = st.columns([1.1, 1.0])
+    col_t_title, col_t_filter = st.columns([1.2, 0.9])
     with col_t_title:
         title_text = (
             "Actionable Shortage-Risk Queue &amp; Fast Triage"
             if is_mangrove
-            else "Quarantined Inbound Queue (Traditional ERP Blind Panic)"
+            else "Gate Quarantine Log (Traditional ERP Batch Rejections)"
         )
         sub_text = (
             "Ranked by plant halt urgency and net revenue threatened over the next 48 hours."
             if is_mangrove
-            else "All 13 supplier dispatches rejected by legacy ERP. Zero inventory credited to assembly buffers."
+            else "All 13 supplier shipments rejected at factory gate by legacy ETL. Zero stock credited to assembly lines."
         )
         st.markdown(
             f"""
@@ -117,7 +134,7 @@ def render_triage_tab(
         else:
             urgency_filter = st.radio(
                 "Filter Stream:",
-                ["🔴 All 13 ASNs Rejected (Zero Stock)", "🔴 Critical Line Halts (13)"],
+                ["🔴 All 13 Shipments Rejected (Zero Stock)", "🔴 Emergency Line Shutdowns (13)"],
                 horizontal=True,
                 label_visibility="collapsed",
             )
@@ -127,7 +144,7 @@ def render_triage_tab(
         filtered_df = triage_df
 
     # 1. Prioritized Quarantined Stream Table (Top of Tab 1)
-    queue_label = "PRIORITIZED INBOUND DISPATCH QUEUE" if is_mangrove else "LEGACY ERP QUARANTINE QUEUE (UNPARSED RAW DRIFT)"
+    queue_label = "PRIORITIZED INBOUND DISPATCH QUEUE" if is_mangrove else "LEGACY ERP GATE REJECTION LOG (RAW UNHARMONIZED PAYLOADS)"
     st.markdown(
         f"""
         <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 10px; margin-bottom: 8px;">
@@ -137,64 +154,74 @@ def render_triage_tab(
         unsafe_allow_html=True,
     )
 
-    def format_verdict_badge(row: pd.Series) -> str:
-        if not is_mangrove:
-            return "🔴 Rejected (Zero Stock)"
-        net_risk = safe_float(row["revenue_at_risk_net_inr"])
-        verdict = row["operational_verdict"]
-        if net_risk > 0:
-            return "🔴 Line Threat"
-        if verdict == "FALSE_STARVATION_CLEARED_BY_UDF":
-            return "🟢 False Alarm Cleared"
-        if verdict == "HARMONIZED_BUFFER_RESTORED":
-            return "🟢 Buffer Restored"
-        return "🟡 Duplicate Suppressed"
-
     def format_raw_payload(row: pd.Series) -> str:
         uom = str(row["raw_shipped_uom"])
         qty = safe_float(row["raw_shipped_qty"])
         qty_str = f"{qty:.3f}" if uom == "MT" else f"{qty:,.0f}"
         return f"{row['raw_supplier_sku']} ({qty_str} {uom})"
 
-    def format_harmonized_part(row: pd.Series) -> str:
-        if not is_mangrove:
-            return "❌ REJECTED (Legacy ERP Blind)"
-        qty = safe_float(row["harmonized_shipped_qty"])
-        return f"{row['resolved_part_num']} ({qty:,.0f} {row['canonical_uom']})"
-
     def format_legacy_alarm(row: pd.Series) -> str:
         alarm = safe_float(row["revenue_at_risk_legacy_inr"])
         return f"REJECTED ({format_inr_crore_lakh(alarm)})" if alarm > 0 else "REJECTED AT GATE (Dirty Data)"
 
-    def format_true_net_risk(row: pd.Series) -> str:
-        if not is_mangrove:
-            alarm = safe_float(row["revenue_at_risk_legacy_inr"])
-            return f"🔴 {format_inr_crore_lakh(alarm)} (Threat)" if alarm > 0 else "🔴 Threat"
-        net = safe_float(row["revenue_at_risk_net_inr"])
-        alarm = safe_float(row["revenue_at_risk_legacy_inr"])
-        if net > 0:
-            return format_inr_crore_lakh(net)
-        if alarm > 0:
-            return "Rs 0.00 (Cleared)"
-        return "Rs 0.00 (Unblocked)"
+    if is_mangrove:
+        # Mangrove In-DB Harmonized Table (with Harmonized In-DB and True Net Risk)
+        def format_verdict_badge(row: pd.Series) -> str:
+            net_risk = safe_float(row["revenue_at_risk_net_inr"])
+            verdict = row["operational_verdict"]
+            if net_risk > 0:
+                return "🔴 Line Threat"
+            if verdict == "FALSE_STARVATION_CLEARED_BY_UDF":
+                return "🟢 False Alarm Cleared"
+            if verdict == "HARMONIZED_BUFFER_RESTORED":
+                return "🟢 Buffer Restored"
+            return "🟡 Duplicate Suppressed"
 
-    display_df = pd.DataFrame(
-        {
-            "Verdict": filtered_df.apply(format_verdict_badge, axis=1),
-            "ASN ID": filtered_df["asn_line_id"],
-            "Supplier": filtered_df["supplier_name"],
-            "Raw Payload (Defect)": filtered_df.apply(format_raw_payload, axis=1),
-            "Defect Mode": filtered_df["anomaly_type"].map(DEFECT_LABELS).fillna(filtered_df["anomaly_type"]),
-            "Harmonized In-DB": filtered_df.apply(format_harmonized_part, axis=1),
-            "Target Line": filtered_df["affected_lines"],
-            "Legacy ERP Status": filtered_df.apply(format_legacy_alarm, axis=1),
-            "True Net Risk": filtered_df.apply(format_true_net_risk, axis=1),
-        }
-    )
+        def format_harmonized_part(row: pd.Series) -> str:
+            qty = safe_float(row["harmonized_shipped_qty"])
+            return f"{row['resolved_part_num']} ({qty:,.0f} {row['canonical_uom']})"
+
+        def format_true_net_risk(row: pd.Series) -> str:
+            net = safe_float(row["revenue_at_risk_net_inr"])
+            alarm = safe_float(row["revenue_at_risk_legacy_inr"])
+            if net > 0:
+                return format_inr_crore_lakh(net)
+            if alarm > 0:
+                return "Rs 0.00 (Cleared)"
+            return "Rs 0.00 (Unblocked)"
+
+        display_df = pd.DataFrame(
+            {
+                "Verdict": filtered_df.apply(format_verdict_badge, axis=1),
+                "ASN ID": filtered_df["asn_line_id"],
+                "Supplier": filtered_df["supplier_name"],
+                "Raw Payload (Defect)": filtered_df.apply(format_raw_payload, axis=1),
+                "Defect Mode": filtered_df["anomaly_type"].map(DEFECT_LABELS).fillna(filtered_df["anomaly_type"]),
+                "Harmonized In-DB": filtered_df.apply(format_harmonized_part, axis=1),
+                "Target Line": filtered_df["affected_lines"],
+                "Legacy ERP Status": filtered_df.apply(format_legacy_alarm, axis=1),
+                "True Net Risk": filtered_df.apply(format_true_net_risk, axis=1),
+            }
+        )
+    else:
+        # Traditional ERP Table: Authentic Legacy Structure (NO "Harmonized In-DB" column!)
+        display_df = pd.DataFrame(
+            {
+                "Gate Status": ["🔴 REJECTED AT GATE"] * len(filtered_df),
+                "ASN Line ID": filtered_df["asn_line_id"],
+                "Supplier Name": filtered_df["supplier_name"],
+                "Supplier SKU & Qty (Raw)": filtered_df.apply(format_raw_payload, axis=1),
+                "ETL Rejection Cause": filtered_df["anomaly_type"].map(DEFECT_DESCRIPTIONS_LEGACY).fillna(filtered_df["anomaly_type"]),
+                "Affected Assembly Line": filtered_df["affected_lines"],
+                "ERP Line Verdict": ["ZERO STOCK CREDITED (HALT)"] * len(filtered_df),
+                "Revenue Threatened": filtered_df["revenue_at_risk_legacy_inr"].map(format_inr_crore_lakh),
+            }
+        )
+
     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
     # 2. Fast-Resolution Workbench (Directly below Queue)
-    workbench_label = "1-CLICK RESOLUTION WORKBENCH" if is_mangrove else "1-CLICK RESOLUTION WORKBENCH (DISABLED IN LEGACY MODE)"
+    workbench_label = "1-CLICK RESOLUTION WORKBENCH" if is_mangrove else "1-CLICK RESOLUTION WORKBENCH (DISABLED IN TRADITIONAL ERP)"
     st.markdown(
         f"""
         <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 20px; margin-bottom: 8px;">
@@ -218,9 +245,9 @@ def render_triage_tab(
         options=options,
         format_func=lambda x: (
             f"⚡ {x} | PO: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'po_number_ref'].values[0]} | "
-            f"Part: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'resolved_part_num'].values[0]} | "
+            f"Supplier: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'supplier_name'].values[0]} | "
             f"Line: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'affected_lines'].values[0]} | "
-            f"Risk: {format_inr_crore_lakh(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr' if is_mangrove else 'revenue_at_risk_legacy_inr'].values[0])}"
+            f"Exposure: {format_inr_crore_lakh(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr' if is_mangrove else 'revenue_at_risk_legacy_inr'].values[0])}"
         ),
         label_visibility="collapsed",
     )
@@ -348,15 +375,15 @@ def render_triage_tab(
     else:
         st.warning(
             "⚠️ Traditional ERP cannot authorize resolution on unharmonized dirty data. "
-            "Engage Mangrove In-DB Autonomous Engine to normalize UOM and resolve SKU aliases in RAM."
+            "Turn ON Mangrove In-DB Engine to normalize UOM and resolve SKU aliases in RAM."
         )
         if st.button(
-            f"⚡ Engage Mangrove In-DB Engine to Resolve ASN ({sel_row['asn_line_id']})",
+            f"⚡ Turn ON Mangrove In-DB Engine to Resolve ASN ({sel_row['asn_line_id']})",
             type="primary",
             use_container_width=True,
             key="btn_switch_to_mangrove_from_workbench",
         ):
-            st.session_state["engine_perspective_mode"] = "🟢 Mangrove Autonomous In-DB Guard"
+            st.session_state["engine_perspective_mode"] = "🟢 Mangrove Autonomous In-DB Engine (Active Guard)"
             st.rerun()
 
     # 4. Cryptographic Merkle Audit Trail & 1-Click Rollback Explorer

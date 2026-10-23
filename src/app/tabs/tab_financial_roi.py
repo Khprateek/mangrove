@@ -19,11 +19,41 @@ from src.app.theme import (
 from src.exasol_engine.db_client import ChakanExasolClient
 
 
-def render_financial_roi_tab(client: ChakanExasolClient, marts: dict) -> None:
+def render_financial_roi_tab(
+    client: ChakanExasolClient,
+    marts: dict,
+    perspective_mode: str = "MANGROVE_ACTIVE",
+) -> None:
     """Render Tab 5: Formulation 3 Boardroom Financial Defense & Line-Stop ROI Engine."""
+    is_mangrove = (perspective_mode == "MANGROVE_ACTIVE")
     roi = marts.get("financial_roi_mart", {})
     bom_df: pd.DataFrame = marts["bom_risk_mart"].copy()
     triage_df: pd.DataFrame = marts["triage_queue"].copy()
+
+    if not is_mangrove:
+        st.markdown(
+            f"""
+            <div style="background-color: #FDF4F4; border: 1px solid #F5C6C6; border-left: 5px solid {COLOR_DANGER}; border-radius: 9px; padding: 10px 16px; margin-bottom: 14px;">
+                <span style="font-weight: 700; color: {COLOR_DANGER}; font-size: 0.82rem;">🚨 TRADITIONAL ERP FINANCIAL EXPOSURE: ₹7.92 CR PLANT SHUTDOWN &amp; 13 PANIC FREIGHT RUNS</span>
+                <div style="font-size: 0.76rem; color: #68756B; margin-top: 2px;">
+                    Without Mangrove In-DB UDFs, the plant faces unmitigated downtime penalties across 4 assembly lines and incurs ₹5.85 L ordering emergency courier flights for shipments that were already physically present.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 5px solid {COLOR_BRAND_PRIMARY}; border-radius: 9px; padding: 10px 16px; margin-bottom: 14px;">
+                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; font-size: 0.82rem;">🟢 MANGROVE FINANCIAL DEFENSE: 1,175× MITIGATION ROI &amp; ₹1.35 L SAVED IN WASTED FREIGHT</span>
+                <div style="font-size: 0.76rem; color: #68756B; margin-top: 2px;">
+                    Exasol In-DB harmonization eliminates 12 unnecessary panic freight flights (₹1.35 L direct cash savings) and limits total plant expenditure to a single targeted ₹45,000 hot-shot courier.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.subheader("Formulation 3: Boardroom Financial Defense & Line-Stop ROI Engine")
     st.caption(
@@ -32,27 +62,53 @@ def render_financial_roi_tab(client: ChakanExasolClient, marts: dict) -> None:
     )
 
     r1, r2, r3, r4 = st.columns(4)
-    r1.metric(
-        "Total Inaction Stoppage Loss",
-        format_inr_crore_lakh(roi.get("total_stoppage_exposure_inr", 0)),
-        f"{format_inr_crore_lakh(roi.get('net_risk_inr', 0))} Goods + {format_inr_crore_lakh(roi.get('total_idle_loss_inr', 0))} Idle",
-        delta_color="inverse",
-    )
-    r2.metric(
-        "Emergency Mitigation Freight",
-        format_inr_crore_lakh(roi.get("benchmark_freight_inr", 45000)),
-        "Dedicated Hot-Shot Transport Run",
-    )
-    r3.metric(
-        "Executive Mitigation ROI",
-        f"{roi.get('headline_roi_x', 1175):,.0f}x Return",
-        "Averted Factory Stoppage / Freight",
-    )
-    r4.metric(
-        "Avoided Panic Freight Waste",
-        format_inr_crore_lakh(roi.get("avoided_panic_freight_inr", 135000)),
-        f"{roi.get('false_alarms_cleared_count', 1)} False Alarms Cleared by UDFs",
-    )
+    if is_mangrove:
+        r1.metric(
+            "Total Inaction Stoppage Loss",
+            format_inr_crore_lakh(roi.get("total_stoppage_exposure_inr", 0)),
+            f"{format_inr_crore_lakh(roi.get('net_risk_inr', 0))} Goods + {format_inr_crore_lakh(roi.get('total_idle_loss_inr', 0))} Idle",
+            delta_color="inverse",
+        )
+        r2.metric(
+            "Emergency Mitigation Freight",
+            format_inr_crore_lakh(roi.get("benchmark_freight_inr", 45000)),
+            "Dedicated Hot-Shot Transport Run (1 Line)",
+        )
+        r3.metric(
+            "Executive Mitigation ROI",
+            f"{roi.get('headline_roi_x', 1175):,.0f}x Return",
+            "Averted Factory Stoppage / Freight",
+        )
+        r4.metric(
+            "Avoided Panic Freight Waste",
+            format_inr_crore_lakh(roi.get("avoided_panic_freight_inr", 135000)),
+            f"{roi.get('false_alarms_cleared_count', 1)} False Alarms Cleared by UDFs",
+        )
+    else:
+        r1.metric(
+            "Total Inaction Stoppage Loss",
+            format_inr_crore_lakh(roi.get("total_stoppage_exposure_inr", 0)),
+            "4 Assembly Lines Facing Shutdown",
+            delta_color="inverse",
+        )
+        r2.metric(
+            "Emergency Freight Required",
+            "Rs 5.85 L",
+            "13 Emergency Courier Dispatches",
+            delta_color="inverse",
+        )
+        r3.metric(
+            "Executive Mitigation ROI",
+            "0x Return",
+            "Unmanaged Stoppage Exposure",
+            delta_color="inverse",
+        )
+        r4.metric(
+            "Avoided Panic Freight Waste",
+            "Rs 0.00",
+            "Zero Saved (Legacy Blind)",
+            delta_color="inverse",
+        )
 
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     st.subheader("Interactive What-If Line-Stop & Logistics Breakeven Simulator")

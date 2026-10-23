@@ -9,6 +9,7 @@ import streamlit as st
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
+    COLOR_BRAND_SOFT,
     COLOR_DANGER,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
@@ -18,8 +19,38 @@ from src.app.theme import (
 from src.exasol_engine.db_client import ChakanExasolClient
 
 
-def render_scenario_simulator_tab(client: ChakanExasolClient, marts: dict) -> None:
+def render_scenario_simulator_tab(
+    client: ChakanExasolClient,
+    marts: dict,
+    perspective_mode: str = "MANGROVE_ACTIVE",
+) -> None:
     """Tab 3: Interactive 'What-If' Chaos Simulator: Real-Time In-DB Stress Testing."""
+    is_mangrove = (perspective_mode == "MANGROVE_ACTIVE")
+
+    if not is_mangrove:
+        st.markdown(
+            f"""
+            <div style="background-color: #FDF4F4; border: 1px solid #F5C6C6; border-left: 5px solid {COLOR_DANGER}; border-radius: 9px; padding: 10px 16px; margin-bottom: 14px;">
+                <span style="font-weight: 700; color: {COLOR_DANGER}; font-size: 0.82rem;">⚠️ TRADITIONAL ERP SIMULATION RESTRICTION</span>
+                <div style="font-size: 0.76rem; color: #68756B; margin-top: 2px;">
+                    Traditional ERP operates on static batch ETL schedules and cannot simulate multi-parameter supply disruptions in memory. Turn ON Mangrove to unlock real-time monsoon delay, foundry defect spike, and demand surge simulations.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"""
+            <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 5px solid {COLOR_BRAND_PRIMARY}; border-radius: 9px; padding: 10px 16px; margin-bottom: 14px;">
+                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; font-size: 0.82rem;">🟢 MANGROVE IN-DB SIMULATOR: LIVE RECURSIVE BOM STRESS-TESTING</span>
+                <div style="font-size: 0.76rem; color: #68756B; margin-top: 2px;">
+                    Exasol evaluates multi-table joins, Python UDFs, and starvation horizons in sub-second columnar RAM as disruption sliders move.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     st.subheader("Interactive 'What-If' Chaos Simulator: Real-Time In-DB Stress Testing")
     st.caption(
         "Automotive supply chains face simultaneous compound disruptions: transit roadblocks, "
