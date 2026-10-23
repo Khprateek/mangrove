@@ -6,7 +6,6 @@ import pandas as pd
 import streamlit as st
 
 from src.app.components.audit_ledger import render_visual_audit_ledger
-from src.app.components.perspective_switcher import activate_mangrove_mode
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
@@ -221,59 +220,55 @@ def render_triage_tab(
 
     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-    # 2. Fast-Resolution Workbench (Directly below Queue)
-    workbench_label = "1-CLICK RESOLUTION WORKBENCH" if is_mangrove else "1-CLICK RESOLUTION WORKBENCH (DISABLED IN TRADITIONAL ERP)"
-    st.markdown(
-        f"""
-        <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 20px; margin-bottom: 8px;">
-            {workbench_label}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
+    # 2. Fast-Resolution Workbench & Cryptographic Audit Ledger (Only available in Mangrove Guard)
     if is_mangrove:
-        shortage_ids = [
-            x for x in filtered_df["asn_line_id"].tolist()
-            if safe_float(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr'].values[0]) > 0
-        ]
-        options = shortage_ids if shortage_ids else filtered_df["asn_line_id"].tolist()
-    else:
-        options = filtered_df["asn_line_id"].tolist()
-
-    selected_id = st.selectbox(
-        "Select Shortage Record to Resolve:",
-        options=options,
-        format_func=lambda x: (
-            f"⚡ {x} | PO: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'po_number_ref'].values[0]} | "
-            f"Supplier: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'supplier_name'].values[0]} | "
-            f"Line: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'affected_lines'].values[0]} | "
-            f"Exposure: {format_inr_crore_lakh(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr' if is_mangrove else 'revenue_at_risk_legacy_inr'].values[0])}"
-        ),
-        label_visibility="collapsed",
-    )
-
-    sel_row = filtered_df[filtered_df["asn_line_id"] == selected_id].iloc[0]
-
-    # 3 Executive Data Tiles
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
         st.markdown(
             f"""
-            <div class="mangrove-tile">
-                <div class="mangrove-tile-title">1. Inbound Raw Dispatch (Anomaly)</div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Supplier:</span><span class="mangrove-tile-val">{sel_row['supplier_name']} ({sel_row['tier_level']})</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Transport:</span><span class="mangrove-tile-val">{sel_row['source_format']} • {sel_row['vehicle_lorry_no']}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Raw SKU String:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{sel_row['raw_supplier_sku']}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Raw Shipped:</span><span class="mangrove-tile-val">{sel_row['raw_shipped_qty']} {sel_row['raw_shipped_uom']}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Reported ETA:</span><span class="mangrove-tile-val">{sel_row['raw_eta_date']} ({sel_row['anomaly_type']})</span></div>
+            <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 20px; margin-bottom: 8px;">
+                1-CLICK RESOLUTION WORKBENCH
             </div>
             """,
             unsafe_allow_html=True,
         )
 
-    with col_b:
-        if is_mangrove:
+        shortage_ids = [
+            x for x in filtered_df["asn_line_id"].tolist()
+            if safe_float(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr'].values[0]) > 0
+        ]
+        options = shortage_ids if shortage_ids else filtered_df["asn_line_id"].tolist()
+
+        selected_id = st.selectbox(
+            "Select Shortage Record to Resolve:",
+            options=options,
+            format_func=lambda x: (
+                f"⚡ {x} | PO: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'po_number_ref'].values[0]} | "
+                f"Supplier: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'supplier_name'].values[0]} | "
+                f"Line: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'affected_lines'].values[0]} | "
+                f"Exposure: {format_inr_crore_lakh(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr'].values[0])}"
+            ),
+            label_visibility="collapsed",
+        )
+
+        sel_row = filtered_df[filtered_df["asn_line_id"] == selected_id].iloc[0]
+
+        # 3 Executive Data Tiles
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            st.markdown(
+                f"""
+                <div class="mangrove-tile">
+                    <div class="mangrove-tile-title">1. Inbound Raw Dispatch (Anomaly)</div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Supplier:</span><span class="mangrove-tile-val">{sel_row['supplier_name']} ({sel_row['tier_level']})</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Transport:</span><span class="mangrove-tile-val">{sel_row['source_format']} • {sel_row['vehicle_lorry_no']}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Raw SKU String:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{sel_row['raw_supplier_sku']}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Raw Shipped:</span><span class="mangrove-tile-val">{sel_row['raw_shipped_qty']} {sel_row['raw_shipped_uom']}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Reported ETA:</span><span class="mangrove-tile-val">{sel_row['raw_eta_date']} ({sel_row['anomaly_type']})</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        with col_b:
             st.markdown(
                 f"""
                 <div class="mangrove-tile-highlight">
@@ -287,23 +282,8 @@ def render_triage_tab(
                 """,
                 unsafe_allow_html=True,
             )
-        else:
-            st.markdown(
-                f"""
-                <div class="mangrove-tile" style="border: 1px solid #F5C6C6; background-color: #FDF4F4;">
-                    <div class="mangrove-tile-title" style="color: {COLOR_DANGER};">2. Legacy ERP Batch Status (Unparsed)</div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Resolved SKU:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">UNKNOWN (Catalog Drift)</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Match Method:</span><span class="mangrove-tile-val">EXACT KEY ONLY (Failed)</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Credited Qty:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">0 EA (Zero Stock Assumed)</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">PO Target Qty:</span><span class="mangrove-tile-val">{sel_row['po_ordered_qty']:,.0f} EA</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Status:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">QUARANTINED &amp; DROPPED</span></div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
-    with col_c:
-        if is_mangrove:
+        with col_c:
             halt_color = COLOR_DANGER if sel_row["min_hours_to_stop_harmonized"] < 24.0 else COLOR_BRAND_PRIMARY
             roi_disp = f"{sel_row['mitigation_roi_x']:,.0f}x" if sel_row["mitigation_roi_x"] > 0 else "N/A"
             freight_disp = f"Rs {sel_row['expedited_freight_cost_inr']:,.0f}" if sel_row["expedited_freight_cost_inr"] > 0 else "Rs 45,000"
@@ -320,24 +300,9 @@ def render_triage_tab(
                 """,
                 unsafe_allow_html=True,
             )
-        else:
-            st.markdown(
-                f"""
-                <div class="mangrove-tile" style="border: 1px solid #F5C6C6; background-color: #FDF4F4;">
-                    <div class="mangrove-tile-title" style="color: {COLOR_DANGER};">3. Line Halt Risk &amp; Panic Exposure</div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Assembly Line:</span><span class="mangrove-tile-val">{sel_row['affected_lines']}</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Hours to Halt:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{sel_row['min_hours_to_stop_legacy']}h (EMERGENCY)</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Plant Downtime Loss:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{format_inr_crore_lakh(sel_row['total_stoppage_exposure_inr'])}</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Emergency Action:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">ORDER HOT-SHOT COURIER</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Mitigation ROI:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">0x (Unmitigated)</span></div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
-    # Action Buttons
-    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-    if is_mangrove:
+        # Action Buttons
+        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
         b1, b2 = st.columns(2)
         with b1:
             if st.button(
@@ -373,18 +338,6 @@ def render_triage_tab(
                 )
                 st.success(f"Authorized emergency shortfall cover and updated Exasol in {write_ms:.2f} ms.")
                 st.rerun()
-    else:
-        st.warning(
-            "⚠️ Traditional ERP cannot authorize resolution on unharmonized dirty data. "
-            "Turn ON Mangrove In-DB Engine to normalize UOM and resolve SKU aliases in RAM."
-        )
-        st.button(
-            f"⚡ Turn ON Mangrove In-DB Engine to Resolve ASN ({sel_row['asn_line_id']})",
-            type="primary",
-            use_container_width=True,
-            key="btn_switch_to_mangrove_from_workbench",
-            on_click=activate_mangrove_mode,
-        )
 
-    # 4. Cryptographic Merkle Audit Trail & 1-Click Rollback Explorer
-    render_visual_audit_ledger(client)
+        # 3. Cryptographic Merkle Audit Trail & 1-Click Rollback Explorer
+        render_visual_audit_ledger(client)
