@@ -13,6 +13,13 @@ from src.app.theme import (
     format_inr_crore_lakh,
     safe_float,
 )
+from src.app.components import (
+    render_header,
+    render_kpi_header,
+    render_sidebar,
+    render_telemetry_banner,
+    render_visual_audit_ledger,
+)
 from src.app.tabs import (
     render_bom_horizon_tab,
     render_exasol_engine_tab,
@@ -39,6 +46,19 @@ def test_theme_tokens_and_formatting_utilities() -> None:
     assert format_inr_crore_lakh(52_900_000) == "Rs 5.29 Cr"
     assert format_inr_crore_lakh(135_000) == "Rs 1.35 L"
     assert format_inr_crore_lakh(45_000) == "Rs 45,000"
+
+
+def test_component_exports_and_callables() -> None:
+    """Ensures all reusable UI components export valid render callables."""
+    components = [
+        render_header,
+        render_telemetry_banner,
+        render_kpi_header,
+        render_sidebar,
+        render_visual_audit_ledger,
+    ]
+    for comp_fn in components:
+        assert callable(comp_fn), f"{comp_fn.__name__} must be a callable function"
 
 
 def test_tab_module_exports_and_callables() -> None:

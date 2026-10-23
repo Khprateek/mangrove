@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from src.app.components.audit_ledger import render_visual_audit_ledger
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
@@ -274,67 +275,5 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
             st.success(f"Authorized emergency shortfall cover and updated Exasol in {write_ms:.2f} ms.")
             st.rerun()
 
-    # 4. Active Overrides with 1-Click Rollback Control
-    ov_active = client.tables.get("ASN_PLANNER_OVERRIDES", pd.DataFrame())
-    if len(ov_active) > 0:
-        st.markdown(
-            f"""
-            <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 18px; margin-bottom: 8px;">
-                ACTIVE PLANNER OVERRIDES &amp; 1-CLICK ROLLBACK
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        for _, ov_row in ov_active.iterrows():
-            ov_id = str(ov_row["asn_line_id"])
-            col_ov1, col_ov2 = st.columns([4, 1])
-            with col_ov1:
-                st.info(
-                    f"**Active Override: `{ov_id}`** | Part: `{ov_row['resolved_part_num']}` | "
-                    f"Qty: `{ov_row['normalized_qty']:,.0f} {ov_row['normalized_uom']}` | "
-                    f"Action: `{ov_row['resolution_action']}` | By: `{ov_row['resolved_by']}` at `{ov_row['resolved_at']}`"
-                )
-            with col_ov2:
-                if st.button(f"↩️ Revert ({ov_id})", key=f"revert_{ov_id}", use_container_width=True):
-                    rev_ms = client.revert_planner_override(ov_id)
-                    st.success(f"Reverted override {ov_id} in {rev_ms:.2f} ms!")
-                    st.rerun()
-
-    # 5. Cryptographic Merkle Audit Trail in Expander
-    with st.expander("🛡️ Cryptographic Merkle Audit Trail (SHA-256 Chained Ledger)", expanded=False):
-        audit_df, chain_valid = client.get_verified_audit_ledger()
-        if len(audit_df) > 0:
-            status_color = COLOR_BRAND_PRIMARY if chain_valid else COLOR_DANGER
-            status_text = (
-                "CRYPTOGRAPHIC INTEGRITY: 100% VERIFIED (CHAIN VALID)"
-                if chain_valid
-                else "INTEGRITY WARNING: CORRUPTED HASH DETECTED"
-            )
-            st.markdown(
-                f"""
-                <div style="background-color: {COLOR_SURFACE}; border: 1px solid {COLOR_BORDER}; border-left: 4px solid {status_color}; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 0.78rem;">
-                    <span style="color: {status_color}; font-weight: 700;">{status_text}</span>
-                    <span style="color: {COLOR_TEXT_SECONDARY}; margin-left: 10px;">Every override and reversal is sealed with SHA-256 Merkle cryptography.</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            display_audit = audit_df[
-                [
-                    "event_id",
-                    "event_type",
-                    "asn_line_id",
-                    "resolved_part_num",
-                    "normalized_qty",
-                    "action",
-                    "operator_id",
-                    "timestamp",
-                    "sha256_hash",
-                    "chain_verified",
-                ]
-            ].copy()
-            st.dataframe(display_audit, use_container_width=True, hide_index=True)
-        else:
-            st.caption(
-                "No override events recorded yet. Approving or reverting overrides will log immutable cryptographic blocks here."
-            )
+    # 4. Cryptographic Merkle Audit Trail & 1-Click Rollback Explorer
+    render_visual_audit_ledger(client)
