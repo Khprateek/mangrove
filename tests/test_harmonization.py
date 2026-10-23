@@ -83,6 +83,11 @@ def test_multiformat_date_parsing() -> None:
     assert parse_asn_date("12/10/2026", "DD/MM/YYYY") == date(2026, 10, 12)
     assert parse_asn_date("10/12/2026", "MM/DD/YYYY") == date(2026, 10, 12)
     assert parse_asn_date("2026-10-12", "YYYY-MM-DD") == date(2026, 10, 12)
+    # Silent date fallback prevention: corrupt or empty values return None
+    assert parse_asn_date("garbage") is None
+    assert parse_asn_date("") is None
+    assert parse_asn_date("99/99/9999") is None
+    assert parse_asn_date("invalid-date-string") is None
 
 
 def test_blast_radius_analytical_marts(tmp_path) -> None:

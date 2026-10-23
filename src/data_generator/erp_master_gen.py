@@ -11,10 +11,10 @@ REFERENCE_MONDAY = datetime(2026, 10, 12, 6, 0, 0)
 
 def generate_supplier_master(rng: np.random.Generator) -> pd.DataFrame:
     suppliers = [
-        ("SUP-T1-101", "Bharat Forge Drivetrain Systems Ltd", "TIER_1", "Pune-Mundhwa", "MH", "AS2_EDI", "YYYY-MM-DD", 0.9650, 0.4),
-        ("SUP-T1-102", "Endurance Die Casting Technologies", "TIER_1", "Aurangabad-Waluj", "MH", "AS2_EDI", "YYYY-MM-DD", 0.9520, 0.6),
-        ("SUP-T1-103", "Sundram Precision Fasteners Corp", "TIER_1", "Chennai-Padi", "TN", "SFTP_CSV", "YYYY-MM-DD", 0.9480, 0.8),
-        ("SUP-T1-104", "Minda E-Drive Propulsion Ltd", "TIER_1", "Pune-Chakan", "MH", "AS2_EDI", "YYYY-MM-DD", 0.9390, 0.9),
+        ("SUP-T1-101", "Sahyadri Drivetrain Systems Ltd", "TIER_1", "Pune-Mundhwa", "MH", "AS2_EDI", "YYYY-MM-DD", 0.9650, 0.4),
+        ("SUP-T1-102", "Waluj Die Casting Technologies Ltd", "TIER_1", "Aurangabad-Waluj", "MH", "AS2_EDI", "YYYY-MM-DD", 0.9520, 0.6),
+        ("SUP-T1-103", "Southern Precision Fasteners Corp", "TIER_1", "Chennai-Padi", "TN", "SFTP_CSV", "YYYY-MM-DD", 0.9480, 0.8),
+        ("SUP-T1-104", "Chakan E-Drive Propulsion Ltd", "TIER_1", "Pune-Chakan", "MH", "AS2_EDI", "YYYY-MM-DD", 0.9390, 0.9),
         ("SUP-T2-201", "Shree Bhosari Auto Machinists Pvt Ltd", "TIER_2", "Pune-Bhosari MIDC", "MH", "EMAIL_XLS_EXTRACT", "DD/MM/YYYY", 0.8120, 3.8),
         ("SUP-T2-202", "Rajkot Crank & Conrod Forgings", "TIER_2", "Rajkot-Metoda GIDC", "GJ", "SFTP_CSV", "DD/MM/YYYY", 0.7850, 4.5),
         ("SUP-T2-203", "Talegaon High-Tensile Fasteners", "TIER_2", "Pune-Talegaon", "MH", "EMAIL_XLS_EXTRACT", "MM/DD/YYYY", 0.7940, 4.1),

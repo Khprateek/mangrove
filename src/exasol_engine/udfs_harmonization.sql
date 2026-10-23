@@ -216,7 +216,8 @@ def run(ctx):
 /
 
 -- 3. In-Database Multi-Format Date Harmonization UDF
--- Disambiguates DD/MM/YYYY, MM/DD/YYYY, ISO YYYY-MM-DD, and Unix Epoch strings
+-- Disambiguates DD/MM/YYYY, MM/DD/YYYY, ISO YYYY-MM-DD, and Unix Epoch strings.
+-- Returns NULL if the raw date string is empty or unparseable.
 CREATE OR REPLACE PYTHON3 SCALAR SCRIPT CHAKAN_SCM.UDF_PARSE_ASN_DATE(
     raw_date_str VARCHAR(40) UTF8,
     supplier_date_fmt VARCHAR(20) UTF8
@@ -227,33 +228,40 @@ CREATE OR REPLACE PYTHON3 SCALAR SCRIPT CHAKAN_SCM.UDF_PARSE_ASN_DATE(
 import datetime as _dt
 import re
 
-_DEFAULT = _dt.date(2026, 10, 12)
-
 def run(ctx):
     val = (ctx.raw_date_str or "").strip()
     if not val:
-        return _DEFAULT
+        return None
 
     if re.fullmatch(r"\d{9,10}", val):
-        d = _dt.datetime.fromtimestamp(int(val), tz=_dt.timezone.utc).date()
-        return d if d.year == 2026 else _DEFAULT
+        try:
+            d = _dt.datetime.fromtimestamp(int(val), tz=_dt.timezone.utc).date()
+            return d if d.year == 2026 else None
+        except Exception:
+            return None
 
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", val):
-        return _dt.datetime.strptime(val, "%Y-%m-%d").date()
+        try:
+            return _dt.datetime.strptime(val, "%Y-%m-%d").date()
+        except ValueError:
+            return None
 
     slash_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", val)
     if slash_match:
-        first = int(slash_match.group(1))
-        second = int(slash_match.group(2))
-        year = int(slash_match.group(3))
-        fmt_pref = (ctx.supplier_date_fmt or "DD/MM/YYYY").strip().upper()
-        if first > 12:
+        try:
+            first = int(slash_match.group(1))
+            second = int(slash_match.group(2))
+            year = int(slash_match.group(3))
+            fmt_pref = (ctx.supplier_date_fmt or "DD/MM/YYYY").strip().upper()
+            if first > 12:
+                return _dt.date(year, second, first)
+            if second > 12:
+                return _dt.date(year, first, second)
+            if fmt_pref == "MM/DD/YYYY":
+                return _dt.date(year, first, second)
             return _dt.date(year, second, first)
-        if second > 12:
-            return _dt.date(year, first, second)
-        if fmt_pref == "MM/DD/YYYY":
-            return _dt.date(year, first, second)
-        return _dt.date(year, second, first)
+        except ValueError:
+            return None
 
     for fmt in ("%d-%b-%Y", "%Y/%m/%d", "%d-%m-%Y"):
         try:
@@ -261,6 +269,6 @@ def run(ctx):
         except ValueError:
             continue
 
-    return _DEFAULT
+    return None
 /
 

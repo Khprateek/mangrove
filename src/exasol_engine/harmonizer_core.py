@@ -254,40 +254,50 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
     return cleaned_raw, "UNRESOLVED", 0.00
 
 
-def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> date:
+def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> date | None:
     """
     Parses multi-format supplier date strings (ISO YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY,
     and Unix epoch timestamps) using the vendor's default format profile.
+    Returns None if raw_date_str is empty or unparseable.
     """
     val = (raw_date_str or "").strip()
     if not val:
-        return date(2026, 10, 12)
+        return None
 
     # Unix epoch check (seconds)
     if re.fullmatch(r"\d{9,10}", val):
-        epoch_sec = int(val)
-        dt = datetime.fromtimestamp(epoch_sec, tz=timezone.utc).date()
-        # Normalize synthetic 2026 epoch offsets if needed
-        if dt.year != 2026:
-            return date(2026, 10, 12)
-        return dt
+        try:
+            epoch_sec = int(val)
+            dt = datetime.fromtimestamp(epoch_sec, tz=timezone.utc).date()
+            # Normalize synthetic 2026 epoch offsets if needed
+            if dt.year != 2026:
+                return None
+            return dt
+        except (ValueError, OverflowError, OSError):
+            return None
 
     # ISO YYYY-MM-DD
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", val):
-        return datetime.strptime(val, "%Y-%m-%d").date()
+        try:
+            return datetime.strptime(val, "%Y-%m-%d").date()
+        except ValueError:
+            return None
 
     # Slash-separated dates: disambiguate DD/MM/YYYY vs MM/DD/YYYY
     slash_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", val)
     if slash_match:
-        first, second, year = int(slash_match.group(1)), int(slash_match.group(2)), int(slash_match.group(3))
-        fmt_pref = (supplier_date_fmt or "DD/MM/YYYY").strip().upper()
-        if first > 12:
+        try:
+            first, second, year = int(slash_match.group(1)), int(slash_match.group(2)), int(slash_match.group(3))
+            fmt_pref = (supplier_date_fmt or "DD/MM/YYYY").strip().upper()
+            if first > 12:
+                return date(year, second, first)
+            if second > 12:
+                return date(year, first, second)
+            if fmt_pref == "MM/DD/YYYY":
+                return date(year, first, second)
             return date(year, second, first)
-        if second > 12:
-            return date(year, first, second)
-        if fmt_pref == "MM/DD/YYYY":
-            return date(year, first, second)
-        return date(year, second, first)
+        except ValueError:
+            return None
 
     for fmt in ("%d-%b-%Y", "%Y/%m/%d", "%d-%m-%Y"):
         try:
@@ -295,4 +305,4 @@ def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> 
         except ValueError:
             continue
 
-    return date(2026, 10, 12)
+    return None
