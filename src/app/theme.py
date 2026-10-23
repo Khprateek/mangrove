@@ -171,25 +171,6 @@ def inject_minimalist_theme() -> None:
             margin-top: 4px !important;
         }}
 
-        /* Operational Color Semantics for Top Metric Cards */
-        /* Card 3: Cleared Exposure (Green - Positive Cleared Outcome) */
-        .main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {{
-            background-color: {COLOR_BRAND_SOFT} !important;
-            border: 1px solid #C6DBC3 !important;
-        }}
-        .main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="column"]:nth-child(3) [data-testid="stMetricValue"] {{
-            color: {COLOR_BRAND_PRIMARY} !important;
-        }}
-
-        /* Card 4: Net Shortage (Red - Confirmed Operational Deficit) */
-        .main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="column"]:nth-child(4) [data-testid="stMetric"] {{
-            background-color: #FDF4F4 !important;
-            border: 1px solid #F5C6C6 !important;
-        }}
-        .main [data-testid="stHorizontalBlock"]:first-of-type > [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {{
-            color: {COLOR_DANGER} !important;
-        }}
-
         /* Sidebar: Deep Mangrove Forest Styling */
         [data-testid="stSidebar"] {{
             background-color: {COLOR_BRAND_DARK} !important;

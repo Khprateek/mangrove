@@ -16,6 +16,7 @@ from src.app.theme import (
 from src.app.components import (
     render_header,
     render_kpi_header,
+    render_perspective_switcher,
     render_sidebar,
     render_telemetry_banner,
     render_visual_audit_ledger,
@@ -53,6 +54,7 @@ def test_component_exports_and_callables() -> None:
     components = [
         render_header,
         render_telemetry_banner,
+        render_perspective_switcher,
         render_kpi_header,
         render_sidebar,
         render_visual_audit_ledger,

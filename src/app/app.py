@@ -12,6 +12,7 @@ from PIL import Image
 from src.app.components import (
     render_header,
     render_kpi_header,
+    render_perspective_switcher,
     render_sidebar,
 )
 from src.app.tabs import (
@@ -68,7 +69,8 @@ def main() -> None:
 
     render_sidebar(client, marts, project_root=PROJECT_ROOT)
     render_header(project_root=PROJECT_ROOT)
-    render_kpi_header(marts, client)
+    perspective_mode = render_perspective_switcher()
+    render_kpi_header(marts, client, perspective_mode=perspective_mode)
 
     tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
         [
@@ -83,7 +85,7 @@ def main() -> None:
     )
 
     with tab1:
-        render_triage_tab(client, marts)
+        render_triage_tab(client, marts, perspective_mode=perspective_mode)
     with tab2:
         render_bom_horizon_tab(marts)
     with tab3:

@@ -9,6 +9,7 @@ from src.app.components.audit_ledger import render_visual_audit_ledger
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
+    COLOR_BRAND_SOFT,
     COLOR_DANGER,
     COLOR_SURFACE,
     COLOR_TEXT_PRIMARY,
@@ -18,9 +19,32 @@ from src.app.theme import (
 )
 from src.exasol_engine.db_client import ChakanExasolClient
 
+DEFECT_LABELS = {
+    "SKU_DRIFT_AND_UOM_BOX": "Alias SKU + Box-100",
+    "SKU_DRIFT_AND_UOM_BAG": "Fuzzy SKU + Bag-250",
+    "EPOCH_DATE_AND_UOM_BOX": "Corrupt Unix Date + Box",
+    "SKU_HYPHEN_STRIPPED": "Stripped Hyphen (OCR)",
+    "OCR_SKU_ALIAS_AND_BOX": "OCR Vendor Code + Box",
+    "UOM_MT_VS_KG_CLEAN_QTY": "MT to KG Multiplier",
+    "SPLIT_PO_AND_UOM_CRATE": "Crate-50 + Split Shortage",
+    "SPLIT_PO_SHORT_SHIPMENT": "Split PO Short-Shipment",
+    "UOM_MT_VS_KG_SHORTAGE": "MT to KG + Shortage",
+    "SKU_ALIAS_AND_SHORT_QTY": "Catalog Alias + Shortage",
+    "DUPLICATE_ASN_RETRANSMIT": "Duplicate Retransmit",
+    "WEIGHT_MT_TO_EA_INVERSION": "Weight MT to Piece (EA)",
+}
 
-def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
-    """Tab 1: Actionable Shortage-Risk Queue & 1-Click Fast-Resolution Workbench."""
+
+def render_triage_tab(
+    client: ChakanExasolClient,
+    marts: dict,
+    perspective_mode: str = "MANGROVE_ACTIVE",
+) -> None:
+    """Tab 1: Actionable Shortage-Risk Queue & 1-Click Fast-Resolution Workbench
+
+    dynamically renders from the active executive perspective (MANGROVE_ACTIVE vs TRADITIONAL_ERP).
+    """
+    is_mangrove = (perspective_mode == "MANGROVE_ACTIVE")
     triage_df: pd.DataFrame = marts["triage_queue"].copy()
 
     for col_name in [
@@ -50,66 +74,72 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
     # 1. Actionable Queue Header & Urgency Filter
     col_t_title, col_t_filter = st.columns([1.1, 1.0])
     with col_t_title:
+        title_text = (
+            "Actionable Shortage-Risk Queue &amp; Fast Triage"
+            if is_mangrove
+            else "Quarantined Inbound Queue (Traditional ERP Blind Panic)"
+        )
+        sub_text = (
+            "Ranked by plant halt urgency and net revenue threatened over the next 48 hours."
+            if is_mangrove
+            else "All 13 supplier dispatches rejected by legacy ERP. Zero inventory credited to assembly buffers."
+        )
         st.markdown(
             f"""
             <div style="margin-bottom: 6px;">
-                <span style="font-size: 1.15rem; font-weight: 700; color: {COLOR_TEXT_PRIMARY}; letter-spacing: -0.2px;">Actionable Shortage-Risk Queue &amp; Fast Triage</span>
+                <span style="font-size: 1.15rem; font-weight: 700; color: {COLOR_TEXT_PRIMARY}; letter-spacing: -0.2px;">{title_text}</span>
                 <div style="font-size: 0.80rem; color: {COLOR_TEXT_SECONDARY}; margin-top: 2px;">
-                    Ranked by plant halt urgency and net revenue threatened over the next 48 hours.
+                    {sub_text}
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-    with col_t_filter:
-        urgency_filter = st.radio(
-            "Filter Stream:",
-            ["All Quarantined (13 ASNs)", "🔴 Active Threats (7)", "🟢 Cleared by UDF (6)"],
-            horizontal=True,
-            label_visibility="collapsed",
-        )
 
-    # Apply quick filter
-    if urgency_filter == "🔴 Active Threats (7)":
-        filtered_df = triage_df[triage_df["revenue_at_risk_net_inr"] > 0]
-    elif urgency_filter == "🟢 Cleared by UDF (6)":
-        filtered_df = triage_df[
-            triage_df["operational_verdict"].isin(
-                ["FALSE_STARVATION_CLEARED_BY_UDF", "HARMONIZED_BUFFER_RESTORED"]
+    with col_t_filter:
+        if is_mangrove:
+            urgency_filter = st.radio(
+                "Filter Stream:",
+                ["All Quarantined (13 ASNs)", "🔴 Active Threats (7)", "🟢 Cleared by UDF (6)"],
+                horizontal=True,
+                label_visibility="collapsed",
             )
-        ]
-    else:
-        filtered_df = triage_df
+            if urgency_filter == "🔴 Active Threats (7)":
+                filtered_df = triage_df[triage_df["revenue_at_risk_net_inr"] > 0]
+            elif urgency_filter == "🟢 Cleared by UDF (6)":
+                filtered_df = triage_df[
+                    triage_df["operational_verdict"].isin(
+                        ["FALSE_STARVATION_CLEARED_BY_UDF", "HARMONIZED_BUFFER_RESTORED"]
+                    )
+                ]
+            else:
+                filtered_df = triage_df
+        else:
+            urgency_filter = st.radio(
+                "Filter Stream:",
+                ["🔴 All 13 ASNs Rejected (Zero Stock)", "🔴 Critical Line Halts (13)"],
+                horizontal=True,
+                label_visibility="collapsed",
+            )
+            filtered_df = triage_df
 
     if len(filtered_df) == 0:
         filtered_df = triage_df
 
     # 1. Prioritized Quarantined Stream Table (Top of Tab 1)
+    queue_label = "PRIORITIZED INBOUND DISPATCH QUEUE" if is_mangrove else "LEGACY ERP QUARANTINE QUEUE (UNPARSED RAW DRIFT)"
     st.markdown(
         f"""
         <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 10px; margin-bottom: 8px;">
-            PRIORITIZED INBOUND DISPATCH QUEUE
+            {queue_label}
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    DEFECT_LABELS = {
-        "SKU_DRIFT_AND_UOM_BOX": "Alias SKU + Box-100",
-        "SKU_DRIFT_AND_UOM_BAG": "Fuzzy SKU + Bag-250",
-        "EPOCH_DATE_AND_UOM_BOX": "Corrupt Unix Date + Box",
-        "SKU_HYPHEN_STRIPPED": "Stripped Hyphen (OCR)",
-        "OCR_SKU_ALIAS_AND_BOX": "OCR Vendor Code + Box",
-        "UOM_MT_VS_KG_CLEAN_QTY": "MT to KG Multiplier",
-        "SPLIT_PO_AND_UOM_CRATE": "Crate-50 + Split Shortage",
-        "SPLIT_PO_SHORT_SHIPMENT": "Split PO Short-Shipment",
-        "UOM_MT_VS_KG_SHORTAGE": "MT to KG + Shortage",
-        "SKU_ALIAS_AND_SHORT_QTY": "Catalog Alias + Shortage",
-        "DUPLICATE_ASN_RETRANSMIT": "Duplicate Retransmit",
-        "WEIGHT_MT_TO_EA_INVERSION": "Weight MT to Piece (EA)",
-    }
-
     def format_verdict_badge(row: pd.Series) -> str:
+        if not is_mangrove:
+            return "🔴 Rejected (Zero Stock)"
         net_risk = safe_float(row["revenue_at_risk_net_inr"])
         verdict = row["operational_verdict"]
         if net_risk > 0:
@@ -127,6 +157,8 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
         return f"{row['raw_supplier_sku']} ({qty_str} {uom})"
 
     def format_harmonized_part(row: pd.Series) -> str:
+        if not is_mangrove:
+            return "❌ REJECTED (Legacy ERP Blind)"
         qty = safe_float(row["harmonized_shipped_qty"])
         return f"{row['resolved_part_num']} ({qty:,.0f} {row['canonical_uom']})"
 
@@ -135,6 +167,9 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
         return f"REJECTED ({format_inr_crore_lakh(alarm)})" if alarm > 0 else "REJECTED AT GATE (Dirty Data)"
 
     def format_true_net_risk(row: pd.Series) -> str:
+        if not is_mangrove:
+            alarm = safe_float(row["revenue_at_risk_legacy_inr"])
+            return f"🔴 {format_inr_crore_lakh(alarm)} (Threat)" if alarm > 0 else "🔴 Threat"
         net = safe_float(row["revenue_at_risk_net_inr"])
         alarm = safe_float(row["revenue_at_risk_legacy_inr"])
         if net > 0:
@@ -159,20 +194,25 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
     st.dataframe(display_df, use_container_width=True, hide_index=True)
 
     # 2. Fast-Resolution Workbench (Directly below Queue)
+    workbench_label = "1-CLICK RESOLUTION WORKBENCH" if is_mangrove else "1-CLICK RESOLUTION WORKBENCH (DISABLED IN LEGACY MODE)"
     st.markdown(
         f"""
         <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 20px; margin-bottom: 8px;">
-            1-CLICK RESOLUTION WORKBENCH
+            {workbench_label}
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    shortage_ids = [
-        x for x in filtered_df["asn_line_id"].tolist()
-        if safe_float(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr'].values[0]) > 0
-    ]
-    options = shortage_ids if shortage_ids else filtered_df["asn_line_id"].tolist()
+    if is_mangrove:
+        shortage_ids = [
+            x for x in filtered_df["asn_line_id"].tolist()
+            if safe_float(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr'].values[0]) > 0
+        ]
+        options = shortage_ids if shortage_ids else filtered_df["asn_line_id"].tolist()
+    else:
+        options = filtered_df["asn_line_id"].tolist()
+
     selected_id = st.selectbox(
         "Select Shortage Record to Resolve:",
         options=options,
@@ -180,7 +220,7 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
             f"⚡ {x} | PO: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'po_number_ref'].values[0]} | "
             f"Part: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'resolved_part_num'].values[0]} | "
             f"Line: {filtered_df.loc[filtered_df['asn_line_id'] == x, 'affected_lines'].values[0]} | "
-            f"Net Risk: {format_inr_crore_lakh(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr'].values[0])}"
+            f"Risk: {format_inr_crore_lakh(filtered_df.loc[filtered_df['asn_line_id'] == x, 'revenue_at_risk_net_inr' if is_mangrove else 'revenue_at_risk_legacy_inr'].values[0])}"
         ),
         label_visibility="collapsed",
     )
@@ -205,74 +245,118 @@ def render_triage_tab(client: ChakanExasolClient, marts: dict) -> None:
         )
 
     with col_b:
-        st.markdown(
-            f"""
-            <div class="mangrove-tile-highlight">
-                <div class="mangrove-tile-title-green">2. Exasol In-DB Resolution (RAM)</div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Resolved SKU:</span><span class="mangrove-tile-val" style="color: {COLOR_BRAND_PRIMARY}; font-weight: 700;">{sel_row['resolved_part_num']}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Match Method:</span><span class="mangrove-tile-val">{sel_row['sku_match_method']} ({sel_row['sku_confidence']:.2f})</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Normalized Qty:</span><span class="mangrove-tile-val" style="color: {COLOR_BRAND_PRIMARY}; font-weight: 700;">{sel_row['harmonized_shipped_qty']:,.1f} {sel_row['canonical_uom']}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">PO Target Qty:</span><span class="mangrove-tile-val">{sel_row['po_ordered_qty']:,.0f} {sel_row['canonical_uom']}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Parsed Date:</span><span class="mangrove-tile-val">{sel_row['harmonized_eta_date']}</span></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        if is_mangrove:
+            st.markdown(
+                f"""
+                <div class="mangrove-tile-highlight">
+                    <div class="mangrove-tile-title-green">2. Exasol In-DB Resolution (RAM)</div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Resolved SKU:</span><span class="mangrove-tile-val" style="color: {COLOR_BRAND_PRIMARY}; font-weight: 700;">{sel_row['resolved_part_num']}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Match Method:</span><span class="mangrove-tile-val">{sel_row['sku_match_method']} ({sel_row['sku_confidence']:.2f})</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Normalized Qty:</span><span class="mangrove-tile-val" style="color: {COLOR_BRAND_PRIMARY}; font-weight: 700;">{sel_row['harmonized_shipped_qty']:,.1f} {sel_row['canonical_uom']}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">PO Target Qty:</span><span class="mangrove-tile-val">{sel_row['po_ordered_qty']:,.0f} {sel_row['canonical_uom']}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Parsed Date:</span><span class="mangrove-tile-val">{sel_row['harmonized_eta_date']}</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f"""
+                <div class="mangrove-tile" style="border: 1px solid #F5C6C6; background-color: #FDF4F4;">
+                    <div class="mangrove-tile-title" style="color: {COLOR_DANGER};">2. Legacy ERP Batch Status (Unparsed)</div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Resolved SKU:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">UNKNOWN (Catalog Drift)</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Match Method:</span><span class="mangrove-tile-val">EXACT KEY ONLY (Failed)</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Credited Qty:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">0 EA (Zero Stock Assumed)</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">PO Target Qty:</span><span class="mangrove-tile-val">{sel_row['po_ordered_qty']:,.0f} EA</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Status:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">QUARANTINED &amp; DROPPED</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     with col_c:
-        halt_color = COLOR_DANGER if sel_row["min_hours_to_stop_harmonized"] < 24.0 else COLOR_BRAND_PRIMARY
-        roi_disp = f"{sel_row['mitigation_roi_x']:,.0f}x" if sel_row["mitigation_roi_x"] > 0 else "N/A"
-        freight_disp = f"Rs {sel_row['expedited_freight_cost_inr']:,.0f}" if sel_row["expedited_freight_cost_inr"] > 0 else "Rs 45,000"
-        st.markdown(
-            f"""
-            <div class="mangrove-tile">
-                <div class="mangrove-tile-title">3. Line Halt Risk &amp; Freight Trade-Off</div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Assembly Line:</span><span class="mangrove-tile-val">{sel_row['affected_lines']}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Hours to Halt:</span><span class="mangrove-tile-val" style="color: {halt_color}; font-weight: 700;">{sel_row['min_hours_to_stop_harmonized']}h (Legacy: {sel_row['min_hours_to_stop_legacy']}h)</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Plant Downtime Loss:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{format_inr_crore_lakh(sel_row['total_stoppage_exposure_inr'])}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Hot-Shot Freight:</span><span class="mangrove-tile-val">{freight_disp}</span></div>
-                <div class="mangrove-tile-row"><span class="mangrove-tile-label">Mitigation ROI:</span><span class="mangrove-tile-val" style="color: {COLOR_BRAND_PRIMARY}; font-size: 0.88rem; font-weight: 700;">{roi_disp}</span></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    # Action Buttons with proper spacing
-    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-    b1, b2 = st.columns(2)
-    with b1:
-        if st.button(
-            f"Approve In-DB Harmonization ({sel_row['harmonized_shipped_qty']:,.0f} {sel_row['canonical_uom']})",
-            use_container_width=True,
-        ):
-            write_ms = client.approve_harmonization_override(
-                asn_line_id=str(sel_row["asn_line_id"]),
-                resolved_part_num=str(sel_row["resolved_part_num"]),
-                normalized_qty=float(sel_row["harmonized_shipped_qty"]),
-                normalized_uom=str(sel_row["canonical_uom"]),
-                normalized_eta_date=str(sel_row["harmonized_eta_date"]),
-                action="PLANNER_APPROVED_UDF",
+        if is_mangrove:
+            halt_color = COLOR_DANGER if sel_row["min_hours_to_stop_harmonized"] < 24.0 else COLOR_BRAND_PRIMARY
+            roi_disp = f"{sel_row['mitigation_roi_x']:,.0f}x" if sel_row["mitigation_roi_x"] > 0 else "N/A"
+            freight_disp = f"Rs {sel_row['expedited_freight_cost_inr']:,.0f}" if sel_row["expedited_freight_cost_inr"] > 0 else "Rs 45,000"
+            st.markdown(
+                f"""
+                <div class="mangrove-tile">
+                    <div class="mangrove-tile-title">3. Line Halt Risk &amp; Freight Trade-Off</div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Assembly Line:</span><span class="mangrove-tile-val">{sel_row['affected_lines']}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Hours to Halt:</span><span class="mangrove-tile-val" style="color: {halt_color}; font-weight: 700;">{sel_row['min_hours_to_stop_harmonized']}h (Legacy: {sel_row['min_hours_to_stop_legacy']}h)</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Plant Downtime Loss:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{format_inr_crore_lakh(sel_row['total_stoppage_exposure_inr'])}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Hot-Shot Freight:</span><span class="mangrove-tile-val">{freight_disp}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Mitigation ROI:</span><span class="mangrove-tile-val" style="color: {COLOR_BRAND_PRIMARY}; font-size: 0.88rem; font-weight: 700;">{roi_disp}</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
-            st.success(f"Committed UDF harmonization to Exasol in {write_ms:.2f} ms.")
-            st.rerun()
+        else:
+            st.markdown(
+                f"""
+                <div class="mangrove-tile" style="border: 1px solid #F5C6C6; background-color: #FDF4F4;">
+                    <div class="mangrove-tile-title" style="color: {COLOR_DANGER};">3. Line Halt Risk &amp; Panic Exposure</div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Assembly Line:</span><span class="mangrove-tile-val">{sel_row['affected_lines']}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Hours to Halt:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{sel_row['min_hours_to_stop_legacy']}h (EMERGENCY)</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Plant Downtime Loss:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{format_inr_crore_lakh(sel_row['total_stoppage_exposure_inr'])}</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Emergency Action:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">ORDER HOT-SHOT COURIER</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Mitigation ROI:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">0x (Unmitigated)</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-    with b2:
-        full_po_qty = float(sel_row["po_ordered_qty"])
-        btn_roi_label = f" | ROI: {sel_row['mitigation_roi_x']:,.0f}x" if sel_row["mitigation_roi_x"] > 0 else ""
+    # Action Buttons
+    st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
+    if is_mangrove:
+        b1, b2 = st.columns(2)
+        with b1:
+            if st.button(
+                f"Approve In-DB Harmonization ({sel_row['harmonized_shipped_qty']:,.0f} {sel_row['canonical_uom']})",
+                use_container_width=True,
+            ):
+                write_ms = client.approve_harmonization_override(
+                    asn_line_id=str(sel_row["asn_line_id"]),
+                    resolved_part_num=str(sel_row["resolved_part_num"]),
+                    normalized_qty=float(sel_row["harmonized_shipped_qty"]),
+                    normalized_uom=str(sel_row["canonical_uom"]),
+                    normalized_eta_date=str(sel_row["harmonized_eta_date"]),
+                    action="PLANNER_APPROVED_UDF",
+                )
+                st.success(f"Committed UDF harmonization to Exasol in {write_ms:.2f} ms.")
+                st.rerun()
+
+        with b2:
+            full_po_qty = float(sel_row["po_ordered_qty"])
+            btn_roi_label = f" | ROI: {sel_row['mitigation_roi_x']:,.0f}x" if sel_row["mitigation_roi_x"] > 0 else ""
+            if st.button(
+                f"Approve & Cover Shortfall via Hot-Shot (Full PO: {full_po_qty:,.0f} {sel_row['canonical_uom']}{btn_roi_label})",
+                type="primary",
+                use_container_width=True,
+            ):
+                write_ms = client.approve_harmonization_override(
+                    asn_line_id=str(sel_row["asn_line_id"]),
+                    resolved_part_num=str(sel_row["resolved_part_num"]),
+                    normalized_qty=full_po_qty,
+                    normalized_uom=str(sel_row["canonical_uom"]),
+                    normalized_eta_date=str(sel_row["harmonized_eta_date"]),
+                    action="EXPEDITED_SHORTFALL_COVERED",
+                )
+                st.success(f"Authorized emergency shortfall cover and updated Exasol in {write_ms:.2f} ms.")
+                st.rerun()
+    else:
+        st.warning(
+            "⚠️ Traditional ERP cannot authorize resolution on unharmonized dirty data. "
+            "Engage Mangrove In-DB Autonomous Engine to normalize UOM and resolve SKU aliases in RAM."
+        )
         if st.button(
-            f"Approve & Cover Shortfall via Hot-Shot (Full PO: {full_po_qty:,.0f} {sel_row['canonical_uom']}{btn_roi_label})",
+            f"⚡ Engage Mangrove In-DB Engine to Resolve ASN ({sel_row['asn_line_id']})",
             type="primary",
             use_container_width=True,
+            key="btn_switch_to_mangrove_from_workbench",
         ):
-            write_ms = client.approve_harmonization_override(
-                asn_line_id=str(sel_row["asn_line_id"]),
-                resolved_part_num=str(sel_row["resolved_part_num"]),
-                normalized_qty=full_po_qty,
-                normalized_uom=str(sel_row["canonical_uom"]),
-                normalized_eta_date=str(sel_row["harmonized_eta_date"]),
-                action="EXPEDITED_SHORTFALL_COVERED",
-            )
-            st.success(f"Authorized emergency shortfall cover and updated Exasol in {write_ms:.2f} ms.")
+            st.session_state["engine_perspective_mode"] = "🟢 Mangrove Autonomous In-DB Guard"
             st.rerun()
 
     # 4. Cryptographic Merkle Audit Trail & 1-Click Rollback Explorer
