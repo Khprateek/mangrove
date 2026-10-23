@@ -89,6 +89,16 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
         f"vs {row_10k['legacy_network_hops']:,} Shuffles (DISTRIBUTE BY)",
     )
 
+    if getattr(client, "conn", None) is not None:
+        st.markdown(
+            f"""
+            <div style="background-color: #E8F2E5; border: 1px solid #C6DBC3; border-left: 4px solid #2F6B4F; border-radius: 6px; padding: 6px 14px; margin-top: 10px; font-size: 0.78rem; color: #26332C;">
+                ⚡ <b>Live Database Engine Connected</b>: Exasol Personal (Port 8563, Schema: <code>CHAKAN_SCM</code>) — In-database SQL views &amp; Python 3 UDFs evaluated directly in columnar memory.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
     # 3. Side-by-Side Visualizations with generous spacing
     st.markdown("<div style='margin-top: 1.5rem;'></div>", unsafe_allow_html=True)
     col_chart1, col_chart2 = st.columns(2)

@@ -181,6 +181,17 @@ def render_triage_tab(
             qty = safe_float(row["harmonized_shipped_qty"])
             return f"{row['resolved_part_num']} ({qty:,.0f} {row['canonical_uom']})"
 
+        def format_shift_countdown(row: pd.Series) -> str:
+            net = safe_float(row["revenue_at_risk_net_inr"])
+            hrs = safe_float(row.get("min_hours_to_stop_harmonized", 48.0))
+            if net <= 0 or hrs >= 48.0:
+                return "🟢 Safe (>48h)"
+            if hrs <= 8.0:
+                return f"🚨 Shift 1 ({hrs:.1f}h)"
+            if hrs <= 16.0:
+                return f"⚠️ Shift 2 ({hrs:.1f}h)"
+            return f"🟡 Shift 3 ({hrs:.1f}h)"
+
         def format_true_net_risk(row: pd.Series) -> str:
             net = safe_float(row["revenue_at_risk_net_inr"])
             alarm = safe_float(row["revenue_at_risk_legacy_inr"])
@@ -193,6 +204,7 @@ def render_triage_tab(
         display_df = pd.DataFrame(
             {
                 "Verdict": filtered_df.apply(format_verdict_badge, axis=1),
+                "Starvation Horizon": filtered_df.apply(format_shift_countdown, axis=1),
                 "ASN ID": filtered_df["asn_line_id"],
                 "Supplier": filtered_df["supplier_name"],
                 "Raw Payload (Defect)": filtered_df.apply(format_raw_payload, axis=1),
@@ -284,7 +296,9 @@ def render_triage_tab(
             )
 
         with col_c:
-            halt_color = COLOR_DANGER if sel_row["min_hours_to_stop_harmonized"] < 24.0 else COLOR_BRAND_PRIMARY
+            hrs_stop = safe_float(sel_row["min_hours_to_stop_harmonized"])
+            halt_color = COLOR_DANGER if hrs_stop < 24.0 else COLOR_BRAND_PRIMARY
+            shift_tag = "🚨 Shift 1 Critical" if hrs_stop <= 8.0 else ("⚠️ Shift 2 Warning" if hrs_stop <= 16.0 else "🟢 Shift 3+ Safe")
             roi_disp = f"{sel_row['mitigation_roi_x']:,.0f}x" if sel_row["mitigation_roi_x"] > 0 else "N/A"
             freight_disp = f"Rs {sel_row['expedited_freight_cost_inr']:,.0f}" if sel_row["expedited_freight_cost_inr"] > 0 else "Rs 45,000"
             st.markdown(
@@ -292,7 +306,7 @@ def render_triage_tab(
                 <div class="mangrove-tile">
                     <div class="mangrove-tile-title">3. Line Halt Risk &amp; Freight Trade-Off</div>
                     <div class="mangrove-tile-row"><span class="mangrove-tile-label">Assembly Line:</span><span class="mangrove-tile-val">{sel_row['affected_lines']}</span></div>
-                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Hours to Halt:</span><span class="mangrove-tile-val" style="color: {halt_color}; font-weight: 700;">{sel_row['min_hours_to_stop_harmonized']}h (Legacy: {sel_row['min_hours_to_stop_legacy']}h)</span></div>
+                    <div class="mangrove-tile-row"><span class="mangrove-tile-label">Starvation Phase:</span><span class="mangrove-tile-val" style="color: {halt_color}; font-weight: 700;">{shift_tag} ({hrs_stop:.1f}h)</span></div>
                     <div class="mangrove-tile-row"><span class="mangrove-tile-label">Plant Downtime Loss:</span><span class="mangrove-tile-val" style="color: {COLOR_DANGER}; font-weight: 700;">{format_inr_crore_lakh(sel_row['total_stoppage_exposure_inr'])}</span></div>
                     <div class="mangrove-tile-row"><span class="mangrove-tile-label">Hot-Shot Freight:</span><span class="mangrove-tile-val">{freight_disp}</span></div>
                     <div class="mangrove-tile-row"><span class="mangrove-tile-label">Mitigation ROI:</span><span class="mangrove-tile-val" style="color: {COLOR_BRAND_PRIMARY}; font-size: 0.88rem; font-weight: 700;">{roi_disp}</span></div>
