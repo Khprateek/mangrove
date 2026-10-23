@@ -59,9 +59,9 @@ COLUMN_SYNONYMS = {
 }
 
 PRESET_LABELS = {
-    "PACKAGING_CHAOS": "Preset A: Fasteners, bearings & bar stock (packaging chaos, OCR-stripped SKUs, duplicate)",
-    "SKU_REVISIONS": "Preset B: Castings & gears (SKU revisions, vendor aliases, bulk crates)",
-    "EV_UNITS_AND_DATES": "Preset C: EV laminations & copper (weight units, epoch dates)",
+    "PACKAGING_CHAOS": "Preset A: Tier-1 OEM Inbound (Fasteners & Bearings — Packaging Chaos, OCR-stripped SKUs, Duplicate)",
+    "SKU_REVISIONS": "Preset B: Tier-2 Sub-assembly Inbound (Castings & Gears — SKU Revisions, Vendor Aliases, Bulk Crates)",
+    "EV_UNITS_AND_DATES": "Preset C: Tier-1 Powertrain Inbound (EV Laminations & Copper — Weight Unit Inversions, Epoch Dates)",
 }
 
 
@@ -167,7 +167,7 @@ def anonymize_dataset(df: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, Any]]:
 
 # --------------------------------------------------------------------------- presets
 def get_industrial_scenario_preset(preset_key: str) -> pd.DataFrame:
-    """Synthetic inbound batches that reference REAL open POs of the baseline dataset.
+    """Synthetic inbound batches that reference open POs of the synthetic baseline dataset.
 
     All suppliers, parts and PO numbers come from the synthetic ERP master, so every
     row can be resolved and valued. ASN numbers are tagged ``ASN-DEMO-*`` and never

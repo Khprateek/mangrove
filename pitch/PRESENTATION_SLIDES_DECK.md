@@ -228,3 +228,13 @@ $$\text{Mitigation ROI} = \frac{\text{Averted Vehicle Revenue Loss (₹5,29,05,0
 #### Q3: "What makes your financial ROI calculation realistic?"
 > **Answer**: "Our assembly line downtime rates (`₹7.2L` to `₹14.5L/hr`) and expediting tariffs (`₹45,000` dedicated hot-shot charter) are modeled on industry benchmark ranges for Indian automotive OEMs. Spending `₹45,000` to prevent `₹5.29 Cr` in unproduced vehicles (`₹7.92 Cr` including idle plant overhead) yields the deterministic `1,174.7x` headline ROI verified in our test suite."
 
+#### Q4: "Why does the codebase contain a Pandas mirror if Exasol is the primary engine? Doesn't that suggest Exasol is optional?"
+> **Answer**: "The Pandas mirror is an **air-gapped architectural test double and offline verification harness**, not a production alternative. In enterprise software delivery, having a mathematical twin serves two critical functions:
+> 1. **Zero-Flake Automated Parity Verification**: Our test suite runs `test_exasol_views_match_pandas_mirror` on every commit, asserting a `0.00 INR` delta between the compiled Exasol SQL views (`VW_BOM_LINE_STARVATION_RISK`) and the mirror.
+> 2. **Graceful Demonstration Fallback**: Evaluators without an active Docker daemon or on lightweight cloud runners can preview the application without encountering hard connection crashes.
+> 
+> However, **Exasol is irreplaceable at operational scale**: at 10,000 rows, Pandas iteration takes **2,961 ms** and hits Python GIL/memory limits, whereas Exasol executes the same analytical query in **83.6 ms (35.4x faster)**. In high-frequency plant environments running 50,000 dispatches daily, only Exasol's in-memory columnar engine delivers sub-second real-time triage."
+
+#### Q5: "Does the Bring-Your-Own-Data (BYOD) Inbound Studio actually execute on Exasol?"
+> **Answer**: "Yes. In `src/exasol_engine/custom_ingestor.py`, when a live Exasol connection is active, `_harmonize_exasol()` creates a temporary scratch staging table in `CHAKAN_SCM`, streams the uploaded batch into columnar storage, and executes the exact same three in-database Python UDFs (`UDF_RESOLVE_SUPPLIER_SKU`, `UDF_NORMALIZE_UOM`, `UDF_PARSE_ASN_DATE`) joined against `ITEM_MASTER` and `SUPPLIER_MASTER`. The UI prominently displays an `⚡ NATIVE EXASOL IN-DATABASE EXECUTION` audit badge confirming the compute location. If Exasol is offline, it transparently falls back to local parity logic and explicitly alerts the user."
+

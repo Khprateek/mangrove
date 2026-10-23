@@ -12,6 +12,7 @@ import streamlit as st
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
+    COLOR_BRAND_SOFT,
     COLOR_CARD_BG,
     COLOR_INK_GREEN,
     COLOR_PALE_SAGE,
@@ -103,9 +104,32 @@ def render_byod_tab(client: ChakanExasolClient, marts: dict) -> None:
     summary, harmo, shortage, engine = result["summary"], result["harmonized_df"], result["shortage_df"], result["engine"]
 
     if engine["engine"] == "EXASOL_UDF":
-        st.success("Executed inside Exasol: the three Python UDFs ran against a scratch staging table.")
+        st.markdown(
+            f"""
+            <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 5px solid {COLOR_BRAND_PRIMARY}; border-radius: 9px; padding: 12px 18px; margin-bottom: 16px;">
+                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; font-size: 0.88rem;">⚡ NATIVE EXASOL IN-DATABASE EXECUTION</span>
+                <div style="font-size: 0.78rem; color: #26332C; margin-top: 4px;">
+                    <b>Compute Location</b>: Exasol In-Memory Columnar Engine (Port 8563, Schema: <code>CHAKAN_SCM</code>)<br/>
+                    <b>Executed UDFs</b>: <code>UDF_RESOLVE_SUPPLIER_SKU</code> (Jaro-Winkler &ge;0.85), <code>UDF_NORMALIZE_UOM</code> (Pack/Weight Inversion), <code>UDF_PARSE_ASN_DATE</code><br/>
+                    <b>Relational Push-down</b>: Ingested batch joined directly against in-memory <code>ITEM_MASTER</code>, <code>SUPPLIER_MASTER</code>, and <code>PURCHASE_ORDER_LINES</code> without data egress.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
     else:
-        st.warning(f"Engine: local UDF-parity logic. {engine.get('fallback_reason') or ''}")
+        st.markdown(
+            f"""
+            <div style="background-color: #FDF9E8; border: 1px solid #F5E6A3; border-left: 5px solid #D9A700; border-radius: 9px; padding: 12px 18px; margin-bottom: 16px;">
+                <span style="font-weight: 700; color: #8A6A00; font-size: 0.88rem;">🟡 OFFLINE SIMULATION MIRROR ACTIVE</span>
+                <div style="font-size: 0.78rem; color: #5C4700; margin-top: 4px;">
+                    {engine.get('fallback_reason') or 'No live Exasol connection detected on port 8563.'} Running local Python parity logic.<br/>
+                    <i>For full 35.4x in-memory speedup, boot the Exasol appliance via <code>docker compose up -d</code>.</i>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("### Impact on 48-hour starvation exposure")
     c1, c2, c3, c4 = st.columns(4)
