@@ -96,3 +96,33 @@ def test_streamlit_cockpit_headless_execution() -> None:
         pytest.fail(f"Streamlit AppTest raised {len(at.exception)} exceptions: {err_messages}")
 
     assert len(at.exception) == 0
+
+
+def test_perspective_switcher_toggle_lifecycle() -> None:
+    """Verifies that clicking the Mangrove engage button and revert button triggers callbacks
+
+    without raising StreamlitWidgetAlreadyInstantiatedError.
+    """
+    app_path = Path(__file__).resolve().parents[1] / "src" / "app" / "app.py"
+    at = AppTest.from_file(str(app_path), default_timeout=30)
+    at.run()
+    assert len(at.exception) == 0
+
+    # 1. Click Engage Mangrove button
+    btn_engage = at.button(key="btn_engage_mangrove_hero")
+    if btn_engage:
+        btn_engage.click().run()
+        if at.exception:
+            err_messages = [str(e.value) for e in at.exception]
+            pytest.fail(f"Clicking engage button raised exceptions: {err_messages}")
+        assert len(at.exception) == 0
+
+    # 2. Click Revert to Legacy button
+    btn_revert = at.button(key="btn_revert_to_legacy_hero")
+    if btn_revert:
+        btn_revert.click().run()
+        if at.exception:
+            err_messages = [str(e.value) for e in at.exception]
+            pytest.fail(f"Clicking revert button raised exceptions: {err_messages}")
+        assert len(at.exception) == 0
+

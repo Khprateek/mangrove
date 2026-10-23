@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from src.app.components.audit_ledger import render_visual_audit_ledger
+from src.app.components.perspective_switcher import activate_mangrove_mode
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
@@ -377,14 +378,13 @@ def render_triage_tab(
             "⚠️ Traditional ERP cannot authorize resolution on unharmonized dirty data. "
             "Turn ON Mangrove In-DB Engine to normalize UOM and resolve SKU aliases in RAM."
         )
-        if st.button(
+        st.button(
             f"⚡ Turn ON Mangrove In-DB Engine to Resolve ASN ({sel_row['asn_line_id']})",
             type="primary",
             use_container_width=True,
             key="btn_switch_to_mangrove_from_workbench",
-        ):
-            st.session_state["engine_perspective_mode"] = "🟢 Mangrove Autonomous In-DB Engine (Active Guard)"
-            st.rerun()
+            on_click=activate_mangrove_mode,
+        )
 
     # 4. Cryptographic Merkle Audit Trail & 1-Click Rollback Explorer
     render_visual_audit_ledger(client)

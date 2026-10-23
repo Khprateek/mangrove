@@ -32,18 +32,26 @@ MODE_LEGACY = "🔴 Traditional ERP Baseline (Panic State)"
 MODE_MANGROVE = "🟢 Mangrove Autonomous In-DB Engine (Active Guard)"
 
 
+def activate_mangrove_mode() -> None:
+    """Streamlit on_click callback to engage Mangrove before script execution."""
+    st.session_state["engine_perspective_mode"] = MODE_MANGROVE
+
+
+def activate_legacy_mode() -> None:
+    """Streamlit on_click callback to engage Traditional ERP before script execution."""
+    st.session_state["engine_perspective_mode"] = MODE_LEGACY
+
+
 def render_perspective_switcher() -> str:
     """Renders the executive perspective switcher bar.
 
     Defaults to Traditional ERP Baseline (Panic State) so viewers immediately witness
     the legacy crisis before turning ON Mangrove.
+    Uses on_click callbacks to prevent StreamlitWidgetAlreadyInstantiatedError.
     Returns: 'TRADITIONAL_ERP' or 'MANGROVE_ACTIVE'.
     """
     if "engine_perspective_mode" not in st.session_state:
         st.session_state["engine_perspective_mode"] = MODE_LEGACY
-
-    current_mode = st.session_state["engine_perspective_mode"]
-    is_mangrove = (current_mode == MODE_MANGROVE)
 
     # 1. Executive Toolbar Card
     st.markdown(
@@ -67,8 +75,6 @@ def render_perspective_switcher() -> str:
         selected_mode = st.radio(
             "Engine Perspective Switcher",
             [MODE_LEGACY, MODE_MANGROVE],
-            index=1 if is_mangrove else 0,
-            horizontal=True,
             key="engine_perspective_mode",
             label_visibility="collapsed",
         )
@@ -99,7 +105,7 @@ def render_perspective_switcher() -> str:
                 unsafe_allow_html=True,
             )
 
-    # 2. Dramatic Scenario Callout Banner with 1-Click Toggle Action
+    # 2. Dramatic Scenario Callout Banner with 1-Click Toggle Action via Callbacks
     if not is_mangrove:
         st.markdown(
             f"""
@@ -121,18 +127,13 @@ def render_perspective_switcher() -> str:
 
         col_btn_engage, _ = st.columns([1.6, 2.4])
         with col_btn_engage:
-            if st.button(
+            st.button(
                 "⚡ Turn ON Mangrove In-DB Engine (Activate Exasol Defense)",
                 type="primary",
                 key="btn_engage_mangrove_hero",
+                on_click=activate_mangrove_mode,
                 use_container_width=True,
-            ):
-                st.session_state["engine_perspective_mode"] = MODE_MANGROVE
-                st.toast(
-                    "🚀 Mangrove Autonomous Engine Engaged! In-DB UDFs evaluated 589 rows in 136.1 ms — ₹20.76 Cr false alarms cleared!",
-                    icon="🟢",
-                )
-                st.rerun()
+            )
     else:
         st.markdown(
             f"""
@@ -157,12 +158,11 @@ def render_perspective_switcher() -> str:
 
         col_btn_revert, _ = st.columns([1.4, 2.6])
         with col_btn_revert:
-            if st.button(
+            st.button(
                 "↩️ Switch to Traditional ERP (Inspect Blind Spots)",
                 key="btn_revert_to_legacy_hero",
+                on_click=activate_legacy_mode,
                 use_container_width=True,
-            ):
-                st.session_state["engine_perspective_mode"] = MODE_LEGACY
-                st.rerun()
+            )
 
     return "MANGROVE_ACTIVE" if is_mangrove else "TRADITIONAL_ERP"
