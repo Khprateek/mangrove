@@ -242,7 +242,7 @@ def inject_minimalist_theme() -> None:
             border-bottom: 1px solid {COLOR_BORDER} !important;
             padding-bottom: 3px !important;
             margin-top: 0.5rem !important;
-            margin-bottom: 1.75rem !important;
+            margin-bottom: 1.0rem !important;
         }}
         .stTabs [data-baseweb="tab"] {{
             font-size: 0.86rem !important;

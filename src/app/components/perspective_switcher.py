@@ -271,45 +271,57 @@ def render_perspective_switcher() -> str:
                 unsafe_allow_html=True,
             )
 
-    # Informational Scenario Callout Banner (Mode controlled via the Execution Mode toggle above)
+    # Informational Slim Alert Strip with Expandable Diagnostic Drawer
     if not is_mangrove:
         st.markdown(
             f"""
-            <div style="background-color: #FDF4F4; border: 1px solid #F5C6C6; border-left: 5px solid {COLOR_DANGER}; border-radius: 9px; padding: 12px 18px; margin-top: 10px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(181, 71, 71, 0.08);">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <div>
-                        <div style="font-weight: 700; color: {COLOR_DANGER}; font-size: 0.84rem; letter-spacing: 0.3px;">
-                            🚨 TRADITIONAL ERP CRISIS: 4 ASSEMBLY LINES IN IMMINENT HALT (4.2 HOURS TO SHUTDOWN)
-                        </div>
-                        <div style="color: {COLOR_TEXT_SECONDARY}; font-size: 0.76rem; margin-top: 3px; max-width: 820px; line-height: 1.35;">
-                            Traditional ERP batch processing rejected 13 supplier ASNs due to raw packaging drift, catalog aliases, and corrupt epoch dates. Without in-database Python UDFs, the ERP assumes zero stock. Plant managers are preparing emergency shutdown protocols across Line 1 (Euro-6), Line 2 (AMT), and Line 4 (EV Drive). Toggle to <b>Mangrove Guard</b> above to engage Exasol in-memory defense.
-                        </div>
+            <div style="background-color: #FDF4F4; border: 1px solid #F5C6C6; border-left: 4px solid {COLOR_DANGER}; border-radius: 8px; padding: 7px 14px; margin-top: 6px; margin-bottom: 2px; box-shadow: 0 1px 2px rgba(181, 71, 71, 0.04);">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem;">
+                        <span style="font-size: 0.90rem;">🚨</span>
+                        <strong style="color: {COLOR_DANGER}; letter-spacing: 0.2px;">Traditional ERP Alert:</strong>
+                        <span style="color: {COLOR_TEXT_SECONDARY};">13 supplier ASNs quarantined at gate &bull; 4 assembly lines in imminent halt (4.2h to line-stop)</span>
                     </div>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        with st.expander("ℹ️ Root Cause & Operational Impact Brief (Click to expand)", expanded=False):
+            st.markdown(
+                f"""
+                <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; line-height: 1.45; padding: 4px 2px;">
+                    Traditional ERP batch processing rejected 13 supplier ASNs due to raw packaging drift, catalog aliases, and corrupt epoch dates. Without in-database Python UDFs, the ERP assumes zero stock. Plant managers are preparing emergency shutdown protocols across Line 1 (Euro-6), Line 2 (AMT), and Line 4 (EV Drive). Toggle to <b>Mangrove Guard</b> above to engage Exasol in-memory defense.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
     else:
         st.markdown(
             f"""
-            <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 5px solid {COLOR_BRAND_PRIMARY}; border-radius: 9px; padding: 10px 18px; margin-top: 10px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(47, 107, 79, 0.05);">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <div>
-                        <div style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; font-size: 0.82rem; letter-spacing: 0.3px;">
-                            🟢 MANGROVE IN-DB ACTIVE GUARD &bull; 12 FALSE ALARMS DISSOLVED IN EXASOL RAM (136.1 MS)
-                        </div>
-                        <div style="color: {COLOR_TEXT_SECONDARY}; font-size: 0.76rem; margin-top: 2px; max-width: 850px; line-height: 1.35;">
-                            In-database Python 3 UDFs normalized packaging multipliers and resolved SKU drift in-memory. &#x20B9;20.76 Cr of false starvation threats dissolved. Assembly lines 1, 2, and 4 are safe. Genuine physical shortage isolated to &#x20B9;5.29 Cr on Line 3.
-                        </div>
+            <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 4px solid {COLOR_BRAND_PRIMARY}; border-radius: 8px; padding: 7px 14px; margin-top: 6px; margin-bottom: 2px; box-shadow: 0 1px 2px rgba(47, 107, 79, 0.03);">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem;">
+                        <span style="font-size: 0.90rem;">🟢</span>
+                        <strong style="color: {COLOR_BRAND_PRIMARY}; letter-spacing: 0.2px;">Mangrove In-DB Active Guard:</strong>
+                        <span style="color: {COLOR_TEXT_SECONDARY};">12 false alarms dissolved in Exasol RAM (136.1 ms) &bull; Genuine shortage isolated to &#x20B9;5.29 Cr on Line 3</span>
                     </div>
-                    <div style="font-size: 0.70rem; color: {COLOR_BRAND_PRIMARY}; font-weight: 700; background: #FFFFFF; border: 1px solid #C6DBC3; padding: 4px 10px; border-radius: 6px;">
+                    <span style="font-size: 0.68rem; color: {COLOR_BRAND_PRIMARY}; font-weight: 700; background: #FFFFFF; border: 1px solid #C6DBC3; padding: 2px 8px; border-radius: 5px;">
                         MPP IN-MEMORY ACTIVE
-                    </div>
+                    </span>
                 </div>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        with st.expander("ℹ️ In-Database Python UDF Lineage (Click to expand)", expanded=False):
+            st.markdown(
+                f"""
+                <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; line-height: 1.45; padding: 4px 2px;">
+                    In-database Python 3 UDFs normalized packaging multipliers and resolved SKU drift in-memory. &#x20B9;20.76 Cr of false starvation threats dissolved. Assembly lines 1, 2, and 4 are safe. Genuine physical shortage isolated to &#x20B9;5.29 Cr on Line 3.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     return "MANGROVE_ACTIVE" if is_mangrove else "TRADITIONAL_ERP"

@@ -47,7 +47,7 @@ def render_kpi_header(
     phantom_val = float(pd.to_numeric(inv_df["phantom_inventory_value_inr"], errors="coerce").fillna(0.0).sum())
     phantom_units = int(pd.to_numeric(inv_df["phantom_inventory_qty"], errors="coerce").fillna(0.0).sum())
 
-    st.markdown("<div style='margin-top: 0.2rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 0.75rem; margin-bottom: 0.4rem;'></div>", unsafe_allow_html=True)
     c1, c2, c3, c4, c5 = st.columns(5)
 
     if is_mangrove:
