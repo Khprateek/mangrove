@@ -39,6 +39,14 @@ COLOR_SUCCESS = "#2F6B4F"
 COLOR_WARNING = "#A66B20"
 COLOR_DANGER = "#B54747"
 
+# Semantic Aliases for Mangrove Forest Palette
+COLOR_CANOPY_GREEN = COLOR_BRAND_ACCENT
+COLOR_PALE_SAGE = COLOR_BRAND_SOFT
+COLOR_INK_GREEN = COLOR_TEXT_PRIMARY
+COLOR_MOSS_GREY = COLOR_TEXT_SECONDARY
+COLOR_CARD_BG = COLOR_SURFACE_MUTED
+
+
 
 def inject_minimalist_theme() -> None:
     """Injects the complete Mangrove Forest design system into Streamlit."""

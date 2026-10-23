@@ -97,7 +97,7 @@ What `bootstrap_exasol_schema_and_data()` executes and verifies:
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
-The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine and cockpit UI (15/15 test coverage across 2 test suites):
+The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine, cockpit UI, and BYOD telemetry (23/23 test coverage across 3 test suites):
 
 ### Engine & UDF Test Suite (`tests/test_harmonization.py`)
 1. `test_uom_normalization_pack_and_weight_inversions`: Pack multipliers (`BOX_100`, `BAG_250`, `CRATE_50`) and weight-to-piece conversions (`MT` $\to$ `KG`, `MT` $\to$ `EA`).
@@ -115,8 +115,18 @@ The test suite in [`tests/`](../tests/) verifies full-stack coverage across data
 
 ### UI & Cockpit Smoke Test Suite (`tests/test_cockpit_smoke.py`)
 13. `test_theme_tokens_and_formatting_utilities`: Validates color tokens, safe float coercion, and Indian Rupee formatting helpers (`Rs XX.XX Cr`, `Rs XX.XX L`).
-14. `test_tab_module_exports_and_callables`: Ensures all 7 domain tab modules export valid render callables.
-15. `test_streamlit_cockpit_headless_execution`: End-to-end integration test executing the complete Streamlit Cockpit app via official `AppTest` with zero unhandled exceptions.
+14. `test_component_exports_and_callables`: Ensures all reusable UI components export valid render callables.
+15. `test_tab_module_exports_and_callables`: Ensures all 8 domain tab modules export valid render callables.
+16. `test_streamlit_cockpit_headless_execution`: End-to-end integration test executing the complete Streamlit Cockpit app via official `AppTest` with zero unhandled exceptions.
+17. `test_perspective_switcher_toggle_lifecycle`: Verifies segmented pill execution mode toggle with zero widget instantiation conflicts.
+
+### BYOD Industrial Ingestion & Telemetry Test Suite (`tests/test_byod_and_telemetry.py`)
+18. `test_feedback_ledger_cryptographic_chain`: SHA-256 Merkle hash chaining, tamper detection, and summary statistics.
+19. `test_industrial_scenario_presets_and_harmonization`: Verifies Tata Motors, Bharat Forge, and Bosch industrial presets through in-DB harmonization.
+20. `test_column_auto_mapping_and_synonyms`: Smart column mapping across messy delivery dispatch headers.
+21. `test_dataset_anonymization_privacy_guarantee`: Client-side data masking of vendor names and SKUs into privacy tokens.
+22. `test_export_manifest_and_sap_migo_generation`: Formatted SAP ME21N / MIGO goods receipt CSV and emergency expedite directive.
+23. `test_webhook_dispatcher_graceful_handling`: Non-blocking push notification dispatcher to Discord/Slack webhooks.
 
 ---
 

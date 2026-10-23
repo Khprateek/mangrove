@@ -121,7 +121,7 @@ When a planner reviews a quarantined shipment and submits an override, it writes
 ## Cockpit Walkthrough
 
 <details>
-<summary><b>Click to expand 7-Tab Materials Planner Cockpit Breakdown</b></summary>
+<summary><b>Click to expand 8-Tab Materials Planner Cockpit Breakdown</b></summary>
 
 ### Tab 1: Inbound Triage & Fast-Resolution Workbench
 - **Executive KPI Header**: Real-time operational strip displaying 48-Hour Scheduled Output (₹37.88 Cr), Legacy Parsing Threat (₹26.05 Cr), False Alarms Cleared (₹20.76 Cr), True Net Shortage (₹5.29 Cr), and Phantom Stock (₹1.18 Cr).
@@ -157,6 +157,12 @@ When a planner reviews a quarantined shipment and submits an override, it writes
 - **Live SQL Inspector**: Full embedded source code for MPP schema DDL, Python 3 UDFs, and analytical views.
 - **4-Stage Execution Profiler**: Live millisecond telemetry across True ATP Mart, ASN UDF Lineage, BOM Starvation Risk, and Triage/ROI post-processing.
 - **Logical Query Plan**: Visual blueprint of in-memory columnar scans, parallel UDF worker scripts, and distributed hash joins.
+
+### Tab 8: Industrial Ingestion & BYOD Studio
+- **Zero-Persistence In-Memory Privacy**: Ingest arbitrary CSV/Excel delivery challans into volatile RAM with certified client-side privacy and zero disk persistence.
+- **3 Authentic Industrial Presets**: One-click evaluation of Tata Motors Chakan Inbound (mixed packaging UOMs & stripped OCR barcodes), Bharat Forge Foundry (metallurgical suffix drift & casting scrap shortfalls), and Bosch Powertrain Electronics (Unix epoch dates & sensor harnesses).
+- **Client-Side Data Sanitizer**: 1-click anonymization masking vendor names and part numbers into synthetic tokens (`SUP-ANON-01`, `SKU-ANON-01`) while preserving exact MRP graph integrity.
+- **Actionable Operational Exports**: 1-click generation of SAP ME21N / MIGO clean goods receipt CSVs and emergency supplier expedite directives.
 
 </details>
 
@@ -216,7 +222,7 @@ Copy-Item .env.example .env
 python -m src.data_generator.generate_all --extra-asns 480
 ```
 
-### 3. Run Verification Tests (12/12 Verified)
+### 3. Run Verification Tests (23/23 Verified)
 ```bash
 python -m pytest -v
 ```
