@@ -44,7 +44,6 @@ def render_perspective_switcher() -> str:
 
     Defaults to ERP Baseline so viewers immediately witness the legacy crisis
     before turning ON Mangrove Guard.
-    Uses on_click callbacks to prevent StreamlitWidgetAlreadyInstantiatedError.
     Returns: 'TRADITIONAL_ERP' or 'MANGROVE_ACTIVE'.
     """
     if "engine_perspective_mode" not in st.session_state:
@@ -53,54 +52,54 @@ def render_perspective_switcher() -> str:
     current_val = st.session_state.get("engine_perspective_mode", MODE_LEGACY)
     is_mangrove = (current_val == MODE_MANGROVE)
 
-    # Inject scoped CSS for custom segmented pill toggle
+    # Server-rendered CSS fallback based on current perspective mode
     css_server_fallback = """
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label {
             background-color: #23533F !important;
             box-shadow: 0 2px 8px rgba(35, 83, 63, 0.28) !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type div[data-testid="stMarkdownContainer"] p {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label [data-testid="stMarkdownContainer"] p {
             color: #FFFFFF !important;
             font-weight: 700 !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type div[data-testid="stMarkdownContainer"] p::before {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label [data-testid="stMarkdownContainer"] p::before {
             background-color: #4ECA8B !important;
             box-shadow: 0 0 5px rgba(78, 202, 139, 0.65) !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label {
             background-color: transparent !important;
             box-shadow: none !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type div[data-testid="stMarkdownContainer"] p {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label [data-testid="stMarkdownContainer"] p {
             color: #4A5850 !important;
             font-weight: 500 !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type div[data-testid="stMarkdownContainer"] p::before {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label [data-testid="stMarkdownContainer"] p::before {
             background-color: #9AA59D !important;
             box-shadow: none !important;
         }
     """ if is_mangrove else """
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label {
             background-color: #FFFFFF !important;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type div[data-testid="stMarkdownContainer"] p {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label [data-testid="stMarkdownContainer"] p {
             color: #26332C !important;
             font-weight: 700 !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type div[data-testid="stMarkdownContainer"] p::before {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label [data-testid="stMarkdownContainer"] p::before {
             background-color: #B54747 !important;
             box-shadow: 0 0 3px rgba(181, 71, 71, 0.45) !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label {
             background-color: transparent !important;
             box-shadow: none !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type div[data-testid="stMarkdownContainer"] p {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label [data-testid="stMarkdownContainer"] p {
             color: #4A5850 !important;
             font-weight: 500 !important;
         }
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type div[data-testid="stMarkdownContainer"] p::before {
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label [data-testid="stMarkdownContainer"] p::before {
             background-color: #9AA59D !important;
             box-shadow: none !important;
         }
@@ -122,7 +121,7 @@ def render_perspective_switcher() -> str:
             display: none !important;
         }}
         /* Outer capsule track */
-        .st-key-engine_perspective_mode div[role="radiogroup"] {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] {{
             display: inline-flex !important;
             flex-direction: row !important;
             align-items: center !important;
@@ -134,9 +133,11 @@ def render_perspective_switcher() -> str:
             width: fit-content !important;
             box-sizing: border-box !important;
         }}
-        /* Hide default Streamlit radio circles and inputs */
-        .st-key-engine_perspective_mode div[role="radiogroup"] label > div:first-child,
-        .st-key-engine_perspective_mode div[role="radiogroup"] input[type="radio"] {{
+        /* Hide default Streamlit radio circles and inputs completely */
+        .st-key-engine_perspective_mode [data-testid="stRadioOption"] > *:first-child,
+        .st-key-engine_perspective_mode [data-testid="stRadio"] input[type="radio"],
+        .st-key-engine_perspective_mode [data-testid="stRadio"] [role="radiogroup"] label > div:first-child,
+        .st-key-engine_perspective_mode [data-testid="stRadio"] [role="radiogroup"] label > span:first-child {{
             display: none !important;
             visibility: hidden !important;
             width: 0 !important;
@@ -145,7 +146,7 @@ def render_perspective_switcher() -> str:
             padding: 0 !important;
         }}
         /* Pill segments */
-        .st-key-engine_perspective_mode div[role="radiogroup"] label {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] label {{
             display: inline-flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -159,7 +160,7 @@ def render_perspective_switcher() -> str:
             min-height: 34px !important;
         }}
         /* Text inside segment */
-        .st-key-engine_perspective_mode div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] label [data-testid="stMarkdownContainer"] p {{
             font-size: 0.82rem !important;
             font-weight: 600 !important;
             margin: 0 !important;
@@ -171,7 +172,7 @@ def render_perspective_switcher() -> str:
             transition: color 0.18s ease !important;
         }}
         /* Dot indicator before label */
-        .st-key-engine_perspective_mode div[role="radiogroup"] label div[data-testid="stMarkdownContainer"] p::before {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] label [data-testid="stMarkdownContainer"] p::before {{
             content: "" !important;
             display: inline-block !important;
             width: 7px !important;
@@ -184,39 +185,39 @@ def render_perspective_switcher() -> str:
 
         /* --- Client-side dynamic state via :has() --- */
         /* Left: ERP Baseline Active */
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type:has(input:checked) {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label:has(input:checked) {{
             background-color: #FFFFFF !important;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
         }}
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type:has(input:checked) div[data-testid="stMarkdownContainer"] p {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label:has(input:checked) [data-testid="stMarkdownContainer"] p {{
             color: #26332C !important;
             font-weight: 700 !important;
         }}
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:first-of-type:has(input:checked) div[data-testid="stMarkdownContainer"] p::before {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:first-child label:has(input:checked) [data-testid="stMarkdownContainer"] p::before {{
             background-color: #B54747 !important;
             box-shadow: 0 0 3px rgba(181, 71, 71, 0.45) !important;
         }}
 
         /* Right: Mangrove Guard Active */
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type:has(input:checked) {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label:has(input:checked) {{
             background-color: #23533F !important;
             box-shadow: 0 2px 8px rgba(35, 83, 63, 0.28) !important;
         }}
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type:has(input:checked) div[data-testid="stMarkdownContainer"] p {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label:has(input:checked) [data-testid="stMarkdownContainer"] p {{
             color: #FFFFFF !important;
             font-weight: 700 !important;
         }}
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:last-of-type:has(input:checked) div[data-testid="stMarkdownContainer"] p::before {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] > *:last-child label:has(input:checked) [data-testid="stMarkdownContainer"] p::before {{
             background-color: #4ECA8B !important;
             box-shadow: 0 0 5px rgba(78, 202, 139, 0.65) !important;
         }}
 
         /* Inactive states hover */
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:not(:has(input:checked)) div[data-testid="stMarkdownContainer"] p {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] label:not(:has(input:checked)) [data-testid="stMarkdownContainer"] p {{
             color: #4A5850 !important;
             font-weight: 500 !important;
         }}
-        .st-key-engine_perspective_mode div[role="radiogroup"] label:not(:has(input:checked)):hover {{
+        .st-key-engine_perspective_mode [data-testid="stRadioGroup"] label:not(:has(input:checked)):hover {{
             background-color: rgba(255, 255, 255, 0.5) !important;
         }}
 
@@ -270,7 +271,7 @@ def render_perspective_switcher() -> str:
                 unsafe_allow_html=True,
             )
 
-    # Dramatic Scenario Callout Banner with 1-Click Toggle Action via Callbacks
+    # Informational Scenario Callout Banner (Mode controlled via the Execution Mode toggle above)
     if not is_mangrove:
         st.markdown(
             f"""
@@ -281,7 +282,7 @@ def render_perspective_switcher() -> str:
                             🚨 TRADITIONAL ERP CRISIS: 4 ASSEMBLY LINES IN IMMINENT HALT (4.2 HOURS TO SHUTDOWN)
                         </div>
                         <div style="color: {COLOR_TEXT_SECONDARY}; font-size: 0.76rem; margin-top: 3px; max-width: 820px; line-height: 1.35;">
-                            Traditional ERP batch processing rejected 13 supplier ASNs due to raw packaging drift, catalog aliases, and corrupt epoch dates. Without in-database Python UDFs, the ERP assumes zero stock. Plant managers are preparing emergency shutdown protocols across Line 1 (Euro-6), Line 2 (AMT), and Line 4 (EV Drive).
+                            Traditional ERP batch processing rejected 13 supplier ASNs due to raw packaging drift, catalog aliases, and corrupt epoch dates. Without in-database Python UDFs, the ERP assumes zero stock. Plant managers are preparing emergency shutdown protocols across Line 1 (Euro-6), Line 2 (AMT), and Line 4 (EV Drive). Toggle to <b>Mangrove Guard</b> above to engage Exasol in-memory defense.
                         </div>
                     </div>
                 </div>
@@ -289,16 +290,6 @@ def render_perspective_switcher() -> str:
             """,
             unsafe_allow_html=True,
         )
-
-        col_btn_engage, _ = st.columns([1.6, 2.4])
-        with col_btn_engage:
-            st.button(
-                "⚡ Turn ON Mangrove In-DB Engine (Activate Exasol Defense)",
-                type="primary",
-                key="btn_engage_mangrove_hero",
-                on_click=activate_mangrove_mode,
-                use_container_width=True,
-            )
     else:
         st.markdown(
             f"""
@@ -320,14 +311,5 @@ def render_perspective_switcher() -> str:
             """,
             unsafe_allow_html=True,
         )
-
-        col_btn_revert, _ = st.columns([1.4, 2.6])
-        with col_btn_revert:
-            st.button(
-                "↩️ Switch to Traditional ERP (Inspect Blind Spots)",
-                key="btn_revert_to_legacy_hero",
-                on_click=activate_legacy_mode,
-                use_container_width=True,
-            )
 
     return "MANGROVE_ACTIVE" if is_mangrove else "TRADITIONAL_ERP"

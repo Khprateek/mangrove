@@ -99,45 +99,37 @@ def test_streamlit_cockpit_headless_execution() -> None:
 
 
 def test_perspective_switcher_toggle_lifecycle() -> None:
-    """Verifies that clicking the Mangrove engage button, revert button, and segmented radio
+    """Verifies that selecting the segmented radio options toggles perspective mode cleanly
     
-    triggers callbacks and updates state without raising StreamlitWidgetAlreadyInstantiatedError.
+    without raising StreamlitWidgetAlreadyInstantiatedError or unhandled exceptions.
     """
     app_path = Path(__file__).resolve().parents[1] / "src" / "app" / "app.py"
     at = AppTest.from_file(str(app_path), default_timeout=30)
     at.run()
     assert len(at.exception) == 0
 
-    # Verify radio initial state is ERP Baseline
+    # 1. Verify radio initial state is ERP Baseline
     radio = at.radio(key="engine_perspective_mode")
     assert radio is not None
     assert radio.value == "ERP Baseline"
     assert radio.options == ["ERP Baseline", "Mangrove Guard"]
 
-    # 1. Click Engage Mangrove button
-    btn_engage = at.button(key="btn_engage_mangrove_hero")
-    if btn_engage:
-        btn_engage.click().run()
-        if at.exception:
-            err_messages = [str(e.value) for e in at.exception]
-            pytest.fail(f"Clicking engage button raised exceptions: {err_messages}")
-        assert len(at.exception) == 0
-        assert at.radio(key="engine_perspective_mode").value == "Mangrove Guard"
-
-    # 2. Click Revert to Legacy button
-    btn_revert = at.button(key="btn_revert_to_legacy_hero")
-    if btn_revert:
-        btn_revert.click().run()
-        if at.exception:
-            err_messages = [str(e.value) for e in at.exception]
-            pytest.fail(f"Clicking revert button raised exceptions: {err_messages}")
-        assert len(at.exception) == 0
-        assert at.radio(key="engine_perspective_mode").value == "ERP Baseline"
-
-    # 3. Direct radio selection test
-    radio = at.radio(key="engine_perspective_mode")
+    # 2. Direct radio toggle to Mangrove Guard
     radio.set_value("Mangrove Guard").run()
+    if at.exception:
+        err_messages = [str(e.value) for e in at.exception]
+        pytest.fail(f"Toggling to Mangrove Guard raised exceptions: {err_messages}")
     assert len(at.exception) == 0
     assert at.radio(key="engine_perspective_mode").value == "Mangrove Guard"
+
+    # 3. Direct radio toggle back to ERP Baseline
+    radio = at.radio(key="engine_perspective_mode")
+    radio.set_value("ERP Baseline").run()
+    if at.exception:
+        err_messages = [str(e.value) for e in at.exception]
+        pytest.fail(f"Toggling back to ERP Baseline raised exceptions: {err_messages}")
+    assert len(at.exception) == 0
+    assert at.radio(key="engine_perspective_mode").value == "ERP Baseline"
+
 
 
