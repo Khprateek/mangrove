@@ -314,6 +314,9 @@ def synthesize_domain_catalog(
 
     Returns (synthesized_tables, synthesized_marts, domain_aliases).
     """
+    if "supplier_part_num" not in batch.columns:
+        batch, _ = detect_and_map_columns(batch)
+
     prefix = "RET-CARD" if domain == "RETAIL_DATACO" else "CORP-SKU"
     clean_skus = [
         re.sub(r"[^A-Za-z0-9_-]", "", str(s).strip())
@@ -625,10 +628,11 @@ def harmonize_and_evaluate_inbound(
 ) -> dict[str, Any]:
     """Harmonize an inbound batch and evaluate its impact on baseline or domain exposure."""
     onboarding_meta = None
+    mapped_df, _ = detect_and_map_columns(df)
     if domain != "AUTOMOTIVE":
-        synth_tables, synth_marts, domain_aliases = synthesize_domain_catalog(df, domain)
+        synth_tables, synth_marts, domain_aliases = synthesize_domain_catalog(mapped_df, domain)
         harmonized, info = harmonize_batch(
-            df, client, domain=domain, domain_tables=synth_tables, domain_aliases=domain_aliases
+            mapped_df, client, domain=domain, domain_tables=synth_tables, domain_aliases=domain_aliases
         )
         result = evaluate_batch_impact(harmonized, synth_marts)
         onboarding_meta = {
@@ -640,7 +644,7 @@ def harmonize_and_evaluate_inbound(
             "canonical_taxonomy": "RET-CARD-XXXX" if domain == "RETAIL_DATACO" else "CORP-SKU-XXXX",
         }
     else:
-        harmonized, info = harmonize_batch(df, client, domain="AUTOMOTIVE")
+        harmonized, info = harmonize_batch(mapped_df, client, domain="AUTOMOTIVE")
         marts = marts if marts is not None else client.compute_analytical_marts()
         result = evaluate_batch_impact(harmonized, marts)
 
