@@ -67,6 +67,51 @@ def build_ngram_inverted_index(catalog: Dict[str, str]) -> Dict[str, Set[str]]:
 _ALIAS_NGRAM_INDEX: Dict[str, Set[str]] = build_ngram_inverted_index(KNOWN_SUPPLIER_SKU_ALIASES)
 
 
+UOM_SYNONYM_MAP: Dict[str, str] = {
+    "KGS": "KG",
+    "KILOGRAM": "KG",
+    "KILOGRAMS": "KG",
+    "GMS": "G",
+    "GM": "G",
+    "GRAM": "G",
+    "GRAMS": "G",
+    "MTRS": "MTR",
+    "METER": "MTR",
+    "METERS": "MTR",
+    "METRE": "MTR",
+    "METRES": "MTR",
+    "M": "MTR",
+    "LTRS": "LTR",
+    "L": "LTR",
+    "LITER": "LTR",
+    "LITRE": "LTR",
+    "LITERS": "LTR",
+    "LITRES": "LTR",
+    "TON": "MT",
+    "TONNE": "MT",
+    "TONNES": "MT",
+    "METRIC TON": "MT",
+    "METRIC TONNE": "MT",
+    "SET": "EA",
+    "SETS": "EA",
+    "PCS": "EA",
+    "PIECE": "EA",
+    "PIECES": "EA",
+    "NOS": "EA",
+    "NO": "EA",
+    "UNITS": "EA",
+    "UNIT": "EA",
+    "EACH": "EA",
+    "LBS": "LB",
+    "POUND": "LB",
+    "POUNDS": "LB",
+    "MILLILITER": "ML",
+    "MILLILITERS": "ML",
+    "MILLIMETER": "MM",
+    "MILLIMETERS": "MM",
+}
+
+
 def normalize_uom_quantity(
     raw_qty: float,
     raw_uom: str,
@@ -75,7 +120,7 @@ def normalize_uom_quantity(
     unit_weight_kg: float = 1.0,
 ) -> float:
     """
-    Converts heterogeneous supplier dispatch quantities (BOX_100, BAG_250, CRATE_50, MT, LB, G, LTR, MTR)
+    Converts heterogeneous supplier dispatch quantities (BOX_100, BOX-100, PK_50, MT, LB, GMS, KGS)
     into the canonical ITEM_MASTER base_uom (EA, KG, LTR, MTR).
     """
     if raw_qty is None:
@@ -84,19 +129,24 @@ def normalize_uom_quantity(
     tgt = (target_uom or "EA").strip().upper()
 
     ea_synonyms = {"EA", "EACH", "PCS", "PIECES", "NOS", "UNITS", "NO"}
+
+    # Bulk packaging pattern: BOX_100, BOX-100, BOX 100, PK_50, PK-50, CRATE/40
+    pack_match = re.match(r"^(?:BOX|BAG|CRATE|PACK|PK|PALLET)[_\s\-/](\d+)$", src)
+    if pack_match and (tgt in ea_synonyms or UOM_SYNONYM_MAP.get(tgt) in ea_synonyms):
+        multiplier = float(pack_match.group(1))
+        return round(float(raw_qty) * multiplier, 2)
+
+    # Canonicalize unit aliases
+    src = UOM_SYNONYM_MAP.get(src, src)
+    tgt = UOM_SYNONYM_MAP.get(tgt, tgt)
+
     if src in ea_synonyms and tgt in ea_synonyms:
         return round(float(raw_qty), 2)
 
     if src == tgt:
         return round(float(raw_qty), 2)
 
-    # Bulk packaging pattern: BOX_100, BAG_250, CRATE_40, CRATE_50
-    pack_match = re.match(r"^(?:BOX|BAG|CRATE|PACK|PALLET)_(\d+)$", src)
-    if pack_match and tgt in ea_synonyms:
-        multiplier = float(pack_match.group(1))
-        return round(float(raw_qty) * multiplier, 2)
-
-    if src in {"BOX", "BAG", "CRATE", "PACK"} and tgt in ea_synonyms:
+    if src in {"BOX", "BAG", "CRATE", "PACK", "PK", "PALLET"} and tgt in ea_synonyms:
         multiplier = float(pack_size_ea) if pack_size_ea and pack_size_ea > 1.0 else 100.0
         return round(float(raw_qty) * multiplier, 2)
 
@@ -239,6 +289,56 @@ def check_revision_mismatch(raw_sku: str, po_part_num: str) -> bool:
     return False
 
 
+def detect_numeric_transposition(s1: str, s2: str) -> bool:
+    """
+    Detects if two SKU strings have transposed digits within corresponding numeric blocks
+    (e.g., '6204' vs '6240', '12' vs '21').
+    In industrial manufacturing and automotive assembly, transposed digits indicate
+    completely different physical specifications (e.g. 20mm bearing vs 200mm bearing).
+    """
+    if not s1 or not s2:
+        return False
+    nums1 = re.findall(r"\d+", s1)
+    nums2 = re.findall(r"\d+", s2)
+    for n1 in nums1:
+        for n2 in nums2:
+            if len(n1) >= 2 and len(n1) == len(n2) and n1 != n2:
+                diffs = [(i, c1, c2) for i, (c1, c2) in enumerate(zip(n1, n2)) if c1 != c2]
+                if len(diffs) == 2:
+                    (i1, a1, b1), (i2, a2, b2) = diffs
+                    if a1 == b2 and a2 == b1:
+                        return True
+    return False
+
+
+def check_dimension_conflict(raw_sku: str, po_sku: str) -> bool:
+    """
+    Checks if there is an explicit dimensional/sizing conflict between raw and PO SKUs.
+    A conflict occurs when both raw and PO have corresponding numeric sizing tokens that differ
+    (e.g., M12 vs M6, 6204 vs 6205).
+    Omission of an engineering revision/variant suffix (e.g., '01' in ENG-CRK-42CR-01 vs ENGCRK42CRMO)
+    is NOT a dimension conflict.
+    """
+    if not raw_sku or not po_sku:
+        return False
+
+    raw_nums = set(re.findall(r"\d+", raw_sku))
+    po_nums = set(re.findall(r"\d+", po_sku))
+
+    shared_nums = raw_nums.intersection(po_nums)
+    unmatched_raw = raw_nums - shared_nums
+    unmatched_po = po_nums - shared_nums
+
+    if unmatched_raw and unmatched_po:
+        for n_po in unmatched_po:
+            for n_raw in unmatched_raw:
+                if len(n_po) == len(n_raw):
+                    return True
+                if abs(len(n_po) - len(n_raw)) <= 1 and int(n_po) != int(n_raw):
+                    return True
+    return False
+
+
 def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[str, str, float]:
     """
     Reconciles supplier part identifiers to canonical ITEM_MASTER internal_part_num.
@@ -254,6 +354,10 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
     if cleaned_po and check_revision_mismatch(cleaned_raw, cleaned_po):
         return cleaned_raw, "REVISION_MISMATCH_SUSPECTED", 0.70
 
+    # Numeric Transposition Guard: Prevent auto-resolving swapped digits (e.g., 6204 vs 6240)
+    if cleaned_po and detect_numeric_transposition(cleaned_raw, cleaned_po):
+        return cleaned_raw, "NUMERIC_TRANSPOSITION_SUSPECTED", 0.65
+
     alnum_raw = re.sub(r"[^A-Z0-9]", "", cleaned_raw)
     alnum_po = re.sub(r"[^A-Z0-9]", "", cleaned_po)
 
@@ -264,12 +368,11 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
         mapped = KNOWN_SUPPLIER_SKU_ALIASES[alnum_raw]
         return mapped, "VENDOR_CATALOG_ALIAS", 0.95
 
-    has_dimension_conflict = False
+    has_dim_conflict = False
     if cleaned_po:
-        po_tokens = [t for t in cleaned_po.split("-") if len(t) >= 2]
-        # Dimension Conflict Guard: Sizing/numerical tokens (M6 vs M12, 6204 vs 6205) MUST NOT conflict
-        has_dimension_conflict = any(any(c.isdigit() for c in tok) and tok not in alnum_raw for tok in po_tokens)
-        if not has_dimension_conflict:
+        has_dim_conflict = check_dimension_conflict(cleaned_raw, cleaned_po)
+        if not has_dim_conflict:
+            po_tokens = [t for t in cleaned_po.split("-") if len(t) >= 2]
             matched_tokens = sum(1 for tok in po_tokens if tok in alnum_raw)
             if len(po_tokens) >= 2 and matched_tokens >= len(po_tokens) - 1 and (matched_tokens / len(po_tokens)) >= 0.75:
                 return cleaned_po, "PO_TOKEN_SIMILARITY", 0.89
@@ -298,6 +401,9 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
             sorted_candidates = sorted(candidate_overlaps.items(), key=lambda x: x[1], reverse=True)
             for candidate_key, _ in sorted_candidates:
                 evaluated_keys.add(candidate_key)
+                # Skip candidates that have numeric transpositions
+                if detect_numeric_transposition(alnum_raw, candidate_key):
+                    continue
                 score = jaro_winkler_similarity(alnum_raw, candidate_key)
                 if score > best_jw:
                     best_jw = score
@@ -306,11 +412,11 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
                     break
 
         # Phase 2: Safety Fallback Guardrail (0.00% False Negative Guarantee)
-        # If candidate pre-filtering found 0 matches OR best score < 0.85 threshold,
-        # perform an exhaustive scan across remaining keys to guarantee zero misses.
         if best_jw < 0.85:
             for alias_key, canonical_sku in KNOWN_SUPPLIER_SKU_ALIASES.items():
                 if alias_key in evaluated_keys:
+                    continue
+                if detect_numeric_transposition(alnum_raw, alias_key):
                     continue
                 score = jaro_winkler_similarity(alnum_raw, alias_key)
                 if score > best_jw:
@@ -323,7 +429,7 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
             elif best_jw >= 0.85:
                 return best_alias_sku, "FUZZY_MATCH_REVIEW_BAND", round(best_jw, 2)
 
-    if cleaned_po and not has_dimension_conflict:
+    if cleaned_po and not has_dim_conflict:
         return cleaned_po, "PO_LINEAGE_FALLBACK", 0.82
 
     return cleaned_raw, "UNRESOLVED", 0.00
@@ -332,49 +438,64 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
 def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> date | None:
     """
     Parses multi-format supplier date strings (ISO YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY,
-    and Unix epoch timestamps) using the vendor's default format profile.
+    DD.MM.YYYY, 8-digit compact EDI YYYYMMDD, and Unix epoch timestamps) using the vendor's default format profile.
+    Strips trailing ISO timestamps (e.g., '2026-10-24 14:30:00' -> '2026-10-24').
     Returns None if raw_date_str is empty or unparseable.
     """
     val = (raw_date_str or "").strip()
     if not val:
         return None
 
+    # Strip timestamp suffix if present (e.g., '2026-10-24 14:30:00' or '2026-10-24T14:30:00Z')
+    # but preserve raw epoch integers
+    if not re.fullmatch(r"\d{9,10}", val):
+        val = re.split(r"[T\s]", val)[0].strip()
+
     # Unix epoch check (seconds)
     if re.fullmatch(r"\d{9,10}", val):
         try:
             epoch_sec = int(val)
             dt = datetime.fromtimestamp(epoch_sec, tz=timezone.utc).date()
-            # Normalize synthetic 2026 epoch offsets if needed
             if dt.year != 2026:
                 return None
             return dt
         except (ValueError, OverflowError, OSError):
             return None
 
-    # ISO YYYY-MM-DD
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", val):
+    # Compact EDI 8-digit date: YYYYMMDD (e.g. 20261024)
+    edi_match = re.fullmatch(r"(20\d{2})(\d{2})(\d{2})", val)
+    if edi_match:
         try:
-            return datetime.strptime(val, "%Y-%m-%d").date()
+            return date(int(edi_match.group(1)), int(edi_match.group(2)), int(edi_match.group(3)))
         except ValueError:
             return None
 
-    # Slash-separated dates: disambiguate DD/MM/YYYY vs MM/DD/YYYY
-    slash_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", val)
-    if slash_match:
+    # Delimited dates: supports '-', '/', and '.'
+    # 1. ISO YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
+    iso_match = re.fullmatch(r"(\d{4})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12]\d|3[01])", val)
+    if iso_match:
         try:
-            first, second, year = int(slash_match.group(1)), int(slash_match.group(2)), int(slash_match.group(3))
+            return date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+        except ValueError:
+            return None
+
+    # 2. DD/MM/YYYY, MM/DD/YYYY, DD.MM.YYYY, DD-MM-YYYY
+    delim_match = re.fullmatch(r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})", val)
+    if delim_match:
+        try:
+            first, second, year = int(delim_match.group(1)), int(delim_match.group(2)), int(delim_match.group(3))
             fmt_pref = (supplier_date_fmt or "DD/MM/YYYY").strip().upper()
             if first > 12:
                 return date(year, second, first)
             if second > 12:
                 return date(year, first, second)
-            if fmt_pref == "MM/DD/YYYY":
+            if fmt_pref in ("MM/DD/YYYY", "MM-DD-YYYY", "MM.DD.YYYY"):
                 return date(year, first, second)
             return date(year, second, first)
         except ValueError:
             return None
 
-    for fmt in ("%d-%b-%Y", "%Y/%m/%d", "%d-%m-%Y"):
+    for fmt in ("%d-%b-%Y", "%d/%b/%Y", "%d.%b.%Y", "%Y/%m/%d", "%d-%m-%Y"):
         try:
             return datetime.strptime(val, fmt).date()
         except ValueError:

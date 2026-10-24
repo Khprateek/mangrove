@@ -26,6 +26,13 @@ def test_uom_normalization_pack_and_weight_inversions() -> None:
     assert normalize_uom_quantity(500.0, "G", "KG") == 0.5
     assert normalize_uom_quantity(25.0, "NOS", "EA") == 25.0
     assert normalize_uom_quantity(10.0, "BOX", "EA", pack_size_ea=1.0) == 1000.0  # 10 * 100 EA fallback
+    # Robustness additions: UOM synonyms (KGS, GMS, SETS) and flexible packaging delimiters (-, space, /, PK)
+    assert normalize_uom_quantity(1000.0, "KGS", "MT") == 1.0
+    assert normalize_uom_quantity(500.0, "GMS", "KG") == 0.5
+    assert normalize_uom_quantity(5.0, "SETS", "EA") == 5.0
+    assert normalize_uom_quantity(10.0, "BOX-100", "EA") == 1000.0
+    assert normalize_uom_quantity(4.0, "PK_50", "EA") == 200.0
+    assert normalize_uom_quantity(2.0, "CRATE/40", "EA") == 80.0
 
 
 def test_supplier_sku_drift_and_jaro_winkler_resolution() -> None:
@@ -51,11 +58,22 @@ def test_supplier_sku_drift_and_jaro_winkler_resolution() -> None:
     assert method_rev == "REVISION_MISMATCH_SUSPECTED"
     assert conf_rev < 0.85  # Below auto-resolve threshold -> routes to planner triage
 
+    # Numeric Transposition Guard: Prevent auto-resolving swapped digits (e.g. 6204 vs 6240)
+    sku_trans, method_trans, conf_trans = resolve_supplier_sku("ENG-BRG-6240-01", "ENG-BRG-6204-01")
+    assert sku_trans == "ENG-BRG-6240-01"
+    assert method_trans == "NUMERIC_TRANSPOSITION_SUSPECTED"
+    assert conf_trans < 0.70
+
     # Dimension Conflict Guard: Sizing/numerical tokens (M12 bolt vs M6 bolt) MUST NOT match
     sku_m12, method_m12, conf_m12 = resolve_supplier_sku("FAST-12-M", "FAST-06-M")
     assert sku_m12 == "FAST-12-M"
     assert method_m12 == "UNRESOLVED"
     assert conf_m12 == 0.0
+
+    # Dimension Guard Refinement: Suffix omission (e.g., variant '01') is NOT a dimension conflict
+    sku_crk, method_crk, conf_crk = resolve_supplier_sku("ENGCRK42CRMO", "ENG-CRK-42CR-01")
+    assert sku_crk == "ENG-CRK-42CR-01"
+    assert conf_crk >= 0.80
 
 
 def test_adaptive_ngram_prefiltering_and_safety_fallback() -> None:
@@ -99,6 +117,12 @@ def test_multiformat_date_parsing() -> None:
     assert parse_asn_date("12/10/2026", "DD/MM/YYYY") == date(2026, 10, 12)
     assert parse_asn_date("10/12/2026", "MM/DD/YYYY") == date(2026, 10, 12)
     assert parse_asn_date("2026-10-12", "YYYY-MM-DD") == date(2026, 10, 12)
+    # European dot dates, compact 8-digit EDI dates, and timestamps
+    assert parse_asn_date("2026.10.24") == date(2026, 10, 24)
+    assert parse_asn_date("24.10.2026", "DD/MM/YYYY") == date(2026, 10, 24)
+    assert parse_asn_date("20261024") == date(2026, 10, 24)
+    assert parse_asn_date("2026-10-24 14:30:00") == date(2026, 10, 24)
+    assert parse_asn_date("2026-10-24T08:00:00Z") == date(2026, 10, 24)
     # Silent date fallback prevention: corrupt or empty values return None
     assert parse_asn_date("garbage") is None
     assert parse_asn_date("") is None

@@ -14,6 +14,18 @@ CREATE OR REPLACE PYTHON3 SCALAR SCRIPT CHAKAN_SCM.UDF_NORMALIZE_UOM(
 ) RETURNS DOUBLE AS
 import re
 
+UOM_SYNONYMS = {
+    "KGS": "KG", "KILOGRAM": "KG", "KILOGRAMS": "KG",
+    "GMS": "G", "GM": "G", "GRAM": "G", "GRAMS": "G",
+    "MTRS": "MTR", "METER": "MTR", "METERS": "MTR", "METRE": "MTR", "METRES": "MTR", "M": "MTR",
+    "LTRS": "LTR", "L": "LTR", "LITER": "LTR", "LITRE": "LTR", "LITERS": "LTR", "LITRES": "LTR",
+    "TON": "MT", "TONNE": "MT", "TONNES": "MT", "METRIC TON": "MT", "METRIC TONNE": "MT",
+    "SET": "EA", "SETS": "EA", "PCS": "EA", "PIECE": "EA", "PIECES": "EA", "NOS": "EA", "NO": "EA", "UNITS": "EA", "UNIT": "EA", "EACH": "EA",
+    "LBS": "LB", "POUND": "LB", "POUNDS": "LB",
+    "MILLILITER": "ML", "MILLILITERS": "ML",
+    "MILLIMETER": "MM", "MILLIMETERS": "MM",
+}
+
 def run(ctx):
     if ctx.raw_qty is None:
         return 0.0
@@ -22,17 +34,21 @@ def run(ctx):
     tgt = (ctx.target_uom or "EA").strip().upper()
 
     ea_synonyms = {"EA", "EACH", "PCS", "PIECES", "NOS", "UNITS", "NO"}
+
+    pack_match = re.match(r"^(?:BOX|BAG|CRATE|PACK|PK|PALLET)[_\s\-/](\d+)$", src)
+    if pack_match and (tgt in ea_synonyms or UOM_SYNONYMS.get(tgt) in ea_synonyms):
+        return round(qty * float(pack_match.group(1)), 2)
+
+    src = UOM_SYNONYMS.get(src, src)
+    tgt = UOM_SYNONYMS.get(tgt, tgt)
+
     if src in ea_synonyms and tgt in ea_synonyms:
         return round(qty, 2)
 
     if src == tgt:
         return round(qty, 2)
 
-    pack_match = re.match(r"^(?:BOX|BAG|CRATE|PACK|PALLET)_(\d+)$", src)
-    if pack_match and tgt in ea_synonyms:
-        return round(qty * float(pack_match.group(1)), 2)
-
-    if src in ("BOX", "BAG", "CRATE", "PACK") and tgt in ea_synonyms:
+    if src in ("BOX", "BAG", "CRATE", "PACK", "PK", "PALLET") and tgt in ea_synonyms:
         mult = float(ctx.pack_size_ea) if ctx.pack_size_ea and ctx.pack_size_ea > 1.0 else 100.0
         return round(qty * mult, 2)
 
@@ -163,6 +179,38 @@ def _jaro_winkler(s1, s2, prefix_weight=0.1):
             break
     return round(min(1.0, jaro + prefix * prefix_weight * (1.0 - jaro)), 4)
 
+def _detect_transposition(s1, s2):
+    if not s1 or not s2:
+        return False
+    nums1 = re.findall(r"\d+", s1)
+    nums2 = re.findall(r"\d+", s2)
+    for n1 in nums1:
+        for n2 in nums2:
+            if len(n1) >= 2 and len(n1) == len(n2) and n1 != n2:
+                diffs = [(i, c1, c2) for i, (c1, c2) in enumerate(zip(n1, n2)) if c1 != c2]
+                if len(diffs) == 2:
+                    (i1, a1, b1), (i2, a2, b2) = diffs
+                    if a1 == b2 and a2 == b1:
+                        return True
+    return False
+
+def _check_dim_conflict(raw_sku, po_sku):
+    if not raw_sku or not po_sku:
+        return False
+    raw_nums = set(re.findall(r"\d+", raw_sku))
+    po_nums = set(re.findall(r"\d+", po_sku))
+    shared_nums = raw_nums.intersection(po_nums)
+    unmatched_raw = raw_nums - shared_nums
+    unmatched_po = po_nums - shared_nums
+    if unmatched_raw and unmatched_po:
+        for n_po in unmatched_po:
+            for n_raw in unmatched_raw:
+                if len(n_po) == len(n_raw):
+                    return True
+                if abs(len(n_po) - len(n_raw)) <= 1 and int(n_po) != int(n_raw):
+                    return True
+    return False
+
 def _check_rev_mismatch(raw_sku, po_part):
     m_raw = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z])$", raw_sku or "")
     m_po = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z])$", po_part or "")
@@ -188,6 +236,11 @@ def run(ctx):
         ctx.emit(cleaned_raw, "REVISION_MISMATCH_SUSPECTED", 0.70)
         return
 
+    # Numeric Transposition Guard: Prevent auto-resolving swapped digits (e.g., 6204 vs 6240)
+    if cleaned_po and _detect_transposition(cleaned_raw, cleaned_po):
+        ctx.emit(cleaned_raw, "NUMERIC_TRANSPOSITION_SUSPECTED", 0.65)
+        return
+
     alnum_raw = re.sub(r"[^A-Z0-9]", "", cleaned_raw)
     alnum_po = re.sub(r"[^A-Z0-9]", "", cleaned_po)
 
@@ -201,10 +254,9 @@ def run(ctx):
 
     has_dim_conflict = False
     if cleaned_po:
-        po_tokens = [t for t in cleaned_po.split("-") if len(t) >= 2]
-        # Dimension Conflict Guard: Sizing/numerical tokens (M6 vs M12, 6204 vs 6205) MUST NOT conflict
-        has_dim_conflict = any(any(c.isdigit() for c in tok) and tok not in alnum_raw for tok in po_tokens)
+        has_dim_conflict = _check_dim_conflict(cleaned_raw, cleaned_po)
         if not has_dim_conflict:
+            po_tokens = [t for t in cleaned_po.split("-") if len(t) >= 2]
             matched = sum(1 for tok in po_tokens if tok in alnum_raw)
             if len(po_tokens) >= 2 and matched >= len(po_tokens) - 1 and (matched / len(po_tokens)) >= 0.75:
                 ctx.emit(cleaned_po, "PO_TOKEN_SIMILARITY", 0.89)
@@ -235,6 +287,8 @@ def run(ctx):
             sorted_candidates = sorted(candidate_overlaps.items(), key=lambda x: x[1], reverse=True)
             for candidate_key, _ in sorted_candidates:
                 evaluated_keys.add(candidate_key)
+                if _detect_transposition(alnum_raw, candidate_key):
+                    continue
                 score = _jaro_winkler(alnum_raw, candidate_key)
                 if score > best_jw:
                     best_jw = score
@@ -246,6 +300,8 @@ def run(ctx):
         if best_jw < 0.85:
             for alias_key, canonical_sku in ALIASES.items():
                 if alias_key in evaluated_keys:
+                    continue
+                if _detect_transposition(alnum_raw, alias_key):
                     continue
                 score = _jaro_winkler(alnum_raw, alias_key)
                 if score > best_jw:
@@ -268,7 +324,7 @@ def run(ctx):
 /
 
 -- 3. In-Database Multi-Format Date Harmonization UDF
--- Disambiguates DD/MM/YYYY, MM/DD/YYYY, ISO YYYY-MM-DD, and Unix Epoch strings.
+-- Disambiguates DD/MM/YYYY, MM/DD/YYYY, ISO YYYY-MM-DD, DD.MM.YYYY, 8-digit compact EDI, and Unix Epoch strings.
 -- Returns NULL if the raw date string is empty or unparseable.
 CREATE OR REPLACE PYTHON3 SCALAR SCRIPT CHAKAN_SCM.UDF_PARSE_ASN_DATE(
     raw_date_str VARCHAR(40) UTF8,
@@ -285,6 +341,9 @@ def run(ctx):
     if not val:
         return None
 
+    if not re.fullmatch(r"\d{9,10}", val):
+        val = re.split(r"[T\s]", val)[0].strip()
+
     if re.fullmatch(r"\d{9,10}", val):
         try:
             d = _dt.datetime.fromtimestamp(int(val), tz=_dt.timezone.utc).date()
@@ -292,30 +351,42 @@ def run(ctx):
         except Exception:
             return None
 
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", val):
+    # Compact EDI 8-digit date: YYYYMMDD
+    edi_match = re.fullmatch(r"(20\d{2})(\d{2})(\d{2})", val)
+    if edi_match:
         try:
-            return _dt.datetime.strptime(val, "%Y-%m-%d").date()
+            return _dt.date(int(edi_match.group(1)), int(edi_match.group(2)), int(edi_match.group(3)))
         except ValueError:
             return None
 
-    slash_match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", val)
-    if slash_match:
+    # Delimited dates: supports '-', '/', and '.'
+    # 1. ISO YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
+    iso_match = re.fullmatch(r"(\d{4})[-/.](0?[1-9]|1[0-2])[-/.](0?[1-9]|[12]\d|3[01])", val)
+    if iso_match:
         try:
-            first = int(slash_match.group(1))
-            second = int(slash_match.group(2))
-            year = int(slash_match.group(3))
+            return _dt.date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+        except ValueError:
+            return None
+
+    # 2. DD/MM/YYYY, MM/DD/YYYY, DD.MM.YYYY, DD-MM-YYYY
+    delim_match = re.fullmatch(r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})", val)
+    if delim_match:
+        try:
+            first = int(delim_match.group(1))
+            second = int(delim_match.group(2))
+            year = int(delim_match.group(3))
             fmt_pref = (ctx.supplier_date_fmt or "DD/MM/YYYY").strip().upper()
             if first > 12:
                 return _dt.date(year, second, first)
             if second > 12:
                 return _dt.date(year, first, second)
-            if fmt_pref == "MM/DD/YYYY":
+            if fmt_pref in ("MM/DD/YYYY", "MM-DD-YYYY", "MM.DD.YYYY"):
                 return _dt.date(year, first, second)
             return _dt.date(year, second, first)
         except ValueError:
             return None
 
-    for fmt in ("%d-%b-%Y", "%Y/%m/%d", "%d-%m-%Y"):
+    for fmt in ("%d-%b-%Y", "%d/%b/%Y", "%d.%b.%Y", "%Y/%m/%d", "%d-%m-%Y"):
         try:
             return _dt.datetime.strptime(val, fmt).date()
         except ValueError:
