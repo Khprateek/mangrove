@@ -185,3 +185,36 @@ def test_exports(client, marts):
 def test_webhook_dispatcher_fails_quietly():
     assert dispatch_webhook_alert("TEST", {"rating": 5}, webhook_url="") is False
     assert dispatch_webhook_alert("TEST", {"rating": 5}, webhook_url="https://invalid.domain.example/webhook") is False
+
+
+def test_domain_auto_onboarding_and_standardized_taxonomy(client):
+    from src.exasol_engine.custom_ingestor import harmonize_and_evaluate_inbound, DOMAIN_PROFILES
+
+    # Retail batch with arbitrary e-commerce items
+    retail_df = pd.DataFrame({
+        "asn_number": ["ASN-RET-01", "ASN-RET-02", "ASN-RET-03"],
+        "po_number_ref": ["PO-ORD-101", "PO-ORD-102", "PO-ORD-103"],
+        "supplier_id": ["Nike_Direct", "UnderArmour_Hub", "Puma_Logistics"],
+        "supplier_part_num": ["1360", "957", "365"],
+        "shipped_qty": [10.0, 20.0, 15.0],
+        "shipped_uom": ["BOX_100", "EA", "EA"],
+        "expected_delivery_date": ["10/24/2026", "2026-10-25", "25/10/2026"],
+    })
+
+    assert "RETAIL_DATACO" in DOMAIN_PROFILES
+    res = harmonize_and_evaluate_inbound(retail_df, client, domain="RETAIL_DATACO")
+    
+    assert res["onboarding_meta"] is not None
+    assert res["onboarding_meta"]["domain"] == "RETAIL_DATACO"
+    assert res["onboarding_meta"]["products_onboarded"] == 3
+    assert res["onboarding_meta"]["canonical_taxonomy"] == "RET-CARD-XXXX"
+    
+    df = res["harmonized_df"]
+    # Verify canonical taxonomy standardized: 1360 -> RET-CARD-1360
+    assert df.loc[0, "resolved_part_num"] == "RET-CARD-1360"
+    assert df.loc[0, "sku_match_method"] == "STANDARDIZED_DOMAIN_TAXONOMY"
+    assert df.loc[0, "sku_confidence"] >= 0.95
+    # Verify packaging normalized: 10 BOX_100 -> 1000 EA
+    assert df.loc[0, "normalized_qty"] == 1000.0
+    # Clean passthrough / harmonized status
+    assert (df["harmonized_qty"] > 0).all()

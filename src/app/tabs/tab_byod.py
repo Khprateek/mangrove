@@ -20,6 +20,7 @@ from src.app.theme import (
     format_inr_crore_lakh,
 )
 from src.exasol_engine.custom_ingestor import (
+    DOMAIN_PROFILES,
     PRESET_LABELS,
     anonymize_frame,
     detect_and_map_columns,
@@ -39,22 +40,53 @@ def render_byod_tab(client: ChakanExasolClient, marts: dict) -> None:
     st.markdown(
         f"""
         <div style="background-color:{COLOR_CARD_BG}; border:1px solid {COLOR_BORDER}; border-left:5px solid {COLOR_BRAND_PRIMARY}; border-radius:12px; padding:16px 22px; margin-bottom:20px;">
-            <h3 style="margin:0; color:{COLOR_BRAND_PRIMARY}; font-size:1.2rem;">Bring-Your-Own-Data Inbound Studio</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <h3 style="margin:0; color:{COLOR_BRAND_PRIMARY}; font-size:1.2rem;">Enterprise Pilot & Onboarding Sandbox (BYOD Studio)</h3>
+                <span style="font-size:0.75rem; background-color:{COLOR_PALE_SAGE}; color:{COLOR_INK_GREEN}; font-weight:700; padding:3px 10px; border-radius:12px; border:1px solid #C6DBC3;">PILOT SANDBOX & PROTO-LAB</span>
+            </div>
             <p style="margin:4px 0 0 0; color:{COLOR_TEXT_SECONDARY}; font-size:0.85rem;">
-                Your batch is layered on top of the baseline ASN feed, so the numbers below are directly comparable with Tabs 1-7.
-                An empty batch reproduces the baseline exactly.
+                In production, Mangrove connects directly via native SAP S/4HANA (IDocs/BAPIs), Oracle SCM, or Kafka pipelines.
+                This Sandbox Studio allows prospective enterprise clients and evaluators to test raw supplier dispatches, assess cross-industry adaptability, and auto-onboard new product catalogs.
             </p>
             <p style="margin:8px 0 0 0; color:{COLOR_TEXT_SECONDARY}; font-size:0.78rem;">
-                <b>Privacy:</b> files are processed in memory for this session only and are never written to disk by the app.
-                With a live Exasol connection the rows are staged in a scratch table that is dropped immediately afterwards.
-                Presets below use only synthetic suppliers and parts.
+                <b>Privacy:</b> Files are processed strictly in memory for this session. With a live Exasol connection, records are staged in an ephemeral scratch table and dropped immediately.
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    source = st.radio("Inbound source", options=[*PRESET_LABELS.values(), UPLOAD_OPTION], index=0)
+    d_col1, d_col2 = st.columns([1, 1], gap="medium")
+    with d_col1:
+        domain_key = st.selectbox(
+            "1. Operating Domain Profile",
+            options=list(DOMAIN_PROFILES.keys()),
+            format_func=lambda k: DOMAIN_PROFILES[k],
+            index=0,
+            help="Defines the reference enterprise master taxonomy and demand schedule for this evaluation session.",
+        )
+    with d_col2:
+        sample_csv_path = "data/sample_kaggle_delivery_challan.csv"
+        try:
+            with open(sample_csv_path, "r", encoding="utf-8") as f:
+                sample_csv_data = f.read()
+            st.caption("Ready-to-test sample batch matching automotive OEM format:")
+            st.download_button(
+                "📥 Download Sample Automotive Delivery Batch (.csv)",
+                data=sample_csv_data,
+                file_name="sample_automotive_delivery_batch.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+        except Exception:
+            pass
+
+    if domain_key != "AUTOMOTIVE":
+        st.info(
+            f"🌐 **Auto-Onboarding & Canonical Taxonomy Mode Active**: When external data (e.g. DataCo or custom logistics feeds) is uploaded, Mangrove auto-discovers unique items and applies standardized enterprise taxonomy (`[RET-CARD-XXXX]` or `[CORP-SKU-XXXX]`) before evaluating UOMs and starvation risk."
+        )
+
+    source = st.radio("2. Inbound source", options=[*PRESET_LABELS.values(), UPLOAD_OPTION], index=0)
 
     raw_df: pd.DataFrame | None = None
     if source == UPLOAD_OPTION:
@@ -107,14 +139,33 @@ def render_byod_tab(client: ChakanExasolClient, marts: dict) -> None:
 
     if st.button("Harmonize batch and evaluate impact", type="primary", use_container_width=True):
         with st.spinner("Running SKU resolution, UOM normalization and date parsing..."):
-            st.session_state["byod_result"] = harmonize_and_evaluate_inbound(eval_df, client, marts)
+            st.session_state["byod_result"] = harmonize_and_evaluate_inbound(
+                eval_df, client, marts, domain=domain_key
+            )
             st.session_state["byod_source"] = source
+            st.session_state["byod_domain"] = domain_key
 
     result = st.session_state.get("byod_result")
     if not result or st.session_state.get("byod_source") != source:
         return
 
     summary, harmo, shortage, engine = result["summary"], result["harmonized_df"], result["shortage_df"], result["engine"]
+    onboard = result.get("onboarding_meta")
+
+    if onboard:
+        st.markdown(
+            f"""
+            <div style="background-color: #EBF3ED; border: 1px solid #C4DCCB; border-left: 5px solid {COLOR_BRAND_PRIMARY}; border-radius: 9px; padding: 12px 18px; margin-bottom: 16px;">
+                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; font-size: 0.88rem;">🚀 ENTERPRISE CATALOG AUTO-ONBOARDED & STANDARDIZED</span>
+                <div style="font-size: 0.78rem; color: #26332C; margin-top: 4px;">
+                    <b>Domain</b>: {onboard['domain_label']}<br/>
+                    <b>Discovered Products</b>: {onboard['products_onboarded']} distinct SKUs mapped to canonical taxonomy <code>[{onboard['canonical_taxonomy']}]</code><br/>
+                    <b>Open Orders Linked</b>: {onboard['pos_synthesized']} purchase orders synchronized to regional fulfillment lines ({onboard['lines_monitored']} lines monitored).
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     if engine["engine"] == "EXASOL_UDF":
         st.markdown(

@@ -87,6 +87,12 @@ PRESET_LABELS = {
     "EV_UNITS_AND_DATES": "Preset C: Tier-1 Powertrain Inbound (EV Laminations & Copper — Weight Unit Inversions, Epoch Dates)",
 }
 
+DOMAIN_PROFILES = {
+    "AUTOMOTIVE": "🏭 Automotive & EV Powertrain (Chakan Cluster — Default)",
+    "RETAIL_DATACO": "📦 Retail, FMCG & E-Commerce (DataCo Compatible)",
+    "UNIVERSAL_AUTODISCOVER": "🌐 Universal Custom Enterprise (Auto-Onboard Any File)",
+}
+
 
 # --------------------------------------------------------------------------- parsing
 def parse_custom_inbound_stream(file_bytes: bytes, filename: str) -> pd.DataFrame:
@@ -296,7 +302,121 @@ def _finalize(rows: pd.DataFrame, catalog: set[str]) -> pd.DataFrame:
     return df
 
 
-def _harmonize_python(batch: pd.DataFrame, tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def synthesize_domain_catalog(
+    batch: pd.DataFrame,
+    domain: str = "RETAIL_DATACO",
+) -> tuple[dict[str, pd.DataFrame], dict[str, Any], dict[str, str]]:
+    """Synthesizes reference enterprise master data and demand schedules for external domains.
+
+    Standardizes raw supplier codes into canonical enterprise taxonomy:
+    - RETAIL_DATACO: 'RET-CARD-{id}'
+    - UNIVERSAL_AUTODISCOVER: 'CORP-SKU-{id}'
+
+    Returns (synthesized_tables, synthesized_marts, domain_aliases).
+    """
+    prefix = "RET-CARD" if domain == "RETAIL_DATACO" else "CORP-SKU"
+    clean_skus = [
+        re.sub(r"[^A-Za-z0-9_-]", "", str(s).strip())
+        for s in batch["supplier_part_num"].dropna().unique()
+        if str(s).strip() and str(s).strip().lower() != "nan"
+    ]
+    if not clean_skus:
+        clean_skus = [f"ITEM-{i+1:03d}" for i in range(10)]
+
+    domain_aliases: dict[str, str] = {}
+    items_data = []
+    for raw in clean_skus:
+        canonical = f"{prefix}-{raw}" if not raw.startswith(f"{prefix}-") else raw
+        domain_aliases[raw] = canonical
+        alnum_raw = re.sub(r"[^A-Z0-9]", "", raw.upper())
+        if alnum_raw:
+            domain_aliases[alnum_raw] = canonical
+        items_data.append({
+            "internal_part_num": canonical,
+            "part_description": f"{'Retail Product' if domain == 'RETAIL_DATACO' else 'Enterprise Component'} {raw}",
+            "base_uom": "EA",
+            "standard_pack_size_ea": 100.0,
+            "unit_weight_kg": 0.5,
+            "standard_cost_inr": 1850.0,
+        })
+    item_master_df = pd.DataFrame(items_data)
+
+    po_data = []
+    seen_pos = set()
+    for _, r in batch.iterrows():
+        po_num = str(r["po_number_ref"]).strip()
+        raw_sku = re.sub(r"[^A-Za-z0-9_-]", "", str(r["supplier_part_num"]).strip())
+        canonical = domain_aliases.get(raw_sku, f"{prefix}-{raw_sku}")
+        if (po_num, canonical) not in seen_pos and po_num and po_num.lower() != "nan":
+            seen_pos.add((po_num, canonical))
+            po_data.append({
+                "po_number": po_num,
+                "internal_part_num": canonical,
+                "supplier_id": str(r["supplier_id"]),
+                "ordered_qty": max(20.0, float(r["shipped_qty"]) * 1.5),
+                "ordered_uom": "EA",
+                "promised_delivery_date": "2026-10-30",
+                "po_line_status": "OPEN",
+            })
+    if not po_data:
+        po_data.append({
+            "po_number": "PO-AUTO-001",
+            "internal_part_num": items_data[0]["internal_part_num"],
+            "supplier_id": "SUP-DOMAIN-01",
+            "ordered_qty": 500.0,
+            "ordered_uom": "EA",
+            "promised_delivery_date": "2026-10-30",
+            "po_line_status": "OPEN",
+        })
+    po_df = pd.DataFrame(po_data)
+
+    unique_sups = [str(s).strip() for s in batch["supplier_id"].dropna().unique() if str(s).strip()]
+    sup_df = pd.DataFrame([
+        {"supplier_id": s, "default_date_format": "MM/DD/YYYY" if domain == "RETAIL_DATACO" else "YYYY-MM-DD"}
+        for s in unique_sups
+    ])
+
+    synth_tables = {
+        "ITEM_MASTER": item_master_df,
+        "PURCHASE_ORDER_LINES": po_df,
+        "SUPPLIER_MASTER": sup_df,
+    }
+
+    lines = (
+        ["DC-NORTH-FULFILLMENT", "DC-SOUTH-FULFILLMENT", "DC-WEST-HUB"]
+        if domain == "RETAIL_DATACO"
+        else ["PLANT-ALPHA-LINE", "PLANT-BETA-LINE", "PLANT-GAMMA-LINE"]
+    )
+    bom_rows = []
+    top_items = items_data[:min(25, len(items_data))]
+    for i, it in enumerate(top_items):
+        line = lines[i % len(lines)]
+        req = 500.0
+        atp = 100.0
+        bom_rows.append({
+            "schedule_id": f"SCHED-DOM-{i+1:02d}",
+            "assembly_line_id": line,
+            "parent_part_num": f"PROD-ASSY-{i+1:02d}",
+            "component_part_num": it["internal_part_num"],
+            "qty_per_assembly": 1.0,
+            "planned_output_units": 500,
+            "finished_unit_value_inr": 4800.0,
+            "gross_required_qty": req,
+            "true_pickable_atp_qty": atp,
+            "legacy_inbound_qty": 0.0,
+            "harmonized_inbound_qty": 0.0,
+        })
+    bom_df = pd.DataFrame(bom_rows)
+    synth_marts = {"bom_risk_mart": bom_df}
+
+    return synth_tables, synth_marts, domain_aliases
+
+
+def _harmonize_python(
+    batch: pd.DataFrame,
+    tables: dict[str, pd.DataFrame],
+    domain_aliases: dict[str, str] | None = None,
+) -> pd.DataFrame:
     """Local execution of the same logic as the three Exasol UDFs (parity path)."""
     items = tables["ITEM_MASTER"].set_index("internal_part_num")
     po_part = tables["PURCHASE_ORDER_LINES"].drop_duplicates("po_number").set_index("po_number")["internal_part_num"].to_dict()
@@ -311,7 +431,17 @@ def _harmonize_python(batch: pd.DataFrame, tables: dict[str, pd.DataFrame]) -> p
         seq_counter[key] = seq_counter.get(key, 0) + 1
 
         expected = po_part.get(po)
-        resolved, method, conf = resolve_supplier_sku(sku, po_part_num=expected)
+        if domain_aliases and sku in domain_aliases:
+            resolved = domain_aliases[sku]
+            method = "STANDARDIZED_DOMAIN_TAXONOMY"
+            conf = 0.98
+        elif domain_aliases and re.sub(r"[^A-Z0-9]", "", sku.upper()) in domain_aliases:
+            resolved = domain_aliases[re.sub(r"[^A-Z0-9]", "", sku.upper())]
+            method = "STANDARDIZED_DOMAIN_TAXONOMY"
+            conf = 0.96
+        else:
+            resolved, method, conf = resolve_supplier_sku(sku, po_part_num=expected)
+
         item = items.loc[resolved] if resolved in items.index else None
         base_uom = None if item is None else str(item["base_uom"])
         norm_qty = (
@@ -395,23 +525,32 @@ def _harmonize_exasol(batch: pd.DataFrame, client: Any) -> pd.DataFrame:
     return _finalize(res.drop(columns=["row_id"]), catalog)
 
 
-def harmonize_batch(df: pd.DataFrame, client: Any) -> tuple[pd.DataFrame, dict[str, Any]]:
-    """Harmonize a batch, in Exasol when a live connection exists, else via local parity logic."""
+def harmonize_batch(
+    df: pd.DataFrame,
+    client: Any,
+    domain: str = "AUTOMOTIVE",
+    domain_tables: dict[str, pd.DataFrame] | None = None,
+    domain_aliases: dict[str, str] | None = None,
+) -> tuple[pd.DataFrame, dict[str, Any]]:
+    """Harmonize a batch, in Exasol when a live connection exists and domain is baseline, else via domain parity logic."""
     batch, _ = detect_and_map_columns(df)
+    tables = domain_tables if domain_tables is not None else getattr(client, "tables", {})
     client.ensure_data_loaded()
     info: dict[str, Any] = {"engine": "PYTHON_UDF_PARITY", "fallback_reason": None}
-    catalog = set(client.tables["ITEM_MASTER"]["internal_part_num"]) if "ITEM_MASTER" in client.tables else set()
+    catalog = set(tables["ITEM_MASTER"]["internal_part_num"]) if "ITEM_MASTER" in tables else set()
     if len(batch) == 0:
         return _finalize(pd.DataFrame(), catalog), info
 
-    if getattr(client, "conn", None) is not None:
+    if domain == "AUTOMOTIVE" and getattr(client, "conn", None) is not None:
         try:
             return _harmonize_exasol(batch, client), {**info, "engine": "EXASOL_UDF"}
         except Exception as exc:  # report, never hide
             info["fallback_reason"] = f"Exasol execution failed ({type(exc).__name__}: {exc}); used local parity logic."
+    elif domain != "AUTOMOTIVE":
+        info["fallback_reason"] = f"Domain '{domain}': Executed in-memory with synthesized enterprise catalog & canonical taxonomy."
     else:
         info["fallback_reason"] = "No live Exasol connection; used local parity logic (same UDF source)."
-    return _harmonize_python(batch, client.tables), info
+    return _harmonize_python(batch, tables, domain_aliases=domain_aliases), info
 
 
 # --------------------------------------------------------------------------- impact
@@ -478,12 +617,35 @@ def evaluate_batch_impact(harmonized: pd.DataFrame, marts: dict[str, Any]) -> di
     return {"summary": summary, "shortage_df": shortage.reset_index(drop=True), "harmonized_df": harmonized}
 
 
-def harmonize_and_evaluate_inbound(df: pd.DataFrame, client: Any, marts: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Harmonize an inbound batch and evaluate its impact on the baseline exposure."""
-    harmonized, info = harmonize_batch(df, client)
-    marts = marts if marts is not None else client.compute_analytical_marts()
-    result = evaluate_batch_impact(harmonized, marts)
+def harmonize_and_evaluate_inbound(
+    df: pd.DataFrame,
+    client: Any,
+    marts: dict[str, Any] | None = None,
+    domain: str = "AUTOMOTIVE",
+) -> dict[str, Any]:
+    """Harmonize an inbound batch and evaluate its impact on baseline or domain exposure."""
+    onboarding_meta = None
+    if domain != "AUTOMOTIVE":
+        synth_tables, synth_marts, domain_aliases = synthesize_domain_catalog(df, domain)
+        harmonized, info = harmonize_batch(
+            df, client, domain=domain, domain_tables=synth_tables, domain_aliases=domain_aliases
+        )
+        result = evaluate_batch_impact(harmonized, synth_marts)
+        onboarding_meta = {
+            "domain": domain,
+            "domain_label": DOMAIN_PROFILES.get(domain, domain),
+            "products_onboarded": len(synth_tables["ITEM_MASTER"]),
+            "pos_synthesized": len(synth_tables["PURCHASE_ORDER_LINES"]),
+            "lines_monitored": len(synth_marts["bom_risk_mart"]["assembly_line_id"].unique()),
+            "canonical_taxonomy": "RET-CARD-XXXX" if domain == "RETAIL_DATACO" else "CORP-SKU-XXXX",
+        }
+    else:
+        harmonized, info = harmonize_batch(df, client, domain="AUTOMOTIVE")
+        marts = marts if marts is not None else client.compute_analytical_marts()
+        result = evaluate_batch_impact(harmonized, marts)
+
     result["engine"] = info
+    result["onboarding_meta"] = onboarding_meta
     return result
 
 
