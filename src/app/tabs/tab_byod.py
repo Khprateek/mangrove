@@ -83,7 +83,7 @@ def render_byod_tab(client: ChakanExasolClient, marts: dict) -> None:
 
     if domain_key != "AUTOMOTIVE":
         st.info(
-            f"🌐 **Auto-Onboarding & Canonical Taxonomy Mode Active**: When external data (e.g. DataCo or custom logistics feeds) is uploaded, Mangrove auto-discovers unique items and applies standardized enterprise taxonomy (`[RET-CARD-XXXX]` or `[CORP-SKU-XXXX]`) before evaluating UOMs and starvation risk."
+            f"🌐 **Auto-Onboarding & Canonical Taxonomy Mode Active**: When external delivery feeds are uploaded, Mangrove auto-discovers unique items and applies standardized enterprise taxonomy (`[RET-CARD-XXXX]` or `[CORP-SKU-XXXX]`) before evaluating packaging, dates, and starvation risk."
         )
 
     source = st.radio("2. Inbound source", options=[*PRESET_LABELS.values(), UPLOAD_OPTION], index=0)

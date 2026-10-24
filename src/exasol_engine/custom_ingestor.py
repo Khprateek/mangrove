@@ -88,9 +88,9 @@ PRESET_LABELS = {
 }
 
 DOMAIN_PROFILES = {
-    "AUTOMOTIVE": "🏭 Automotive & EV Powertrain (Chakan Cluster — Default)",
-    "RETAIL_DATACO": "📦 Retail, FMCG & E-Commerce (DataCo Compatible)",
-    "UNIVERSAL_AUTODISCOVER": "🌐 Universal Custom Enterprise (Auto-Onboard Any File)",
+    "AUTOMOTIVE": "🏭 Automotive & Industrial Manufacturing (Default)",
+    "RETAIL_DATACO": "📦 Retail & E-Commerce Fulfillment",
+    "UNIVERSAL_AUTODISCOVER": "🌐 Custom Enterprise (Auto-Discover Catalog)",
 }
 
 
