@@ -35,8 +35,7 @@
 
 > **A lead materials planner at a mid-size Indian automotive manufacturer can't verify which Monday assembly runs face component stock-outs because dispatch updates from dozens of sub-tier MSME suppliers arrive in conflicting units, part codes, and date formats that rigid validation rules silently quarantine instead of linking to open purchase orders. If this worked, the planner would see the exact production lines and revenue threatened by each messy supplier record days in advance and resolve critical shortages before a single assembly station halts.**
 
-> [!NOTE]  
-> **Official Rule Compliance**: Formulated strictly according to the ExaThon template `[Who] can't [do what] because [why today's approach fails]. If this worked, [what changes for them].` In strict adherence to the competition rule, **this statement contains zero references to tools, models, databases, or technologies**.
+> [!NOTE]
 >
 > **Arena**: **Track 03: Factories, Fleets & Supply Chains** (Solving: *Suppliers reporting in inconsistent formats*, *Unplanned downtime with no clear root cause*, *Spare parts held in the wrong location*).
 

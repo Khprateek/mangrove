@@ -49,13 +49,36 @@ CANONICAL_COLUMNS = [
 ]
 
 COLUMN_SYNONYMS = {
-    "asn_number": ["asn_number", "asn_no", "asn", "dispatch_note", "challan_no", "delivery_note", "tracking_no", "shipment_id", "lr_no"],
-    "po_number_ref": ["po_number_ref", "po_number", "po_no", "po", "purchase_order", "order_no", "order_id", "po_ref"],
-    "supplier_id": ["supplier_id", "vendor_id", "supplier", "vendor", "supplier_name", "vendor_name", "vendor_code"],
-    "supplier_part_num": ["supplier_part_num", "part_number", "part_no", "sku", "item_code", "material_id", "component_code", "vendor_sku", "item_id"],
-    "shipped_qty": ["shipped_qty", "qty", "quantity", "dispatch_qty", "shipped_quantity", "count", "delivered_qty", "dispatch_quantity"],
-    "shipped_uom": ["shipped_uom", "uom", "unit", "pack_type", "packaging", "measure_unit", "package_type", "unit_of_measure"],
-    "expected_delivery_date": ["expected_delivery_date", "eta", "delivery_date", "expected_date", "challan_date", "dispatch_date", "date", "arrival_date"],
+    "asn_number": [
+        "asn_number", "asn_no", "asn", "dispatch_note", "challan_no", "delivery_note",
+        "tracking_no", "shipment_id", "lr_no", "order_item_id", "line_item_id", "shipment_no",
+    ],
+    "po_number_ref": [
+        "po_number_ref", "po_number", "po_no", "po", "purchase_order", "order_no",
+        "order_id", "po_ref", "order_number", "ebeln",
+    ],
+    "supplier_id": [
+        "supplier_id", "vendor_id", "supplier", "vendor", "supplier_name",
+        "vendor_name", "vendor_code", "department_name", "market", "customer_city", "lifnr",
+    ],
+    "supplier_part_num": [
+        "supplier_part_num", "part_number", "part_no", "sku", "item_code",
+        "material_id", "component_code", "vendor_sku", "item_id", "product_card_id",
+        "product_id", "product_name", "order_item_cardprod_id", "matnr", "material",
+    ],
+    "shipped_qty": [
+        "shipped_qty", "qty", "quantity", "dispatch_qty", "shipped_quantity",
+        "count", "delivered_qty", "dispatch_quantity", "order_item_quantity", "menge",
+    ],
+    "shipped_uom": [
+        "shipped_uom", "uom", "unit", "pack_type", "packaging", "measure_unit",
+        "package_type", "unit_of_measure", "meins",
+    ],
+    "expected_delivery_date": [
+        "expected_delivery_date", "eta", "delivery_date", "expected_date",
+        "challan_date", "dispatch_date", "date", "arrival_date",
+        "shipping_date_dateorders", "shipping_date", "order_date_dateorders", "budat",
+    ],
 }
 
 PRESET_LABELS = {
@@ -67,18 +90,43 @@ PRESET_LABELS = {
 
 # --------------------------------------------------------------------------- parsing
 def parse_custom_inbound_stream(file_bytes: bytes, filename: str) -> pd.DataFrame:
-    """Parse raw uploaded file bytes (CSV, TSV or Excel) into a DataFrame (in memory only)."""
+    """Parse raw uploaded file bytes (CSV, TSV or Excel) into a DataFrame (in memory only).
+    
+    Robustly handles heterogeneous character encodings (UTF-8, Latin-1, CP1252, ISO-8859-1)
+    common in public Kaggle datasets and legacy enterprise exports.
+    """
     fn_lower = filename.lower()
     bio = io.BytesIO(file_bytes)
     if fn_lower.endswith((".xlsx", ".xls")):
         return pd.read_excel(bio)
+    
+    encodings_to_try = ("utf-8", "utf-8-sig", "latin1", "cp1252", "iso-8859-1")
     if fn_lower.endswith(".tsv"):
-        return pd.read_csv(bio, sep="\t")
-    try:
-        return pd.read_csv(bio)
-    except Exception:
-        bio.seek(0)
-        return pd.read_csv(bio, sep=";")
+        for enc in encodings_to_try:
+            try:
+                bio.seek(0)
+                return pd.read_csv(bio, sep="\t", encoding=enc)
+            except UnicodeDecodeError:
+                continue
+            except Exception:
+                break
+
+    # Try common CSV delimiters and encodings
+    for enc in encodings_to_try:
+        for sep in (",", ";", "\t", "|"):
+            try:
+                bio.seek(0)
+                df = pd.read_csv(bio, sep=sep, encoding=enc)
+                if len(df.columns) > 1:
+                    return df
+            except UnicodeDecodeError:
+                continue
+            except Exception:
+                continue
+
+    # Final robust fallback with Latin-1 (accepts any byte stream 0x00-0xFF without failing)
+    bio.seek(0)
+    return pd.read_csv(bio, encoding="latin1", on_bad_lines="skip")
 
 
 def detect_and_map_columns(
@@ -215,6 +263,15 @@ def _legacy_visible(raw_sku: str, raw_uom: str, base_uom: str | None, catalog: s
 
 def _finalize(rows: pd.DataFrame, catalog: set[str]) -> pd.DataFrame:
     """Derive visibility, counted quantity, value and status from resolved rows."""
+    expected_cols = [
+        "asn_number", "po_number_ref", "supplier_id", "supplier_part_num", "resolved_part_num",
+        "sku_match_method", "sku_confidence", "raw_qty", "raw_uom", "normalized_qty",
+        "canonical_uom", "unit_cost_inr", "harmonized_eta_date", "transmission_seq",
+        "legacy_visible_qty", "harmonized_qty", "line_value_inr", "status",
+    ]
+    if len(rows) == 0:
+        return pd.DataFrame(columns=expected_cols)
+
     df = rows.copy()
     df["legacy_visible_qty"] = [
         float(q) if (seq == 1 and _legacy_visible(str(s), str(u), b, catalog)) else 0.0
@@ -343,6 +400,10 @@ def harmonize_batch(df: pd.DataFrame, client: Any) -> tuple[pd.DataFrame, dict[s
     batch, _ = detect_and_map_columns(df)
     client.ensure_data_loaded()
     info: dict[str, Any] = {"engine": "PYTHON_UDF_PARITY", "fallback_reason": None}
+    catalog = set(client.tables["ITEM_MASTER"]["internal_part_num"]) if "ITEM_MASTER" in client.tables else set()
+    if len(batch) == 0:
+        return _finalize(pd.DataFrame(), catalog), info
+
     if getattr(client, "conn", None) is not None:
         try:
             return _harmonize_exasol(batch, client), {**info, "engine": "EXASOL_UDF"}

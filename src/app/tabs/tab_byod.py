@@ -84,6 +84,19 @@ def render_byod_tab(client: ChakanExasolClient, marts: dict) -> None:
             help="Replaces supplier, SKU, PO and ASN identifiers with tokens in the displayed table and downloads. "
             "Resolution itself always runs on the real identifiers.",
         )
+        eval_df = raw_df
+        if len(raw_df) > 1000:
+            scope = st.selectbox(
+                f"Batch evaluation scope ({len(raw_df):,} rows)",
+                options=["First 1,000 rows (Instant - recommended)", "First 5,000 rows (High speed)", "Full dataset"],
+                index=0,
+                help="High-volume datasets can be sampled for instant sub-second interactive triage or evaluated in full.",
+            )
+            if "1,000" in scope:
+                eval_df = raw_df.head(1000)
+            elif "5,000" in scope:
+                eval_df = raw_df.head(5000)
+
         with st.expander("Detected column mapping"):
             _, used = detect_and_map_columns(raw_df)
             if used:
@@ -94,7 +107,7 @@ def render_byod_tab(client: ChakanExasolClient, marts: dict) -> None:
 
     if st.button("Harmonize batch and evaluate impact", type="primary", use_container_width=True):
         with st.spinner("Running SKU resolution, UOM normalization and date parsing..."):
-            st.session_state["byod_result"] = harmonize_and_evaluate_inbound(raw_df, client, marts)
+            st.session_state["byod_result"] = harmonize_and_evaluate_inbound(eval_df, client, marts)
             st.session_state["byod_source"] = source
 
     result = st.session_state.get("byod_result")
