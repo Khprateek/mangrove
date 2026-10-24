@@ -274,10 +274,13 @@ class ChakanExasolClient:
             return "HARMONIZED_BUFFER_RESTORED"
 
         triage_queue["operational_verdict"] = triage_queue.apply(classify_operational_outcome, axis=1)
-        triage_queue["mitigation_roi_x"] = np.where(
-            triage_queue["expedited_freight_cost_inr"] > 0,
-            ((triage_queue["revenue_at_risk_net_inr"] - triage_queue["expedited_freight_cost_inr"]) / triage_queue["expedited_freight_cost_inr"]).round(1),
+        triage_queue["mitigation_roi_x"] = np.maximum(
             0.0,
+            np.where(
+                (triage_queue["expedited_freight_cost_inr"] > 0) & (triage_queue["revenue_at_risk_net_inr"] > 0),
+                ((triage_queue["revenue_at_risk_net_inr"] - triage_queue["expedited_freight_cost_inr"]) / triage_queue["expedited_freight_cost_inr"]).round(1),
+                0.0,
+            ),
         )
         triage_queue["avoided_panic_freight_inr"] = np.where(
             triage_queue["operational_verdict"] == "FALSE_STARVATION_CLEARED_BY_UDF",
@@ -507,7 +510,7 @@ class ChakanExasolClient:
             on="internal_part_num",
             how="left",
         )
-        inv_mart["phantom_inventory_qty"] = inv_mart["erp_system_on_hand_qty"] - inv_mart["wms_physical_counted_qty"]
+        inv_mart["phantom_inventory_qty"] = np.maximum(0.0, inv_mart["erp_system_on_hand_qty"] - inv_mart["wms_physical_counted_qty"])
         inv_mart["phantom_inventory_value_inr"] = (inv_mart["phantom_inventory_qty"] * inv_mart["standard_cost_inr"]).round(2)
         inv_mart["erp_apparent_atp_qty"] = np.maximum(0.0, inv_mart["erp_system_on_hand_qty"] - inv_mart["allocated_to_prod_qty"])
 
@@ -522,8 +525,14 @@ class ChakanExasolClient:
 
         # 2. ASN UDF Harmonization & Deduplication Mart
         asn_sorted = asn_df.sort_values("ingested_at").copy()
+        clean_asn = asn_sorted["asn_number"].astype(str).str.strip().str.upper()
+        clean_po = asn_sorted["po_number_ref"].astype(str).str.strip().str.upper()
+        clean_sku = asn_sorted["raw_supplier_sku"].astype(str).str.strip().str.upper()
+        clean_qty = pd.to_numeric(
+            asn_sorted["raw_shipped_qty"].astype(str).str.replace(",", "").str.strip(), errors="coerce"
+        ).fillna(0.0)
         asn_sorted["transmission_seq"] = (
-            asn_sorted.groupby(["asn_number", "po_number_ref", "raw_supplier_sku", "raw_shipped_qty"]).cumcount() + 1
+            asn_sorted.groupby([clean_asn, clean_po, clean_sku, clean_qty]).cumcount() + 1
         )
 
         asn_joined = asn_sorted.merge(

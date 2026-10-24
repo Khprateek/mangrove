@@ -430,7 +430,8 @@ def _harmonize_python(
     out = []
     for _, r in batch.iterrows():
         sku, uom, po = str(r["supplier_part_num"]), str(r["shipped_uom"]), str(r["po_number_ref"])
-        key = (r["asn_number"], po, sku, float(r["shipped_qty"]))
+        clean_qty = float(str(r["shipped_qty"]).replace(",", "").strip()) if pd.notna(r["shipped_qty"]) else 0.0
+        key = (str(r["asn_number"]).strip().upper(), po.strip().upper(), sku.strip().upper(), round(clean_qty, 2))
         seq_counter[key] = seq_counter.get(key, 0) + 1
 
         expected = po_part.get(po)

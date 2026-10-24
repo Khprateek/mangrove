@@ -24,12 +24,22 @@ UOM_SYNONYMS = {
     "LBS": "LB", "POUND": "LB", "POUNDS": "LB",
     "MILLILITER": "ML", "MILLILITERS": "ML",
     "MILLIMETER": "MM", "MILLIMETERS": "MM",
+    "DZN": "DZN", "DOZ": "DZN", "DOZEN": "DZN",
+    "GROSS": "GROSS", "GRS": "GROSS",
+    "PAIR": "PAIR", "PR": "PAIR", "PRS": "PAIR", "PAIRS": "PAIR",
+    "THOUSAND": "TH", "TH": "TH",
 }
 
 def run(ctx):
     if ctx.raw_qty is None:
         return 0.0
-    qty = float(ctx.raw_qty)
+    try:
+        qty = float(str(ctx.raw_qty).replace(",", "").strip())
+    except (ValueError, TypeError):
+        return 0.0
+    if qty < 0.0:
+        return 0.0
+
     src = (ctx.raw_uom or "").strip().upper()
     tgt = (ctx.target_uom or "EA").strip().upper()
 
@@ -38,6 +48,16 @@ def run(ctx):
     pack_match = re.match(r"^(?:BOX|BAG|CRATE|PACK|PK|PALLET)[_\s\-/](\d+)$", src)
     if pack_match and (tgt in ea_synonyms or UOM_SYNONYMS.get(tgt) in ea_synonyms):
         return round(qty * float(pack_match.group(1)), 2)
+
+    # Hardware & discrete multipliers
+    if src in ("DZN", "DOZ", "DOZEN") and tgt in ea_synonyms:
+        return round(qty * 12.0, 2)
+    if src in ("GROSS", "GRS") and tgt in ea_synonyms:
+        return round(qty * 144.0, 2)
+    if src in ("PAIR", "PR", "PRS", "PAIRS") and tgt in ea_synonyms:
+        return round(qty * 2.0, 2)
+    if src in ("THOUSAND", "TH") and tgt in ea_synonyms:
+        return round(qty * 1000.0, 2)
 
     src = UOM_SYNONYMS.get(src, src)
     tgt = UOM_SYNONYMS.get(tgt, tgt)
@@ -212,15 +232,17 @@ def _check_dim_conflict(raw_sku, po_sku):
     return False
 
 def _check_rev_mismatch(raw_sku, po_part):
-    m_raw = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z])$", raw_sku or "")
-    m_po = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z])$", po_part or "")
+    m_raw = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z]{1,2})$", raw_sku or "")
+    m_po = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z]{1,2})$", po_part or "")
     if m_raw and m_po:
         stem_raw, rev_raw = m_raw.group(1), m_raw.group(2)
         stem_po, rev_po = m_po.group(1), m_po.group(2)
         alnum_stem_raw = re.sub(r"[^A-Z0-9]", "", stem_raw)
         alnum_stem_po = re.sub(r"[^A-Z0-9]", "", stem_po)
-        if alnum_stem_raw and alnum_stem_raw == alnum_stem_po and rev_raw != rev_po:
-            return True
+        if alnum_stem_raw and alnum_stem_raw == alnum_stem_po:
+            if rev_raw.isdigit() and rev_po.isdigit():
+                return int(rev_raw) != int(rev_po)
+            return rev_raw != rev_po
     return False
 
 def run(ctx):
@@ -248,6 +270,13 @@ def run(ctx):
         ctx.emit(cleaned_po, "HYPHEN_NORMALIZED", 0.98)
         return
 
+    # Vendor Prefix Stripping (e.g. 'BOSCH-ENG-BRG-6204-01' -> 'ENG-BRG-6204-01')
+    if alnum_po and alnum_raw.endswith(alnum_po) and len(alnum_raw) > len(alnum_po):
+        prefix_len = len(alnum_raw) - len(alnum_po)
+        if prefix_len <= 8:
+            ctx.emit(cleaned_po, "VENDOR_PREFIX_STRIPPED", 0.96)
+            return
+
     if alnum_raw in ALIASES:
         ctx.emit(ALIASES[alnum_raw], "VENDOR_CATALOG_ALIAS", 0.95)
         return
@@ -256,7 +285,7 @@ def run(ctx):
     if cleaned_po:
         has_dim_conflict = _check_dim_conflict(cleaned_raw, cleaned_po)
         if not has_dim_conflict:
-            po_tokens = [t for t in cleaned_po.split("-") if len(t) >= 2]
+            po_tokens = [t for t in re.split(r"[-_./\s]", cleaned_po) if len(t) >= 2]
             matched = sum(1 for tok in po_tokens if tok in alnum_raw)
             if len(po_tokens) >= 2 and matched >= len(po_tokens) - 1 and (matched / len(po_tokens)) >= 0.75:
                 ctx.emit(cleaned_po, "PO_TOKEN_SIMILARITY", 0.89)
@@ -324,7 +353,7 @@ def run(ctx):
 /
 
 -- 3. In-Database Multi-Format Date Harmonization UDF
--- Disambiguates DD/MM/YYYY, MM/DD/YYYY, ISO YYYY-MM-DD, DD.MM.YYYY, 8-digit compact EDI, and Unix Epoch strings.
+-- Disambiguates DD/MM/YYYY, MM/DD/YYYY, ISO YYYY-MM-DD, DD.MM.YYYY, 8-digit compact EDI, 5-digit Excel serial, 2-digit years, and Unix Epoch strings.
 -- Returns NULL if the raw date string is empty or unparseable.
 CREATE OR REPLACE PYTHON3 SCALAR SCRIPT CHAKAN_SCM.UDF_PARSE_ASN_DATE(
     raw_date_str VARCHAR(40) UTF8,
@@ -342,7 +371,7 @@ def run(ctx):
         return None
 
     if not re.fullmatch(r"\d{9,10}", val):
-        val = re.split(r"[T\s]", val)[0].strip()
+        val = re.sub(r"[T\s]\d{1,2}:\d{2}(?::\d{2})?.*$", "", val).strip()
 
     if re.fullmatch(r"\d{9,10}", val):
         try:
@@ -350,6 +379,15 @@ def run(ctx):
             return d if d.year == 2026 else None
         except Exception:
             return None
+
+    # Excel date serial check (e.g., 46307 for 2026-10-12)
+    if re.fullmatch(r"\d{5}", val):
+        try:
+            s_days = int(val)
+            if 35000 <= s_days <= 65000:
+                return _dt.date(1899, 12, 30) + _dt.timedelta(days=s_days)
+        except Exception:
+            pass
 
     # Compact EDI 8-digit date: YYYYMMDD
     edi_match = re.fullmatch(r"(20\d{2})(\d{2})(\d{2})", val)
@@ -368,7 +406,7 @@ def run(ctx):
         except ValueError:
             return None
 
-    # 2. DD/MM/YYYY, MM/DD/YYYY, DD.MM.YYYY, DD-MM-YYYY
+    # 2. 4-digit Year: DD/MM/YYYY, MM/DD/YYYY, DD.MM.YYYY, DD-MM-YYYY
     delim_match = re.fullmatch(r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})", val)
     if delim_match:
         try:
@@ -386,7 +424,29 @@ def run(ctx):
         except ValueError:
             return None
 
-    for fmt in ("%d-%b-%Y", "%d/%b/%Y", "%d.%b.%Y", "%Y/%m/%d", "%d-%m-%Y"):
+    # 3. 2-digit Year: DD/MM/YY, MM/DD/YY, DD.MM.YY, DD-MM-YY
+    delim_2digit = re.fullmatch(r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})", val)
+    if delim_2digit:
+        try:
+            first = int(delim_2digit.group(1))
+            second = int(delim_2digit.group(2))
+            year = 2000 + int(delim_2digit.group(3))
+            fmt_pref = (ctx.supplier_date_fmt or "DD/MM/YYYY").strip().upper()
+            if first > 12:
+                return _dt.date(year, second, first)
+            if second > 12:
+                return _dt.date(year, first, second)
+            if fmt_pref in ("MM/DD/YYYY", "MM-DD-YYYY", "MM.DD.YYYY"):
+                return _dt.date(year, first, second)
+            return _dt.date(year, second, first)
+        except ValueError:
+            return None
+
+    for fmt in (
+        "%d-%b-%Y", "%d/%b/%Y", "%d.%b.%Y", "%d %b %Y", "%d %B %Y",
+        "%d-%b-%y", "%d/%b/%y", "%d.%b.%y", "%d %b %y",
+        "%Y/%m/%d", "%d-%m-%Y"
+    ):
         try:
             return _dt.datetime.strptime(val, fmt).date()
         except ValueError:

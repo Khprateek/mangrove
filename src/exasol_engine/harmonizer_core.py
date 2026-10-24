@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import re
 from typing import Dict, List, Set, Tuple
 
@@ -109,6 +109,17 @@ UOM_SYNONYM_MAP: Dict[str, str] = {
     "MILLILITERS": "ML",
     "MILLIMETER": "MM",
     "MILLIMETERS": "MM",
+    "DZN": "DZN",
+    "DOZ": "DZN",
+    "DOZEN": "DZN",
+    "GROSS": "GROSS",
+    "GRS": "GROSS",
+    "PAIR": "PAIR",
+    "PR": "PAIR",
+    "PRS": "PAIR",
+    "PAIRS": "PAIR",
+    "THOUSAND": "TH",
+    "TH": "TH",
 }
 
 
@@ -120,11 +131,19 @@ def normalize_uom_quantity(
     unit_weight_kg: float = 1.0,
 ) -> float:
     """
-    Converts heterogeneous supplier dispatch quantities (BOX_100, BOX-100, PK_50, MT, LB, GMS, KGS)
+    Converts heterogeneous supplier dispatch quantities (BOX_100, BOX-100, PK_50, MT, LB, GMS, KGS, DZN, GROSS, PAIR)
     into the canonical ITEM_MASTER base_uom (EA, KG, LTR, MTR).
+    Cleans comma-formatted strings (e.g. '1,200.50') and guards against negative corrupt values.
     """
     if raw_qty is None:
         return 0.0
+    try:
+        qty = float(str(raw_qty).replace(",", "").strip())
+    except (ValueError, TypeError):
+        return 0.0
+    if qty < 0.0:
+        return 0.0
+
     src = (raw_uom or "").strip().upper()
     tgt = (target_uom or "EA").strip().upper()
 
@@ -134,21 +153,31 @@ def normalize_uom_quantity(
     pack_match = re.match(r"^(?:BOX|BAG|CRATE|PACK|PK|PALLET)[_\s\-/](\d+)$", src)
     if pack_match and (tgt in ea_synonyms or UOM_SYNONYM_MAP.get(tgt) in ea_synonyms):
         multiplier = float(pack_match.group(1))
-        return round(float(raw_qty) * multiplier, 2)
+        return round(qty * multiplier, 2)
+
+    # Hardware & discrete multipliers
+    if src in {"DZN", "DOZ", "DOZEN"} and tgt in ea_synonyms:
+        return round(qty * 12.0, 2)
+    if src in {"GROSS", "GRS"} and tgt in ea_synonyms:
+        return round(qty * 144.0, 2)
+    if src in {"PAIR", "PR", "PRS", "PAIRS"} and tgt in ea_synonyms:
+        return round(qty * 2.0, 2)
+    if src in {"THOUSAND", "TH"} and tgt in ea_synonyms:
+        return round(qty * 1000.0, 2)
 
     # Canonicalize unit aliases
     src = UOM_SYNONYM_MAP.get(src, src)
     tgt = UOM_SYNONYM_MAP.get(tgt, tgt)
 
     if src in ea_synonyms and tgt in ea_synonyms:
-        return round(float(raw_qty), 2)
+        return round(qty, 2)
 
     if src == tgt:
-        return round(float(raw_qty), 2)
+        return round(qty, 2)
 
     if src in {"BOX", "BAG", "CRATE", "PACK", "PK", "PALLET"} and tgt in ea_synonyms:
         multiplier = float(pack_size_ea) if pack_size_ea and pack_size_ea > 1.0 else 100.0
-        return round(float(raw_qty) * multiplier, 2)
+        return round(qty * multiplier, 2)
 
     # Metric Ton (MT) -> Kilogram (KG)
     if src in {"MT", "TON", "TONNE", "TONNES"} and tgt == "KG":
@@ -272,20 +301,23 @@ def check_revision_mismatch(raw_sku: str, po_part_num: str) -> bool:
     Detects when raw supplier SKU and PO part share the same base stem but have
     conflicting revision, suffix, or engineering change order (ECO) variant tags
     (e.g., -01 vs -02, -REV1 vs -REV2, -A vs -B).
+    Normalizes zero-padded revisions (REV-1 vs REV-01) to prevent false positive flags.
     """
     raw_clean = (raw_sku or "").strip().upper()
     po_clean = (po_part_num or "").strip().upper()
     if not raw_clean or not po_clean:
         return False
-    m_raw = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z])$", raw_clean)
-    m_po = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z])$", po_clean)
+    m_raw = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z]{1,2})$", raw_clean)
+    m_po = re.search(r"^(.*?)(?:[-_]?(?:REV|R)?)(\d{1,3}|[A-Z]{1,2})$", po_clean)
     if m_raw and m_po:
         stem_raw, rev_raw = m_raw.group(1), m_raw.group(2)
         stem_po, rev_po = m_po.group(1), m_po.group(2)
         alnum_stem_raw = re.sub(r"[^A-Z0-9]", "", stem_raw)
         alnum_stem_po = re.sub(r"[^A-Z0-9]", "", stem_po)
-        if alnum_stem_raw and alnum_stem_raw == alnum_stem_po and rev_raw != rev_po:
-            return True
+        if alnum_stem_raw and alnum_stem_raw == alnum_stem_po:
+            if rev_raw.isdigit() and rev_po.isdigit():
+                return int(rev_raw) != int(rev_po)
+            return rev_raw != rev_po
     return False
 
 
@@ -364,6 +396,12 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
     if alnum_po and alnum_raw == alnum_po:
         return cleaned_po, "HYPHEN_NORMALIZED", 0.98
 
+    # Vendor Prefix Stripping (e.g., 'BOSCH-ENG-BRG-6204-01' -> 'ENG-BRG-6204-01')
+    if alnum_po and alnum_raw.endswith(alnum_po) and len(alnum_raw) > len(alnum_po):
+        prefix_len = len(alnum_raw) - len(alnum_po)
+        if prefix_len <= 8:
+            return cleaned_po, "VENDOR_PREFIX_STRIPPED", 0.96
+
     if alnum_raw in KNOWN_SUPPLIER_SKU_ALIASES:
         mapped = KNOWN_SUPPLIER_SKU_ALIASES[alnum_raw]
         return mapped, "VENDOR_CATALOG_ALIAS", 0.95
@@ -372,7 +410,7 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
     if cleaned_po:
         has_dim_conflict = check_dimension_conflict(cleaned_raw, cleaned_po)
         if not has_dim_conflict:
-            po_tokens = [t for t in cleaned_po.split("-") if len(t) >= 2]
+            po_tokens = [t for t in re.split(r"[-_./\s]", cleaned_po) if len(t) >= 2]
             matched_tokens = sum(1 for tok in po_tokens if tok in alnum_raw)
             if len(po_tokens) >= 2 and matched_tokens >= len(po_tokens) - 1 and (matched_tokens / len(po_tokens)) >= 0.75:
                 return cleaned_po, "PO_TOKEN_SIMILARITY", 0.89
@@ -438,7 +476,8 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
 def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> date | None:
     """
     Parses multi-format supplier date strings (ISO YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY,
-    DD.MM.YYYY, 8-digit compact EDI YYYYMMDD, and Unix epoch timestamps) using the vendor's default format profile.
+    DD.MM.YYYY, 8-digit compact EDI YYYYMMDD, 5-digit Excel serial dates, 2-digit years,
+    and Unix epoch timestamps) using the vendor's default format profile.
     Strips trailing ISO timestamps (e.g., '2026-10-24 14:30:00' -> '2026-10-24').
     Returns None if raw_date_str is empty or unparseable.
     """
@@ -447,9 +486,9 @@ def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> 
         return None
 
     # Strip timestamp suffix if present (e.g., '2026-10-24 14:30:00' or '2026-10-24T14:30:00Z')
-    # but preserve raw epoch integers
+    # while preserving space-delimited dates like '12 Oct 2026' and raw epoch integers
     if not re.fullmatch(r"\d{9,10}", val):
-        val = re.split(r"[T\s]", val)[0].strip()
+        val = re.sub(r"[T\s]\d{1,2}:\d{2}(?::\d{2})?.*$", "", val).strip()
 
     # Unix epoch check (seconds)
     if re.fullmatch(r"\d{9,10}", val):
@@ -461,6 +500,15 @@ def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> 
             return dt
         except (ValueError, OverflowError, OSError):
             return None
+
+    # Excel date serial check (e.g., 46307 for 2026-10-12)
+    if re.fullmatch(r"\d{5}", val):
+        try:
+            serial_days = int(val)
+            if 35000 <= serial_days <= 65000:
+                return date(1899, 12, 30) + timedelta(days=serial_days)
+        except (ValueError, OverflowError):
+            pass
 
     # Compact EDI 8-digit date: YYYYMMDD (e.g. 20261024)
     edi_match = re.fullmatch(r"(20\d{2})(\d{2})(\d{2})", val)
@@ -479,7 +527,7 @@ def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> 
         except ValueError:
             return None
 
-    # 2. DD/MM/YYYY, MM/DD/YYYY, DD.MM.YYYY, DD-MM-YYYY
+    # 2. 4-digit Year: DD/MM/YYYY, MM/DD/YYYY, DD.MM.YYYY, DD-MM-YYYY
     delim_match = re.fullmatch(r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})", val)
     if delim_match:
         try:
@@ -495,7 +543,28 @@ def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> 
         except ValueError:
             return None
 
-    for fmt in ("%d-%b-%Y", "%d/%b/%Y", "%d.%b.%Y", "%Y/%m/%d", "%d-%m-%Y"):
+    # 3. 2-digit Year: DD/MM/YY, MM/DD/YY, DD.MM.YY, DD-MM-YY
+    delim_2digit = re.fullmatch(r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})", val)
+    if delim_2digit:
+        try:
+            first, second, yr_part = int(delim_2digit.group(1)), int(delim_2digit.group(2)), int(delim_2digit.group(3))
+            year = 2000 + yr_part
+            fmt_pref = (supplier_date_fmt or "DD/MM/YYYY").strip().upper()
+            if first > 12:
+                return date(year, second, first)
+            if second > 12:
+                return date(year, first, second)
+            if fmt_pref in ("MM/DD/YYYY", "MM-DD-YYYY", "MM.DD.YYYY"):
+                return date(year, first, second)
+            return date(year, second, first)
+        except ValueError:
+            return None
+
+    for fmt in (
+        "%d-%b-%Y", "%d/%b/%Y", "%d.%b.%Y", "%d %b %Y", "%d %B %Y",
+        "%d-%b-%y", "%d/%b/%y", "%d.%b.%y", "%d %b %y",
+        "%Y/%m/%d", "%d-%m-%Y"
+    ):
         try:
             return datetime.strptime(val, fmt).date()
         except ValueError:
