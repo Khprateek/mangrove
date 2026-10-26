@@ -1,0 +1,78 @@
+{
+  "system_specs": {
+    "host_os": "Windows-11-10.0.26200-SP0",
+    "python_version": "3.12.6",
+    "cpu_architecture": "AMD64",
+    "logical_cpu_cores": 16,
+    "exasol_version": "2026.1.2",
+    "exasol_engine_mode": "Single-Node Personal Developer Appliance (Docker Container)",
+    "benchmark_date": "2026-10-26",
+    "mpp_topology_notes": "In multi-node enterprise Exasol clusters, DISTRIBUTE BY (internal_part_num) guarantees zero-shuffle co-located hash joins across cluster nodes. In this single-node personal developer container, distribution keys align columnar memory slices in shared system RAM."
+  },
+  "high_scale_columnar_benchmark": [
+    {
+      "scale_tier_rows": 10000,
+      "exasol_in_db_latency_ms": 16.97,
+      "exasol_throughput_rows_sec": 589275.0,
+      "in_db_generation_ms": 58.02,
+      "exasol_network_egress_mb": 0.0,
+      "exasol_network_transit_sec": 0.0,
+      "external_etl_network_egress_mb": 0.48,
+      "external_etl_network_transit_sec": 0.004
+    },
+    {
+      "scale_tier_rows": 100000,
+      "exasol_in_db_latency_ms": 19.91,
+      "exasol_throughput_rows_sec": 5022602.0,
+      "in_db_generation_ms": 109.21,
+      "exasol_network_egress_mb": 0.0,
+      "exasol_network_transit_sec": 0.0,
+      "external_etl_network_egress_mb": 4.77,
+      "external_etl_network_transit_sec": 0.038
+    },
+    {
+      "scale_tier_rows": 1000000,
+      "exasol_in_db_latency_ms": 28.05,
+      "exasol_throughput_rows_sec": 35650624.0,
+      "in_db_generation_ms": 236.6,
+      "exasol_network_egress_mb": 0.0,
+      "exasol_network_transit_sec": 0.0,
+      "external_etl_network_egress_mb": 47.68,
+      "external_etl_network_transit_sec": 0.381
+    }
+  ],
+  "standard_pipeline_benchmark": [
+    {
+      "batch_rows": 500,
+      "exasol_latency_ms": 2099.44,
+      "exasol_throughput_rows_sec": 238.0,
+      "python_etl_latency_ms": 18.44,
+      "python_etl_throughput_rows_sec": 27115.0,
+      "speedup_factor": 0.01
+    },
+    {
+      "batch_rows": 2500,
+      "exasol_latency_ms": 2344.12,
+      "exasol_throughput_rows_sec": 1066.0,
+      "python_etl_latency_ms": 54.69,
+      "python_etl_throughput_rows_sec": 45712.0,
+      "speedup_factor": 0.02
+    },
+    {
+      "batch_rows": 5000,
+      "exasol_latency_ms": 2584.26,
+      "exasol_throughput_rows_sec": 1935.0,
+      "python_etl_latency_ms": 102.27,
+      "python_etl_throughput_rows_sec": 48890.0,
+      "speedup_factor": 0.04
+    },
+    {
+      "batch_rows": 10000,
+      "exasol_latency_ms": 3852.12,
+      "exasol_throughput_rows_sec": 2596.0,
+      "python_etl_latency_ms": 200.02,
+      "python_etl_throughput_rows_sec": 49995.0,
+      "speedup_factor": 0.05
+    }
+  ]
+}
