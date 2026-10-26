@@ -54,7 +54,7 @@ flowchart LR
 
 - **Core Technology**: Native Exasol Personal Edition (`localhost:8563`, Schema `CHAKAN_SCM`)
 
-- **Key Metric**: **₹20.76 Crores in False Alarms Cleared in 11.8 ms | 177× Mitigation ROI**
+- **Key Metric**: **₹20.76 Crores in False Alarms Cleared In-Database | 177× Mitigation ROI**
 
 
 
@@ -431,7 +431,7 @@ $$\text{Mitigation ROI (Idle Overhead Avoidance)} = \frac{\text{Avoided Plant Id
 
 - **Full Reproducibility (`docs/run-guide.md`)**:
 
-  - Clone repo $\to$ Run automated test suite: `.\.venv\Scripts\python.exe -m pytest -v` (**35/35 Unit, Smoke & Parity Tests Pass** — 34 passed, 1 skipped offline).
+  - Clone repo $\to$ Run automated test suite: `.\.venv\Scripts\python.exe -m pytest -v` (**41/41 Unit, Smoke & Parity Tests Pass** — 40 passed, 1 skipped offline).
 
   - Launch UI: `.\.venv\Scripts\python.exe -m streamlit run src/app/app.py`.
 

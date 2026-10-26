@@ -17,7 +17,7 @@
 [0:20 - 1:55] 🎯 SCENE 4: Live Triage Cockpit (Clearing ₹20.76 Cr in False Alarms & 1-Click Action)
 [1:55 - 2:20] 🌧️ SCENE 5: What-If Chaos Simulator (Monsoon Shocks & Crores Attribution Waterfall)
 [2:20 - 2:45] 📊 SCENE 6: Scalability Benchmark & Financial ROI (Set-Based Columnar Architecture & 177x ROI)
-[2:45 - 3:00] 🚀 SCENE 7: Boardroom Defense & The Ask (35/35 Tests & Call to Action)
+[2:45 - 3:00] 🚀 SCENE 7: Boardroom Defense & The Ask (41/41 Tests & Call to Action)
 ```
 
 ---
@@ -101,7 +101,7 @@
 
 | Timestamp | Visual Action (Screen / Mouse) | Narration Audio (Spoken Word-for-Word) | Tone & Direction |
 | :---: | :--- | :--- | :--- |
-| **2:45 – 3:00** | Smooth zoom-out on the full Streamlit dashboard with clean terminal in background showing pytest passing 35/35 tests across all three test suites (or 34 passed, 1 skipped offline). | *"100% synthetic data, zero proprietary leaks, and verified Exasol Personal SQL & UDF parity. We turned inbound supply chain chaos into boardroom financial certainty. Thank you—let's make factory lines truly starvation-proof."* | Strong, professional, memorable closing. Confident finish at 03:00. |
+| **2:45 – 3:00** | Smooth zoom-out on the full Streamlit dashboard with clean terminal in background showing pytest passing 41/41 tests across all three test suites (or 40 passed, 1 skipped offline). | *"100% synthetic data, zero proprietary leaks, and verified Exasol Personal SQL & UDF parity. We turned inbound supply chain chaos into boardroom financial certainty. Thank you—let's make factory lines truly starvation-proof."* | Strong, professional, memorable closing. Confident finish at 03:00. |
 
 ---
 

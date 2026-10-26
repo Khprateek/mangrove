@@ -97,9 +97,9 @@ What `bootstrap_exasol_schema_and_data()` executes and verifies:
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
-The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine, cockpit UI, and BYOD telemetry (**35 total tests collected across 3 test suites**: 35 passed with live Exasol / 34 passed, 1 skipped offline):
+The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine, cockpit UI, and BYOD telemetry (**41 total tests collected across 3 test suites**: 41 passed with live Exasol / 40 passed, 1 skipped offline):
 
-### Engine & UDF Test Suite (`tests/test_harmonization.py` — 14 Tests)
+### Engine & UDF Test Suite (`tests/test_harmonization.py` — 20 Tests)
 1. `test_uom_normalization_pack_and_weight_inversions`: Pack multipliers (`BOX_100`, `BAG_250`, `CRATE_50`) and weight-to-piece conversions (`MT` $\to$ `KG`, `MT` $\to$ `EA`).
 2. `test_supplier_sku_drift_and_jaro_winkler_resolution`: Exact, hyphen-normalized, vendor catalog alias, and Jaro-Winkler ($\ge 0.85$) fuzzy SKU resolution.
 3. `test_adaptive_ngram_prefiltering_and_safety_fallback`: Boundary-padded bigrams/trigrams for sub-millisecond filtering plus 0.00% false-negative safety fallback.
@@ -114,6 +114,9 @@ The test suite in [`tests/`](../tests/) verifies full-stack coverage across data
 12. `test_scale_benchmark_suite`: Verifies pure CPU benchmark (`network_hop_penalty_ms = 0.0`) across 500 to 10,000 rows.
 13. `test_broken_connection_raises_explicit_errors`: Confirms broken DB connections raise `ExasolBootstrapError` / `ExasolWriteError` instead of silently passing.
 14. `test_exasol_views_match_pandas_mirror`: Confirms `compute_analytical_marts(source="exasol")` and `compute_analytical_marts(source="pandas")` match to `0.00 INR` across all financial KPIs.
+15–18. `test_live_simulation_matches_pandas_mirror`: Parametrized across 4 crisis presets (Monsoon, Foundry, Festive, Compound) verifying exact `0.00 INR` delta between live Exasol SQL views and mirror.
+19. `test_live_waterfall_is_additive_and_matches_mirror`: Verifies sequential additive waterfall on live Exasol views.
+20. `test_live_simulation_parameters_are_session_isolated`: Verifies concurrent user session isolation in Exasol `SIMULATION_PARAMETERS`.
 
 ### UI & Cockpit Smoke Test Suite (`tests/test_cockpit_smoke.py` — 5 Tests)
 15. `test_theme_tokens_and_formatting_utilities`: Validates color tokens, safe float coercion, and Indian Rupee formatting helpers (`Rs XX.XX Cr`, `Rs XX.XX L`).

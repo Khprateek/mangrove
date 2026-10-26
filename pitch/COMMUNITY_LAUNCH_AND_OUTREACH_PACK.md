@@ -18,7 +18,7 @@ flowchart TD
 
     CENTRAL --> CH1 & CH2 & CH3 & CH4 & CH5
     CH1 & CH2 & CH3 & CH4 & CH5 ==> FEEDBACK["⭐ Cryptographic Review Wall<br/>& Live Mobile Push Alerts"]
-    FEEDBACK ==> JUDGES["🏆 Stage 1 & Stage 2 Jury Defense<br/>(98/100 Rubric Dominance)"]
+    FEEDBACK ==> JUDGES["🏆 Stage 1 & Stage 2 Jury Defense<br/>(Objective Evidence-Driven Audit)"]
 ```
 
 ---

@@ -16,7 +16,7 @@
 
     <img src="https://img.shields.io/badge/Exasol%20Personal-In--Memory%20Columnar%20MPP-blueviolet?style=flat-square&logo=database" alt="Exasol Personal" />
 
-    <img src="https://img.shields.io/badge/Pytest-35%2F35%20Verified-brightgreen?style=flat-square&logo=pytest" alt="Pytest" />
+    <img src="https://img.shields.io/badge/Pytest-41%2F41%20Verified-brightgreen?style=flat-square&logo=pytest" alt="Pytest" />
 
     <img src="https://img.shields.io/badge/Architecture-In--Database%20MPP%20%26%20Columnar-success?style=flat-square" alt="Architecture" />
 
@@ -256,7 +256,7 @@ When a planner reviews a quarantined shipment and submits an override, it writes
 
 - **Fast-Resolution Workbench**: 3 executive data tiles (Inbound Raw Dispatch Anomaly, Exasol In-DB RAM Resolution, Line Halt Risk & Freight Trade-Off).
 
-- **1-Click Parameterized Writeback**: Submit planner overrides directly to Exasol's `ASN_PLANNER_OVERRIDES` table with sub-15ms recalculation.
+- **1-Click Parameterized Writeback**: Submit planner overrides directly to Exasol's `ASN_PLANNER_OVERRIDES` table via sub-millisecond atomic SQL MERGE with instant WebSocket recalculation.
 
 - **SHA-256 Merkle Audit Trail**: Every override and rollback is sealed into a cryptographically verified hash-chained ledger with 1-click revert controls.
 
@@ -370,6 +370,21 @@ Conducted with pure measured CPU timings (`0.0 ms` synthetic network penalty) co
 
 | **10,000** | **133.0 ms** | **75,177 rows/s** | **180.8 ms** | 55,319 rows/s | **1.4x** | **26.4%** |
 
+### 1,000,000-Row In-Database MPP Columnar Vectorization (Zero Network Egress)
+
+Conducted natively on Exasol Personal (`localhost:8563`, Docker AMD64, 16 Cores) evaluating relational joins, window functions, and aggregations dynamically generated via in-memory SQL cross-joins (`benchmarks/results.json`):
+
+| Scale Tier | In-DB Latency (ms) | In-DB Throughput (rows/s) | Exasol Network Egress | External ETL Egress | Avoided Network Transit (1 Gbps) |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| **10,000 Rows** | 18.1 ms | 553,710 rows/s | **0.0 MB** | 0.5 MB | 0.004 s |
+| **100,000 Rows** | 61.0 ms | 1,639,613 rows/s | **0.0 MB** | 4.8 MB | 0.038 s |
+| **1,000,000 Rows** | **56.9 ms** | **17,568,517 rows/s** | **0.0 MB** | **47.7 MB** | **0.381 s** |
+
+> **Architectural Takeaway & System Specifications**: 
+> - **Zero Network Egress**: Pure in-database Exasol queries process 1M rows in **56.9 ms (17.5M rows/s)** without moving data over the network, whereas external ETL incurs socket serialization penalties on multi-megabyte payloads.
+> - **In-DB Python 3 UDF Dynamic**: Python 3 scalar UDF evaluation involves containerized IPC process startup (~2s baseline in single-node appliances), after which row throughput scales sublinearly (+0.17 ms/row), keeping ERP tables safely co-located.
+> - **Verified Hardware Topology**: Single-node Exasol Personal 2026.1.2 Docker container on Windows 11 host (AMD64, 16 logical cores, 16 GB RAM). In multi-node enterprise deployments, `DISTRIBUTE BY (internal_part_num)` guarantees co-located hash joins with zero network repartitioning shuffle.
+
 
 
 > **Architectural Takeaway**: 
@@ -462,7 +477,7 @@ python -m src.data_generator.generate_all --extra-asns 480
 
 
 
-### 3. Run Verification Tests (35 passed with live Exasol / 34 passed, 1 skipped offline)
+### 3. Run Verification Tests (41 passed with live Exasol / 40 passed, 1 skipped offline)
 
 ```bash
 
