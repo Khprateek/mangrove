@@ -191,7 +191,7 @@ def render_scenario_simulator_tab(
             <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 14px;">
                 <span style="font-weight: 700; color: {status_color};">{status_label}</span>
                 <span style="color: {COLOR_BORDER};">•</span>
-                <span>Recalculation: <strong style="color: {COLOR_TEXT_PRIMARY};">{recalc_latency:.1f} ms</strong></span>
+                <span>Recalculation: <strong style="color: {COLOR_TEXT_PRIMARY};">{recalc_latency:.1f} ms</strong> <code style="font-size: 0.70rem; color: #FFFFFF; background: rgba(0, 0, 0, 0.25); padding: 2px 6px; border-radius: 4px;">{sim_marts.get('compute_source', 'PANDAS_MIRROR')}</code></span>
                 <span style="color: {COLOR_BORDER};">•</span>
                 <span>Evaluated: <strong style="color: {COLOR_TEXT_PRIMARY};">{sim_total_rows:,} rows</strong></span>
                 <span style="color: {COLOR_BORDER};">•</span>

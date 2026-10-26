@@ -90,7 +90,7 @@ def render_telemetry_banner(marts: dict) -> None:
                 <span style="color: {COLOR_TEXT_SECONDARY};">Python 3 In-DB RAM UDFs</span>
             </div>
             <div style="font-size: 0.70rem; color: {COLOR_BRAND_PRIMARY}; font-weight: 700; letter-spacing: 0.6px;">
-                SUB-SECOND MPP IN-MEMORY CO-LOCATION
+                IN-MEMORY COLUMNAR PROCESSING &amp; IN-DB UDFs
             </div>
         </div>
         """,

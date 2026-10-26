@@ -112,7 +112,7 @@ def render_kpi_header(
                     <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; letter-spacing: 0.6px; font-size: 0.72rem;">BUSINESS DEFENSE &amp; ROI (MANGROVE IN-DB ACTIVE GUARD)</span>
                     <span style="color: {COLOR_TEXT_SECONDARY};">Total Stoppage Exposure: <b style="color: {COLOR_DANGER}; font-size: 0.82rem;">{format_inr_crore_lakh(roi.get('total_stoppage_exposure_inr', 0))}</b></span>
                     <span style="color: {COLOR_TEXT_SECONDARY};">Emergency Freight: <b style="color: {COLOR_TEXT_PRIMARY};">{format_inr_crore_lakh(roi.get('benchmark_freight_inr', 45000))}</b></span>
-                    <span style="color: {COLOR_TEXT_SECONDARY};">Executive ROI: <b style="color: {COLOR_BRAND_PRIMARY}; font-size: 0.90rem;">{roi.get('headline_roi_x', 1175):,.0f}x</b></span>
+                    <span style="color: {COLOR_TEXT_SECONDARY};">Executive ROI: <b style="color: {COLOR_BRAND_PRIMARY}; font-size: 0.90rem;">{roi.get('headline_roi_x', 177):,.0f}x</b></span>
                     <span style="color: {COLOR_TEXT_SECONDARY};">Avoided Panic Freight: <b style="color: {COLOR_BRAND_PRIMARY}; font-weight: 700;">{format_inr_crore_lakh(roi.get('avoided_panic_freight_inr', 135000))}</b></span>
                 </div>
                 """,

@@ -18,7 +18,7 @@ def render_exasol_engine_tab(client: ChakanExasolClient, marts: dict, project_ro
     st.markdown(
         """
         This solution uses **Exasol Personal** (`CHAKAN_SCM` schema) as the core analytical and data-harmonization platform:
-        - **Schema Distribution (`DISTRIBUTE BY`):** `ITEM_MASTER`, `PURCHASE_ORDER_LINES`, and `WAREHOUSE_INVENTORY_LEDGER` distribute on `internal_part_num`; `BILL_OF_MATERIALS` distributes on `component_part_num` so part-level joins align.
+        - **Schema Distribution (`DISTRIBUTE BY`):** `ITEM_MASTER`, `PURCHASE_ORDER_LINES`, `WAREHOUSE_INVENTORY_LEDGER`, and `SUPPLIER_CATALOG_CROSS_REF` distribute on `internal_part_num`; `BILL_OF_MATERIALS` distributes on `component_part_num` so part-level joins align.
         - **In-Database Python 3 Scalar UDFs:** `UDF_NORMALIZE_UOM`, `UDF_RESOLVE_SUPPLIER_SKU`, and `UDF_PARSE_ASN_DATE` run inside Exasol next to the columnar tables.
         - **Interactive Writeback Loop:** Planner overrides persist directly to `CHAKAN_SCM.ASN_PLANNER_OVERRIDES` and trigger immediate view recalculation.
         """
@@ -60,7 +60,7 @@ def render_exasol_engine_tab(client: ChakanExasolClient, marts: dict, project_ro
             st.markdown(
                 """
                 Tables in `CHAKAN_SCM` are partitioned on their primary join keys so part-level joins align across slices:
-                - `ITEM_MASTER`, `PURCHASE_ORDER_LINES`, `WAREHOUSE_INVENTORY_LEDGER`: `DISTRIBUTE BY (internal_part_num)`
+                - `ITEM_MASTER`, `PURCHASE_ORDER_LINES`, `WAREHOUSE_INVENTORY_LEDGER`, `SUPPLIER_CATALOG_CROSS_REF`: `DISTRIBUTE BY (internal_part_num)`
                 - `BILL_OF_MATERIALS`: `DISTRIBUTE BY (component_part_num)`
                 - `PRODUCTION_SCHEDULES`: `DISTRIBUTE BY (parent_part_num)`
                 - `ASN_LINES_RAW`, `ASN_PLANNER_OVERRIDES`: `DISTRIBUTE BY (po_number_ref)` / `(asn_line_id)`

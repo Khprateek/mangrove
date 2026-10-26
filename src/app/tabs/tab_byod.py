@@ -188,7 +188,7 @@ def render_byod_tab(client: ChakanExasolClient, marts: dict) -> None:
                 <span style="font-weight: 700; color: #8A6A00; font-size: 0.88rem;">🟡 OFFLINE SIMULATION MIRROR ACTIVE</span>
                 <div style="font-size: 0.78rem; color: #5C4700; margin-top: 4px;">
                     {engine.get('fallback_reason') or 'No live Exasol connection detected on port 8563.'} Running local Python parity logic.<br/>
-                    <i>For full 35.4x in-memory speedup, boot the Exasol appliance via <code>docker compose up -d</code>.</i>
+                    <i>For full in-database MPP performance, boot the Exasol appliance via <code>docker compose up -d</code>.</i>
                 </div>
             </div>
             """,

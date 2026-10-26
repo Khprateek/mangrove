@@ -17,6 +17,7 @@ from src.app.theme import (
     format_inr_crore_lakh,
 )
 from src.exasol_engine.db_client import ChakanExasolClient
+from src.exasol_engine.domain_config import EBITDA_MARGIN_RATIO
 
 
 def render_financial_roi_tab(
@@ -46,7 +47,7 @@ def render_financial_roi_tab(
         st.markdown(
             f"""
             <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 5px solid {COLOR_BRAND_PRIMARY}; border-radius: 9px; padding: 10px 16px; margin-bottom: 14px;">
-                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; font-size: 0.82rem;">🟢 MANGROVE FINANCIAL DEFENSE: 1,175× MITIGATION ROI &amp; ₹1.35 L SAVED IN WASTED FREIGHT</span>
+                <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; font-size: 0.82rem;">🟢 MANGROVE FINANCIAL DEFENSE: 177× MITIGATION ROI &amp; ₹1.35 L SAVED IN WASTED FREIGHT</span>
                 <div style="font-size: 0.76rem; color: #68756B; margin-top: 2px;">
                     Exasol In-DB harmonization eliminates 12 unnecessary panic freight flights (₹1.35 L direct cash savings) and limits total plant expenditure to a single targeted ₹45,000 hot-shot courier.
                 </div>
@@ -76,8 +77,8 @@ def render_financial_roi_tab(
         )
         r3.metric(
             "Executive Mitigation ROI",
-            f"{roi.get('headline_roi_x', 1175):,.0f}x Return",
-            "Averted Factory Stoppage / Freight",
+            f"{roi.get('headline_roi_x', 177):,.0f}x Return",
+            "Avoided Idle Overhead / Freight",
         )
         r4.metric(
             "Avoided Panic Freight Waste",
@@ -139,17 +140,21 @@ def render_financial_roi_tab(
     # Reactive Calculations
     total_short_downtime_hrs = float(bom_df["downtime_hours_net"].sum())
     sim_idle_loss = total_short_downtime_hrs * sim_burn_rate
-    sim_total_loss = float(roi.get("net_risk_inr", 0)) + sim_idle_loss
-    sim_roi = (sim_total_loss - sim_freight_cost) / sim_freight_cost if sim_freight_cost > 0 else 0.0
+    sim_contrib_margin = float(roi.get("contribution_margin_at_risk_inr", float(roi.get("net_risk_inr", 0)) * EBITDA_MARGIN_RATIO))
+    sim_unrecoverable_loss = sim_idle_loss + sim_contrib_margin
+    sim_idle_roi = (sim_idle_loss - sim_freight_cost) / sim_freight_cost if sim_freight_cost > 0 else 0.0
+    sim_cfo_roi = (sim_unrecoverable_loss - sim_freight_cost) / sim_freight_cost if sim_freight_cost > 0 else 0.0
     breakeven_minutes = (sim_freight_cost / sim_burn_rate) * 60.0
 
     st.markdown(
         f"""
         <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 4px solid {COLOR_BRAND_PRIMARY}; border-radius: 8px; padding: 12px 18px; margin-top: 10px; margin-bottom: 20px; font-size: 0.82rem; line-height: 1.5; color: {COLOR_TEXT_PRIMARY};">
-            <strong>Live Breakeven Economic Proof:</strong> At <strong>Rs {sim_burn_rate/100000:.2f} Lakh/hr</strong> line downtime burn, 
+            <strong>CFO-Grade Breakeven Economic Proof:</strong> At <strong>Rs {sim_burn_rate/100000:.2f} Lakh/hr</strong> line downtime burn, 
             the entire <strong>Rs {sim_freight_cost:,.0f}</strong> emergency freight dispatch pays for itself in just 
-            <strong>{breakeven_minutes:.1f} minutes</strong> of prevented stoppage. Over the 48h horizon, avoiding line halts saves 
-            <strong>{format_inr_crore_lakh(sim_total_loss)}</strong>, generating a <strong>{sim_roi:,.0f}x</strong> financial return on freight investment.
+            <strong>{breakeven_minutes:.1f} minutes</strong> of prevented stoppage. Over the 48h horizon, avoiding line halts prevents 
+            <strong>{format_inr_crore_lakh(sim_idle_loss)}</strong> in direct unrecoverable idle factory overhead (<strong>{sim_idle_roi:,.0f}x ROI</strong>) 
+            plus <strong>{format_inr_crore_lakh(sim_contrib_margin)}</strong> in protected operating contribution margin (<strong>{sim_cfo_roi:,.0f}x CFO ROI</strong>), 
+            while safeguarding <strong>{format_inr_crore_lakh(roi.get('net_risk_inr', 0))}</strong> in scheduled vehicle delivery commitments.
         </div>
         """,
         unsafe_allow_html=True,
