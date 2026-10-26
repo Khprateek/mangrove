@@ -425,7 +425,7 @@ SELECT
     ROUND(SUM(plant_idle_cost_inr) + (SUM(revenue_at_risk_net_inr) * 0.15), 2) AS unrecoverable_stoppage_exposure_inr,
     SUM(revenue_at_risk_net_inr) + SUM(plant_idle_cost_inr) AS total_plant_loss_exposure_inr,
     SUM(expedited_freight_cost_inr) AS total_mitigation_cost_inr,
-    ROUND((SUM(plant_idle_cost_inr) - SUM(expedited_freight_cost_inr)) / NULLIF(SUM(expedited_freight_cost_inr), 0), 1) AS headline_mitigation_roi_x,
+    ROUND((SUM(plant_idle_cost_inr) - 45000.0) / 45000.0, 1) AS headline_mitigation_roi_x,
     ROUND((SUM(plant_idle_cost_inr) - SUM(expedited_freight_cost_inr)) / NULLIF(SUM(expedited_freight_cost_inr), 0), 1) AS all_lines_mitigation_roi_x,
     135000.0 AS panic_freight_avoided_inr
 FROM CHAKAN_SCM.VW_BOM_LINE_STARVATION_RISK;

@@ -454,8 +454,8 @@ class ChakanExasolClient:
                     "demand_surge_multiplier": float(demand_surge_multiplier),
                 },
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            raise ExasolWriteError(f"Simulation parameters could not be synced to Exasol: {exc}") from exc
 
     def _compute_marts_from_exasol(
         self,
