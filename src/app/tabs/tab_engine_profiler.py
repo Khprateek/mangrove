@@ -79,9 +79,18 @@ def render_exasol_engine_tab(client: ChakanExasolClient, marts: dict, project_ro
                     {"Table Name": "PRODUCTION_SCHEDULES", "Distribution Key": "parent_part_num", "Storage": "Columnar RAM", "Rows": f"{counts.get('PRODUCTION_SCHEDULES', 0):,}"},
                     {"Table Name": "SUPPLIER_MASTER", "Distribution Key": "supplier_id (PK)", "Storage": "Columnar RAM", "Rows": f"{counts.get('SUPPLIER_MASTER', 0):,}"},
                     {"Table Name": "ASN_PLANNER_OVERRIDES", "Distribution Key": "asn_line_id", "Storage": "Columnar RAM", "Rows": f"{counts.get('ASN_PLANNER_OVERRIDES', 0):,}"},
+                    {"Table Name": "POLICY_PARAMETERS", "Distribution Key": "policy_key (PK)", "Storage": "Columnar RAM", "Rows": f"{counts.get('POLICY_PARAMETERS', 8):,}"},
                 ]
             )
             st.dataframe(prof_table, use_container_width=True, hide_index=True)
+
+        if client.conn is not None:
+            with st.expander("🔍 Live Exasol Catalog Schema (DESCRIBE VW_BOM_LINE_STARVATION_RISK)", expanded=False):
+                try:
+                    desc_df = client._fetch_df(f"DESCRIBE {client.schema}.VW_BOM_LINE_STARVATION_RISK")
+                    st.dataframe(desc_df, use_container_width=True, hide_index=True)
+                except Exception as ex:
+                    st.caption(f"Catalog query failed: {ex}")
 
         st.markdown("---")
         measured_ms = float(marts.get("query_latency_ms", 0.0))

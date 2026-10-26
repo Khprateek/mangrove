@@ -170,3 +170,13 @@ CREATE OR REPLACE TABLE SIMULATION_PARAMETERS (
     CONSTRAINT pk_sim_params PRIMARY KEY (session_id) ENABLE
 );
 
+
+-- 12. Enterprise Domain Policy Parameters & Financial Coefficients (SSOT)
+CREATE OR REPLACE TABLE POLICY_PARAMETERS (
+    policy_key       VARCHAR(60) UTF8 NOT NULL,
+    policy_value     DOUBLE NOT NULL,
+    policy_category  VARCHAR(40) UTF8 NOT NULL,
+    description      VARCHAR(255) UTF8,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_policy_params PRIMARY KEY (policy_key) ENABLE
+);

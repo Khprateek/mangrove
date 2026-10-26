@@ -263,6 +263,18 @@ WITH sim_params AS (
     FROM CHAKAN_SCM.SIMULATION_PARAMETERS
     WHERE session_id = CAST(CURRENT_SESSION AS VARCHAR(40))
 ),
+domain_policy AS (
+    SELECT
+        COALESCE(MAX(CASE WHEN policy_key = 'PLANNING_HORIZON_HOURS' THEN policy_value END), 48.0) AS planning_horizon_hours,
+        COALESCE(MAX(CASE WHEN policy_key = 'EBITDA_MARGIN_RATIO' THEN policy_value END), 0.15) AS ebitda_margin_ratio,
+        COALESCE(MAX(CASE WHEN policy_key = 'HOT_SHOT_BENCHMARK_FREIGHT_INR' THEN policy_value END), 45000.0) AS hot_shot_freight_inr,
+        COALESCE(MAX(CASE WHEN policy_key = 'FREIGHT_BASE_INR' THEN policy_value END), 25000.0) AS freight_base_inr,
+        COALESCE(MAX(CASE WHEN policy_key = 'FREIGHT_MAX_INR' THEN policy_value END), 75000.0) AS freight_max_inr,
+        COALESCE(MAX(CASE WHEN policy_key = 'FREIGHT_WEIGHT_TARIFF_INR_PER_KG' THEN policy_value END), 4.5) AS freight_weight_tariff,
+        COALESCE(MAX(CASE WHEN policy_key = 'AVOIDED_PANIC_FREIGHT_INR' THEN policy_value END), 135000.0) AS avoided_panic_freight_inr,
+        COALESCE(MAX(CASE WHEN policy_key = 'TRANSIT_DELAY_DAILY_DECAY' THEN policy_value END), 0.18) AS transit_decay_rate
+    FROM CHAKAN_SCM.POLICY_PARAMETERS
+),
 asn_line_agg AS (
     SELECT
         po_number_ref,
@@ -333,7 +345,7 @@ base_bom AS (
         b.assembly_station_code,
         b.qty_per_assembly,
         ROUND(ROUND(ps.planned_output_units * sp.sim_demand_surge_multiplier, 0) * b.qty_per_assembly * (1.0 + b.scrap_allowance_pct), 2) AS gross_required_qty,
-        ROUND(ROUND(ROUND(ps.planned_output_units * sp.sim_demand_surge_multiplier, 0) * b.qty_per_assembly * (1.0 + b.scrap_allowance_pct), 2) / 48.0, 2) AS hourly_burn_qty,
+        ROUND(ROUND(ROUND(ps.planned_output_units * sp.sim_demand_surge_multiplier, 0) * b.qty_per_assembly * (1.0 + b.scrap_allowance_pct), 2) / dp.planning_horizon_hours, 2) AS hourly_burn_qty,
         inv.erp_apparent_atp_qty,
         GREATEST(0.0, inv.true_pickable_atp_qty - (inv.quality_hold_qty * sp.sim_quarantine_defect_pct * 2.0)) AS true_pickable_atp_qty,
         inv.phantom_inventory_qty,
@@ -342,18 +354,18 @@ base_bom AS (
         pa.po_ordered_qty,
         CASE
             WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
-            THEN ROUND(COALESCE(pa.legacy_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+            THEN ROUND(COALESCE(pa.legacy_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * dp.transit_decay_rate)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
             ELSE COALESCE(pa.legacy_inbound_qty, 0.0)
         END AS legacy_inbound_qty,
         CASE
             WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
-            THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+            THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * dp.transit_decay_rate)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
             ELSE COALESCE(pa.harmonized_inbound_qty, 0.0)
         END AS harmonized_inbound_qty,
         GREATEST(0.0, pa.po_ordered_qty - (
             CASE
                 WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
-                THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+                THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * dp.transit_decay_rate)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
                 ELSE COALESCE(pa.harmonized_inbound_qty, 0.0)
             END
         )) AS supplier_short_shipped_qty,
@@ -361,7 +373,7 @@ base_bom AS (
             GREATEST(0.0, inv.true_pickable_atp_qty - (inv.quality_hold_qty * sp.sim_quarantine_defect_pct * 2.0)) +
             CASE
                 WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
-                THEN ROUND(COALESCE(pa.legacy_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+                THEN ROUND(COALESCE(pa.legacy_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * dp.transit_decay_rate)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
                 ELSE COALESCE(pa.legacy_inbound_qty, 0.0)
             END
         ) AS legacy_total_available_qty,
@@ -369,12 +381,13 @@ base_bom AS (
             GREATEST(0.0, inv.true_pickable_atp_qty - (inv.quality_hold_qty * sp.sim_quarantine_defect_pct * 2.0)) +
             CASE
                 WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
-                THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+                THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * dp.transit_decay_rate)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
                 ELSE COALESCE(pa.harmonized_inbound_qty, 0.0)
             END
         ) AS harmonized_total_available_qty
     FROM CHAKAN_SCM.PRODUCTION_SCHEDULES ps
     CROSS JOIN sim_params sp
+    CROSS JOIN domain_policy dp
     JOIN CHAKAN_SCM.BILL_OF_MATERIALS b
         ON ps.parent_part_num = b.parent_part_num
        AND b.bom_level = 1
@@ -390,20 +403,21 @@ core AS (
         bb.*,
         ROUND(GREATEST(0.0, bb.gross_required_qty - bb.legacy_total_available_qty), 2) AS legacy_deficit_qty,
         ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) AS true_net_deficit_qty,
-        ROUND(LEAST(48.0, bb.legacy_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1) AS hours_to_starvation_legacy,
-        ROUND(LEAST(48.0, bb.harmonized_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1) AS hours_to_starvation_harmonized,
+        ROUND(LEAST(dp.planning_horizon_hours, bb.legacy_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1) AS hours_to_starvation_legacy,
+        ROUND(LEAST(dp.planning_horizon_hours, bb.harmonized_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1) AS hours_to_starvation_harmonized,
         LEAST(bb.planned_output_units, CEIL(ROUND(GREATEST(0.0, bb.gross_required_qty - bb.legacy_total_available_qty), 2) / bb.qty_per_assembly)) AS starved_parent_units_legacy,
         LEAST(bb.planned_output_units, CEIL(ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) / bb.qty_per_assembly)) AS starved_parent_units_net,
         ROUND(LEAST(bb.planned_output_units, CEIL(ROUND(GREATEST(0.0, bb.gross_required_qty - bb.legacy_total_available_qty), 2) / bb.qty_per_assembly)) * bb.finished_unit_value_inr, 2) AS revenue_at_risk_legacy_inr,
         ROUND(LEAST(bb.planned_output_units, CEIL(ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) / bb.qty_per_assembly)) * bb.finished_unit_value_inr, 2) AS revenue_at_risk_net_inr,
-        ROUND(GREATEST(0.0, 48.0 - ROUND(LEAST(48.0, bb.harmonized_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1)), 1) AS downtime_hours_net,
-        ROUND(ROUND(GREATEST(0.0, 48.0 - ROUND(LEAST(48.0, bb.harmonized_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1)), 1) * bb.downtime_burn_rate_inr_hr, 2) AS plant_idle_cost_inr,
+        ROUND(GREATEST(0.0, dp.planning_horizon_hours - ROUND(LEAST(dp.planning_horizon_hours, bb.harmonized_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1)), 1) AS downtime_hours_net,
+        ROUND(ROUND(GREATEST(0.0, dp.planning_horizon_hours - ROUND(LEAST(dp.planning_horizon_hours, bb.harmonized_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1)), 1) * bb.downtime_burn_rate_inr_hr, 2) AS plant_idle_cost_inr,
         CASE
             WHEN ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) > 0
-            THEN ROUND(LEAST(75000.0, GREATEST(25000.0, 25000.0 + ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) * bb.unit_weight_kg * 4.5)), 2)
+            THEN ROUND(LEAST(dp.freight_max_inr, GREATEST(dp.freight_base_inr, dp.freight_base_inr + ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) * bb.unit_weight_kg * dp.freight_weight_tariff)), 2)
             ELSE 0.0
         END AS expedited_freight_cost_inr
     FROM base_bom bb
+    CROSS JOIN domain_policy dp
 )
 SELECT
     core.*,
@@ -417,16 +431,92 @@ FROM core;
 
 -- 4. Financial ROI & Plant Downtime Loss Summary View
 CREATE OR REPLACE VIEW CHAKAN_SCM.VW_FINANCIAL_ROI_SUMMARY AS
+WITH domain_policy AS (
+    SELECT
+        COALESCE(MAX(CASE WHEN policy_key = 'EBITDA_MARGIN_RATIO' THEN policy_value END), 0.15) AS ebitda_margin_ratio,
+        COALESCE(MAX(CASE WHEN policy_key = 'HOT_SHOT_BENCHMARK_FREIGHT_INR' THEN policy_value END), 45000.0) AS hot_shot_freight_inr,
+        COALESCE(MAX(CASE WHEN policy_key = 'AVOIDED_PANIC_FREIGHT_INR' THEN policy_value END), 135000.0) AS avoided_panic_freight_inr
+    FROM CHAKAN_SCM.POLICY_PARAMETERS
+)
 SELECT
     SUM(revenue_at_risk_legacy_inr) AS legacy_pipeline_risk_inr,
     SUM(revenue_at_risk_net_inr) AS net_starvation_risk_inr,
     SUM(revenue_at_risk_legacy_inr) - SUM(revenue_at_risk_net_inr) AS false_alarm_value_cleared_inr,
     SUM(plant_idle_cost_inr) AS plant_idle_overhead_at_risk_inr,
-    ROUND(SUM(revenue_at_risk_net_inr) * 0.15, 2) AS contribution_margin_at_risk_inr,
-    ROUND(SUM(plant_idle_cost_inr) + (SUM(revenue_at_risk_net_inr) * 0.15), 2) AS unrecoverable_stoppage_exposure_inr,
+    ROUND(SUM(revenue_at_risk_net_inr) * dp.ebitda_margin_ratio, 2) AS contribution_margin_at_risk_inr,
+    ROUND(SUM(plant_idle_cost_inr) + (SUM(revenue_at_risk_net_inr) * dp.ebitda_margin_ratio), 2) AS unrecoverable_stoppage_exposure_inr,
     SUM(revenue_at_risk_net_inr) + SUM(plant_idle_cost_inr) AS total_plant_loss_exposure_inr,
     SUM(expedited_freight_cost_inr) AS total_mitigation_cost_inr,
-    ROUND((SUM(plant_idle_cost_inr) - 45000.0) / 45000.0, 1) AS headline_mitigation_roi_x,
+    ROUND((SUM(plant_idle_cost_inr) - dp.hot_shot_freight_inr) / dp.hot_shot_freight_inr, 1) AS headline_mitigation_roi_x,
     ROUND((SUM(plant_idle_cost_inr) - SUM(expedited_freight_cost_inr)) / NULLIF(SUM(expedited_freight_cost_inr), 0), 1) AS all_lines_mitigation_roi_x,
-    135000.0 AS panic_freight_avoided_inr
-FROM CHAKAN_SCM.VW_BOM_LINE_STARVATION_RISK;
+    dp.avoided_panic_freight_inr AS panic_freight_avoided_inr
+FROM CHAKAN_SCM.VW_BOM_LINE_STARVATION_RISK
+CROSS JOIN domain_policy dp
+GROUP BY dp.ebitda_margin_ratio, dp.hot_shot_freight_inr, dp.avoided_panic_freight_inr;
+
+-- 5. Actionable Quarantine Triage Queue View ranked by Blast Radius (INR)
+CREATE OR REPLACE VIEW CHAKAN_SCM.VW_TRIAGE_DISPATCH_QUEUE AS
+WITH comp_blast AS (
+    SELECT
+        component_part_num AS resolved_part_num,
+        GROUP_CONCAT(DISTINCT assembly_line_id SEPARATOR ', ') AS affected_lines,
+        SUM(gross_required_qty) AS gross_required_qty,
+        MIN(true_pickable_atp_qty) AS true_pickable_atp_qty,
+        MIN(phantom_inventory_qty) AS phantom_inventory_qty,
+        MIN(po_ordered_qty) AS po_ordered_qty,
+        MIN(hours_to_starvation_legacy) AS min_hours_to_stop_legacy,
+        MIN(hours_to_starvation_harmonized) AS min_hours_to_stop_harmonized,
+        SUM(revenue_at_risk_legacy_inr) AS revenue_at_risk_legacy_inr,
+        SUM(revenue_at_risk_net_inr) AS revenue_at_risk_net_inr,
+        SUM(true_net_deficit_qty) AS true_net_deficit_qty,
+        MAX(downtime_burn_rate_inr_hr) AS downtime_burn_rate_inr_hr,
+        SUM(plant_idle_cost_inr) AS plant_idle_cost_inr,
+        SUM(total_stoppage_exposure_inr) AS total_stoppage_exposure_inr,
+        SUM(expedited_freight_cost_inr) AS expedited_freight_cost_inr
+    FROM CHAKAN_SCM.VW_BOM_LINE_STARVATION_RISK
+    GROUP BY component_part_num
+),
+triage_base AS (
+    SELECT
+        a.*,
+        COALESCE(cb.affected_lines, 'BUFFER_REPLENISHMENT') AS affected_lines,
+        COALESCE(cb.gross_required_qty, 0.0) AS gross_required_qty,
+        COALESCE(cb.true_pickable_atp_qty, 0.0) AS true_pickable_atp_qty,
+        COALESCE(cb.phantom_inventory_qty, 0.0) AS phantom_inventory_qty,
+        COALESCE(cb.po_ordered_qty, 0.0) AS po_ordered_qty,
+        COALESCE(cb.min_hours_to_stop_legacy, 48.0) AS min_hours_to_stop_legacy,
+        COALESCE(cb.min_hours_to_stop_harmonized, 48.0) AS min_hours_to_stop_harmonized,
+        COALESCE(cb.revenue_at_risk_legacy_inr, 0.0) AS revenue_at_risk_legacy_inr,
+        COALESCE(cb.revenue_at_risk_net_inr, 0.0) AS revenue_at_risk_net_inr,
+        COALESCE(cb.true_net_deficit_qty, 0.0) AS true_net_deficit_qty,
+        COALESCE(cb.downtime_burn_rate_inr_hr, 0.0) AS downtime_burn_rate_inr_hr,
+        COALESCE(cb.plant_idle_cost_inr, 0.0) AS plant_idle_cost_inr,
+        COALESCE(cb.total_stoppage_exposure_inr, 0.0) AS total_stoppage_exposure_inr,
+        COALESCE(cb.expedited_freight_cost_inr, 0.0) AS expedited_freight_cost_inr
+    FROM CHAKAN_SCM.VW_ASN_HARMONIZED_LINEAGE a
+    JOIN (SELECT DISTINCT po_number FROM CHAKAN_SCM.PURCHASE_ORDER_LINES) po
+        ON a.po_number_ref = po.po_number
+    LEFT JOIN comp_blast cb
+        ON a.resolved_part_num = cb.resolved_part_num
+    WHERE a.legacy_etl_status = 'QUARANTINED'
+)
+SELECT
+    tb.*,
+    CASE
+        WHEN tb.transmission_seq > 1 THEN 'DUPLICATE_PAYLOAD_SUPPRESSED'
+        WHEN tb.true_net_deficit_qty > 0 THEN 'CRITICAL_SHORT_SHIPMENT_EXPOSED'
+        WHEN tb.revenue_at_risk_legacy_inr > 0 AND tb.true_net_deficit_qty = 0 THEN 'FALSE_STARVATION_CLEARED_BY_UDF'
+        ELSE 'HARMONIZED_BUFFER_RESTORED'
+    END AS operational_verdict,
+    CASE
+        WHEN tb.expedited_freight_cost_inr > 0 AND tb.plant_idle_cost_inr > 0
+        THEN ROUND((tb.plant_idle_cost_inr - tb.expedited_freight_cost_inr) / tb.expedited_freight_cost_inr, 1)
+        ELSE 0.0
+    END AS mitigation_roi_x,
+    CASE
+        WHEN tb.revenue_at_risk_legacy_inr > 0 AND tb.true_net_deficit_qty = 0 AND tb.transmission_seq = 1
+        THEN 45000.0
+        ELSE 0.0
+    END AS avoided_panic_freight_inr
+FROM triage_base tb
+ORDER BY tb.revenue_at_risk_legacy_inr DESC, tb.true_net_deficit_qty DESC;

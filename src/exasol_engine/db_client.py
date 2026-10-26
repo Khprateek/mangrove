@@ -210,6 +210,31 @@ class ChakanExasolClient:
                     except Exception as exc:
                         errors.append(f"[LOAD] {table_name} -> {type(exc).__name__}: {str(exc)[:240]}")
 
+            # 5. Seed POLICY_PARAMETERS from domain_config (SSOT)
+            policies = [
+                ("PLANNING_HORIZON_HOURS", domain_config.PLANNING_HORIZON_HOURS, "TIME_HORIZON", "Standard production cycle buffer horizon in hours"),
+                ("EBITDA_MARGIN_RATIO", domain_config.EBITDA_MARGIN_RATIO, "FINANCIAL", "Protected operating contribution margin ratio on finished vehicles"),
+                ("HOT_SHOT_BENCHMARK_FREIGHT_INR", domain_config.HOT_SHOT_BENCHMARK_FREIGHT_INR, "LOGISTICS", "Dedicated single hot-shot air/road courier charter cost"),
+                ("FREIGHT_BASE_INR", domain_config.FREIGHT_BASE_INR, "LOGISTICS", "Minimum base dispatch fee for dedicated emergency courier"),
+                ("FREIGHT_MAX_INR", domain_config.FREIGHT_MAX_INR, "LOGISTICS", "Maximum ceiling cap on emergency charter per component"),
+                ("FREIGHT_WEIGHT_TARIFF_INR_PER_KG", domain_config.FREIGHT_WEIGHT_TARIFF_INR_PER_KG, "LOGISTICS", "Incremental weight tariff per kilogram"),
+                ("AVOIDED_PANIC_FREIGHT_INR", domain_config.AVOIDED_PANIC_FREIGHT_INR, "FINANCIAL", "Avoided panic freight cost across 3 uncoordinated courier dispatches"),
+                ("TRANSIT_DELAY_DAILY_DECAY", 0.18, "CHAOS_MODEL", "Daily logistics transit drift reduction factor"),
+            ]
+            for pkey, pval, pcat, pdesc in policies:
+                try:
+                    self.conn.execute(
+                        f"""MERGE INTO {self.schema}.POLICY_PARAMETERS tgt
+                        USING (SELECT {{pkey}}, {{pval}}, {{pcat}}, {{pdesc}}, CURRENT_TIMESTAMP FROM DUAL) AS src
+                          (policy_key, policy_value, policy_category, description, updated_at)
+                        ON tgt.policy_key = src.policy_key
+                        WHEN MATCHED THEN UPDATE SET tgt.policy_value = src.policy_value, tgt.updated_at = src.updated_at
+                        WHEN NOT MATCHED THEN INSERT VALUES (src.policy_key, src.policy_value, src.policy_category, src.description, src.updated_at)""",
+                        {"pkey": pkey, "pval": float(pval), "pcat": pcat, "pdesc": pdesc}
+                    )
+                except Exception as exc:
+                    errors.append(f"[POLICY] {pkey} -> {type(exc).__name__}: {str(exc)[:240]}")
+
             if errors:
                 raise ExasolBootstrapError(
                     f"Exasol bootstrap failed with {len(errors)} error(s):\n  - " + "\n  - ".join(errors)
@@ -531,10 +556,10 @@ class ChakanExasolClient:
         asn_joined = timed("view_asn_harmonized_lineage", f"SELECT * FROM {s}.VW_ASN_HARMONIZED_LINEAGE")
         risk_df = timed("view_bom_line_starvation_risk", f"SELECT * FROM {s}.VW_BOM_LINE_STARVATION_RISK")
         roi_view_df = timed("view_financial_roi_summary", f"SELECT * FROM {s}.VW_FINANCIAL_ROI_SUMMARY")
+        triage_queue = timed("view_triage_dispatch_queue", f"SELECT * FROM {s}.VW_TRIAGE_DISPATCH_QUEUE")
 
         ts = time.perf_counter()
         sched_df = self.tables["PRODUCTION_SCHEDULES"]
-        po_numbers = set(self.tables["PURCHASE_ORDER_LINES"]["po_number"])
         table_row_counts = {
             t: len(self.tables[t])
             for t in (
@@ -548,20 +573,32 @@ class ChakanExasolClient:
                 "ASN_PLANNER_OVERRIDES",
             )
         }
-        active_asns = asn_joined[asn_joined["po_number_ref"].isin(po_numbers)].copy()
-        triage_queue, financial_roi_mart = self._build_triage_and_roi(risk_df, active_asns, sched_df)
-        if len(roi_view_df) > 0:
-            roi_row = roi_view_df.iloc[0]
-            financial_roi_mart["legacy_risk_inr"] = float(roi_row.get("legacy_pipeline_risk_inr", financial_roi_mart["legacy_risk_inr"]))
-            financial_roi_mart["net_risk_inr"] = float(roi_row.get("net_starvation_risk_inr", financial_roi_mart["net_risk_inr"]))
-            financial_roi_mart["cleared_by_udf_inr"] = float(roi_row.get("false_alarm_value_cleared_inr", financial_roi_mart["cleared_by_udf_inr"]))
-            financial_roi_mart["total_idle_loss_inr"] = float(roi_row.get("plant_idle_overhead_at_risk_inr", financial_roi_mart["total_idle_loss_inr"]))
-            financial_roi_mart["contribution_margin_at_risk_inr"] = float(roi_row.get("contribution_margin_at_risk_inr", financial_roi_mart["contribution_margin_at_risk_inr"]))
-            financial_roi_mart["unrecoverable_stoppage_exposure_inr"] = float(roi_row.get("unrecoverable_stoppage_exposure_inr", financial_roi_mart["unrecoverable_stoppage_exposure_inr"]))
-            financial_roi_mart["total_stoppage_exposure_inr"] = float(roi_row.get("total_plant_loss_exposure_inr", financial_roi_mart["total_stoppage_exposure_inr"]))
-            financial_roi_mart["total_freight_cost_inr"] = float(roi_row.get("total_mitigation_cost_inr", financial_roi_mart["total_freight_cost_inr"]))
-            financial_roi_mart["headline_roi_x"] = float(roi_row.get("headline_mitigation_roi_x", financial_roi_mart["headline_roi_x"]))
-            financial_roi_mart["all_lines_roi_x"] = float(roi_row.get("all_lines_mitigation_roi_x", financial_roi_mart["all_lines_roi_x"]))
+        total_sched_val = float((sched_df["planned_output_units"] * sched_df["finished_unit_value_inr"]).sum())
+        roi_row = roi_view_df.iloc[0] if len(roi_view_df) > 0 else {}
+        false_alarms_cleared_count = int((triage_queue["operational_verdict"] == "FALSE_STARVATION_CLEARED_BY_UDF").sum())
+        avoided_panic_freight_total = max(
+            domain_config.AVOIDED_PANIC_FREIGHT_INR,
+            false_alarms_cleared_count * domain_config.HOT_SHOT_BENCHMARK_FREIGHT_INR,
+        )
+
+        financial_roi_mart = {
+            "total_scheduled_value_inr": total_sched_val,
+            "legacy_risk_inr": float(roi_row.get("legacy_pipeline_risk_inr", 0.0)),
+            "net_risk_inr": float(roi_row.get("net_starvation_risk_inr", 0.0)),
+            "cleared_by_udf_inr": float(roi_row.get("false_alarm_value_cleared_inr", 0.0)),
+            "total_idle_loss_inr": float(roi_row.get("plant_idle_overhead_at_risk_inr", 0.0)),
+            "contribution_margin_at_risk_inr": float(roi_row.get("contribution_margin_at_risk_inr", 0.0)),
+            "unrecoverable_stoppage_exposure_inr": float(roi_row.get("unrecoverable_stoppage_exposure_inr", 0.0)),
+            "total_stoppage_exposure_inr": float(roi_row.get("total_plant_loss_exposure_inr", 0.0)),
+            "benchmark_freight_inr": domain_config.HOT_SHOT_BENCHMARK_FREIGHT_INR,
+            "total_freight_cost_inr": float(roi_row.get("total_mitigation_cost_inr", 0.0)),
+            "headline_roi_x": float(roi_row.get("headline_mitigation_roi_x", 0.0)),
+            "all_lines_roi_x": float(roi_row.get("all_lines_mitigation_roi_x", 0.0)),
+            "contribution_margin_roi_x": round((float(roi_row.get("contribution_margin_at_risk_inr", 0.0)) - float(roi_row.get("total_mitigation_cost_inr", 0.0))) / float(roi_row.get("total_mitigation_cost_inr", 1.0)), 1) if float(roi_row.get("total_mitigation_cost_inr", 0.0)) > 0 else 0.0,
+            "total_financial_roi_x": round((float(roi_row.get("unrecoverable_stoppage_exposure_inr", 0.0)) - float(roi_row.get("total_mitigation_cost_inr", 0.0))) / float(roi_row.get("total_mitigation_cost_inr", 1.0)), 1) if float(roi_row.get("total_mitigation_cost_inr", 0.0)) > 0 else 0.0,
+            "false_alarms_cleared_count": false_alarms_cleared_count,
+            "avoided_panic_freight_inr": avoided_panic_freight_total,
+        }
         stages["python_triage_postprocess"] = round((time.perf_counter() - ts) * 1000.0, 2)
 
         elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
