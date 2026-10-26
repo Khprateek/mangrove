@@ -145,3 +145,28 @@ CREATE OR REPLACE TABLE AUDIT_LOG_LEDGER (
     prev_hash               VARCHAR(100) UTF8 NOT NULL,
     CONSTRAINT pk_audit_log PRIMARY KEY (event_id) ENABLE
 );
+
+-- 10. Dynamic Supplier Catalog Cross-Reference Master (Trade Item & Component Cross-Reference)
+CREATE OR REPLACE TABLE SUPPLIER_CATALOG_CROSS_REF (
+    cross_ref_id            VARCHAR(40) UTF8 NOT NULL,
+    supplier_id             VARCHAR(24) UTF8 NOT NULL,
+    supplier_part_num       VARCHAR(80) UTF8 NOT NULL,
+    clean_supplier_part_num VARCHAR(80) UTF8 NOT NULL,
+    internal_part_num       VARCHAR(40) UTF8 NOT NULL,
+    mapping_confidence      DECIMAL(4, 2) NOT NULL,
+    is_active               BOOLEAN NOT NULL,
+    effective_date          DATE NOT NULL,
+    CONSTRAINT pk_supplier_cross_ref PRIMARY KEY (cross_ref_id) ENABLE,
+    DISTRIBUTE BY internal_part_num
+);
+
+-- 11. In-Database What-If Simulation Context (Enables 100% In-DB Stress-Testing)
+CREATE OR REPLACE TABLE SIMULATION_PARAMETERS (
+    session_id                  VARCHAR(40) UTF8 NOT NULL,
+    transit_delay_days          DECIMAL(4, 0) NOT NULL,
+    quarantine_defect_pct       DECIMAL(6, 4) NOT NULL,
+    demand_surge_multiplier     DECIMAL(6, 4) NOT NULL,
+    updated_at                  TIMESTAMP NOT NULL,
+    CONSTRAINT pk_sim_params PRIMARY KEY (session_id) ENABLE
+);
+

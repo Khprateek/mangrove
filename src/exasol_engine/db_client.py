@@ -5,6 +5,7 @@ from decimal import Decimal
 import hashlib
 import os
 from pathlib import Path
+import re
 import time
 from typing import Any, Dict, Tuple
 from dotenv import load_dotenv
@@ -12,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from src.data_generator.generate_all import generate_dataset
+from src.exasol_engine import domain_config
 from src.exasol_engine.harmonizer_core import (
     normalize_uom_quantity,
     parse_asn_date,
@@ -84,6 +86,22 @@ class ChakanExasolClient:
             return False
 
     def ensure_data_loaded(self) -> Dict[str, pd.DataFrame]:
+        if self.tables and all(
+            k in self.tables
+            for k in (
+                "SUPPLIER_MASTER",
+                "ITEM_MASTER",
+                "BILL_OF_MATERIALS",
+                "PRODUCTION_SCHEDULES",
+                "WAREHOUSE_INVENTORY_LEDGER",
+                "PURCHASE_ORDER_LINES",
+                "ASN_LINES_RAW",
+                "ASN_PLANNER_OVERRIDES",
+                "SUPPLIER_CATALOG_CROSS_REF",
+            )
+        ):
+            return self.tables
+
         required_files = [
             "supplier_master.csv",
             "item_master.csv",
@@ -93,6 +111,7 @@ class ChakanExasolClient:
             "purchase_order_lines.csv",
             "asn_lines_raw.csv",
             "asn_planner_overrides.csv",
+            "supplier_catalog_cross_ref.csv",
         ]
         if not all((self.data_dir / f).exists() for f in required_files):
             self.tables = generate_dataset(output_dir=str(self.data_dir))
@@ -273,20 +292,25 @@ class ChakanExasolClient:
                 return "FALSE_STARVATION_CLEARED_BY_UDF"
             return "HARMONIZED_BUFFER_RESTORED"
 
-        triage_queue["operational_verdict"] = triage_queue.apply(classify_operational_outcome, axis=1)
-        triage_queue["mitigation_roi_x"] = np.maximum(
-            0.0,
-            np.where(
-                (triage_queue["expedited_freight_cost_inr"] > 0) & (triage_queue["revenue_at_risk_net_inr"] > 0),
-                ((triage_queue["revenue_at_risk_net_inr"] - triage_queue["expedited_freight_cost_inr"]) / triage_queue["expedited_freight_cost_inr"]).round(1),
+        if len(triage_queue) == 0:
+            triage_queue["operational_verdict"] = pd.Series(dtype=object)
+            triage_queue["mitigation_roi_x"] = pd.Series(dtype=float)
+            triage_queue["avoided_panic_freight_inr"] = pd.Series(dtype=float)
+        else:
+            triage_queue["operational_verdict"] = triage_queue.apply(classify_operational_outcome, axis=1)
+            triage_queue["mitigation_roi_x"] = np.maximum(
                 0.0,
-            ),
-        )
-        triage_queue["avoided_panic_freight_inr"] = np.where(
-            triage_queue["operational_verdict"] == "FALSE_STARVATION_CLEARED_BY_UDF",
-            45000.0,
-            0.0,
-        )
+                np.where(
+                    (triage_queue["expedited_freight_cost_inr"] > 0) & (triage_queue["plant_idle_cost_inr"] > 0),
+                    ((triage_queue["plant_idle_cost_inr"] - triage_queue["expedited_freight_cost_inr"]) / triage_queue["expedited_freight_cost_inr"]).round(1),
+                    0.0,
+                ),
+            )
+            triage_queue["avoided_panic_freight_inr"] = np.where(
+                triage_queue["operational_verdict"] == "FALSE_STARVATION_CLEARED_BY_UDF",
+                45000.0,
+                0.0,
+            )
         triage_queue = triage_queue.sort_values(
             by=["revenue_at_risk_legacy_inr", "true_net_deficit_qty"], ascending=[False, False]
         )
@@ -299,12 +323,18 @@ class ChakanExasolClient:
         total_idle_loss = float(risk_df["plant_idle_cost_inr"].sum())
         total_stoppage_loss = float(risk_df["total_stoppage_exposure_inr"].sum())
         total_freight_cost = float(risk_df["expedited_freight_cost_inr"].sum())
-        benchmark_freight_inr = 45000.0
-        headline_roi_x = round((net_risk - benchmark_freight_inr) / benchmark_freight_inr, 1)
-        all_lines_roi_x = round((net_risk - total_freight_cost) / total_freight_cost, 1) if total_freight_cost > 0 else 0.0
-        total_financial_roi_x = round((total_stoppage_loss - total_freight_cost) / total_freight_cost, 1) if total_freight_cost > 0 else 0.0
+        benchmark_freight_inr = domain_config.HOT_SHOT_BENCHMARK_FREIGHT_INR
+        # Manufacturing Economics: Unrecoverable factory idle burn + 15% operating contribution margin
+        contribution_margin_inr = round(net_risk * domain_config.EBITDA_MARGIN_RATIO, 2)
+        unrecoverable_stoppage_inr = round(total_idle_loss + contribution_margin_inr, 2)
+
+        # Realistic Industrial ROI: Avoided unrecoverable plant idle loss vs total expedited freight
+        headline_roi_x = round((total_idle_loss - benchmark_freight_inr) / benchmark_freight_inr, 1) if benchmark_freight_inr > 0 else 0.0
+        all_lines_roi_x = round((total_idle_loss - total_freight_cost) / total_freight_cost, 1) if total_freight_cost > 0 else 0.0
+        contribution_margin_roi_x = round((contribution_margin_inr - total_freight_cost) / total_freight_cost, 1) if total_freight_cost > 0 else 0.0
+        total_financial_roi_x = round((unrecoverable_stoppage_inr - total_freight_cost) / total_freight_cost, 1) if total_freight_cost > 0 else 0.0
         false_alarms_cleared_count = int((triage_queue["operational_verdict"] == "FALSE_STARVATION_CLEARED_BY_UDF").sum())
-        avoided_panic_freight_total = max(135000.0, false_alarms_cleared_count * benchmark_freight_inr)
+        avoided_panic_freight_total = max(domain_config.AVOIDED_PANIC_FREIGHT_INR, false_alarms_cleared_count * benchmark_freight_inr)
 
         financial_roi_mart = {
             "total_scheduled_value_inr": total_sched_val,
@@ -312,11 +342,14 @@ class ChakanExasolClient:
             "net_risk_inr": net_risk,
             "cleared_by_udf_inr": cleared_val,
             "total_idle_loss_inr": total_idle_loss,
+            "contribution_margin_at_risk_inr": contribution_margin_inr,
+            "unrecoverable_stoppage_exposure_inr": unrecoverable_stoppage_inr,
             "total_stoppage_exposure_inr": total_stoppage_loss,
             "benchmark_freight_inr": benchmark_freight_inr,
             "total_freight_cost_inr": total_freight_cost,
             "headline_roi_x": headline_roi_x,
             "all_lines_roi_x": all_lines_roi_x,
+            "contribution_margin_roi_x": contribution_margin_roi_x,
             "total_financial_roi_x": total_financial_roi_x,
             "false_alarms_cleared_count": false_alarms_cleared_count,
             "avoided_panic_freight_inr": avoided_panic_freight_total,
@@ -373,7 +406,8 @@ class ChakanExasolClient:
                 "parent_part_num",
             ],
             "colocation_status": "CO_LOCATED_ACTIVE" if in_exasol else "MIRROR_IN_PROCESS",
-            "mpp_network_hops": 0,
+            "cluster_nodes": 1,  # Single-node Exasol Personal Docker container
+            "inter_node_hops": 0,  # Zero inter-node hops on single-node shared RAM
             "ram_cache_status": "HOT_COLUMNAR_RAM" if in_exasol else "APP_PROCESS_MEMORY",
             "udf_engine": "PYTHON3_IN_DB_RAM" if in_exasol else "PYTHON_APP_PROCESS",
             "schema": self.schema,
@@ -387,7 +421,48 @@ class ChakanExasolClient:
             "latency_stages_ms": stages,
         }
 
-    def _compute_marts_from_exasol(self) -> Dict[str, Any]:
+    def _sync_simulation_parameters_to_exasol(
+        self,
+        transit_delay_days: int = 0,
+        quarantine_defect_pct: float = 0.0,
+        demand_surge_multiplier: float = 1.0,
+    ) -> None:
+        """Syncs simulation scenario parameters into Exasol SIMULATION_PARAMETERS table via atomic MERGE."""
+        if self.conn is None:
+            return
+        try:
+            merge_sql = f"""
+            MERGE INTO {self.schema}.SIMULATION_PARAMETERS tgt
+            USING (VALUES ('GLOBAL_SESSION', {{transit_delay_days}}, {{quarantine_defect_pct}}, {{demand_surge_multiplier}}, CURRENT_TIMESTAMP)) AS src (
+                session_id, transit_delay_days, quarantine_defect_pct, demand_surge_multiplier, updated_at
+            )
+            ON tgt.session_id = src.session_id
+            WHEN MATCHED THEN UPDATE SET
+                tgt.transit_delay_days = src.transit_delay_days,
+                tgt.quarantine_defect_pct = src.quarantine_defect_pct,
+                tgt.demand_surge_multiplier = src.demand_surge_multiplier,
+                tgt.updated_at = src.updated_at
+            WHEN NOT MATCHED THEN INSERT VALUES (
+                src.session_id, src.transit_delay_days, src.quarantine_defect_pct, src.demand_surge_multiplier, src.updated_at
+            )
+            """
+            self.conn.execute(
+                merge_sql,
+                {
+                    "transit_delay_days": int(transit_delay_days),
+                    "quarantine_defect_pct": float(quarantine_defect_pct),
+                    "demand_surge_multiplier": float(demand_surge_multiplier),
+                },
+            )
+        except Exception:
+            pass
+
+    def _compute_marts_from_exasol(
+        self,
+        transit_delay_days: int = 0,
+        quarantine_defect_pct: float = 0.0,
+        demand_surge_multiplier: float = 1.0,
+    ) -> Dict[str, Any]:
         """
         Baseline marts computed BY Exasol: inventory ATP, UDF-harmonized ASN lineage and BOM
         starvation risk are read from the deployed views (which invoke the Python3 UDFs and
@@ -402,6 +477,13 @@ class ChakanExasolClient:
         s = self.schema
         stages: Dict[str, float] = {}
 
+        # 1. Sync simulation parameters into Exasol memory so SQL views evaluate them in-database
+        self._sync_simulation_parameters_to_exasol(
+            transit_delay_days=transit_delay_days,
+            quarantine_defect_pct=quarantine_defect_pct,
+            demand_surge_multiplier=demand_surge_multiplier,
+        )
+
         def timed(name: str, sql: str) -> pd.DataFrame:
             ts = time.perf_counter()
             df = self._fetch_df(sql)
@@ -411,6 +493,7 @@ class ChakanExasolClient:
         inv_mart = timed("view_inventory_true_atp", f"SELECT * FROM {s}.VW_INVENTORY_TRUE_ATP")
         asn_joined = timed("view_asn_harmonized_lineage", f"SELECT * FROM {s}.VW_ASN_HARMONIZED_LINEAGE")
         risk_df = timed("view_bom_line_starvation_risk", f"SELECT * FROM {s}.VW_BOM_LINE_STARVATION_RISK")
+        roi_view_df = timed("view_financial_roi_summary", f"SELECT * FROM {s}.VW_FINANCIAL_ROI_SUMMARY")
 
         ts = time.perf_counter()
         sched_df = self.tables["PRODUCTION_SCHEDULES"]
@@ -430,10 +513,26 @@ class ChakanExasolClient:
         }
         active_asns = asn_joined[asn_joined["po_number_ref"].isin(po_numbers)].copy()
         triage_queue, financial_roi_mart = self._build_triage_and_roi(risk_df, active_asns, sched_df)
+        if len(roi_view_df) > 0:
+            roi_row = roi_view_df.iloc[0]
+            financial_roi_mart["legacy_risk_inr"] = float(roi_row.get("legacy_pipeline_risk_inr", financial_roi_mart["legacy_risk_inr"]))
+            financial_roi_mart["net_risk_inr"] = float(roi_row.get("net_starvation_risk_inr", financial_roi_mart["net_risk_inr"]))
+            financial_roi_mart["cleared_by_udf_inr"] = float(roi_row.get("false_alarm_value_cleared_inr", financial_roi_mart["cleared_by_udf_inr"]))
+            financial_roi_mart["total_idle_loss_inr"] = float(roi_row.get("plant_idle_overhead_at_risk_inr", financial_roi_mart["total_idle_loss_inr"]))
+            financial_roi_mart["contribution_margin_at_risk_inr"] = float(roi_row.get("contribution_margin_at_risk_inr", financial_roi_mart["contribution_margin_at_risk_inr"]))
+            financial_roi_mart["unrecoverable_stoppage_exposure_inr"] = float(roi_row.get("unrecoverable_stoppage_exposure_inr", financial_roi_mart["unrecoverable_stoppage_exposure_inr"]))
+            financial_roi_mart["total_stoppage_exposure_inr"] = float(roi_row.get("total_plant_loss_exposure_inr", financial_roi_mart["total_stoppage_exposure_inr"]))
+            financial_roi_mart["total_freight_cost_inr"] = float(roi_row.get("total_mitigation_cost_inr", financial_roi_mart["total_freight_cost_inr"]))
+            financial_roi_mart["headline_roi_x"] = float(roi_row.get("headline_mitigation_roi_x", financial_roi_mart["headline_roi_x"]))
+            financial_roi_mart["all_lines_roi_x"] = float(roi_row.get("all_lines_mitigation_roi_x", financial_roi_mart["all_lines_roi_x"]))
         stages["python_triage_postprocess"] = round((time.perf_counter() - ts) * 1000.0, 2)
 
         elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
-        sim_params = {"transit_delay_days": 0, "quarantine_defect_pct": 0.0, "demand_surge_multiplier": 1.0}
+        sim_params = {
+            "transit_delay_days": int(transit_delay_days),
+            "quarantine_defect_pct": float(quarantine_defect_pct),
+            "demand_surge_multiplier": float(demand_surge_multiplier),
+        }
         telemetry = self._make_telemetry(
             "EXASOL_VIEWS", elapsed_ms, stages, table_row_counts, table_row_counts["ASN_LINES_RAW"], sim_params
         )
@@ -474,12 +573,9 @@ class ChakanExasolClient:
         )
         if source not in ("auto", "exasol", "pandas"):
             raise ValueError(f"Unknown source '{source}'")
-        if source == "exasol" and sim_active:
-            raise ValueError("Simulation parameters are modeled client-side; use source='pandas' or 'auto'.")
-
-        if source == "exasol" or (source == "auto" and not sim_active and self.conn is not None):
+        if source == "exasol" or (source == "auto" and self.conn is not None):
             try:
-                result = self._compute_marts_from_exasol()
+                result = self._compute_marts_from_exasol(transit_delay_days, quarantine_defect_pct, demand_surge_multiplier)
                 self.last_fallback_reason = None
                 return result
             except Exception as exc:
@@ -573,6 +669,16 @@ class ChakanExasolClient:
             else ["DD/MM/YYYY"] * len(asn_joined)
         )
 
+        xref_df = self.tables.get("SUPPLIER_CATALOG_CROSS_REF", pd.DataFrame())
+        catalog_map: Dict[str, str] = {}
+        if len(xref_df) > 0:
+            active_xref = xref_df[xref_df.get("is_active", True) == True] if "is_active" in xref_df.columns else xref_df
+            for _, r in active_xref.iterrows():
+                clean_k = re.sub(r"[^A-Z0-9]", "", str(r.get("clean_supplier_part_num", r.get("supplier_part_num", ""))).strip().upper())
+                clean_v = str(r.get("internal_part_num", "")).strip().upper()
+                if clean_k and clean_v:
+                    catalog_map[clean_k] = clean_v
+
         sku_cache = {}
         date_cache = {}
         uom_cache = {}
@@ -592,7 +698,7 @@ class ChakanExasolClient:
             ref_part = str(po_part) if pd.notna(po_part) else None
             sku_k = (raw_sku, ref_part)
             if sku_k not in sku_cache:
-                sku_cache[sku_k] = resolve_supplier_sku(raw_sku, ref_part)
+                sku_cache[sku_k] = resolve_supplier_sku(raw_sku, ref_part, catalog_map=catalog_map)
             res_sku, method, conf = sku_cache[sku_k]
 
             if line_id in ov_lookup and pd.notna(ov_lookup[line_id].get("resolved_part_num")):
@@ -664,21 +770,25 @@ class ChakanExasolClient:
             active_asns["harmonized_shipped_qty"] = (active_asns["harmonized_shipped_qty"] * inbound_factor).round(2)
             active_asns["legacy_visible_qty"] = (active_asns["legacy_visible_qty"] * inbound_factor).round(2)
 
-        po_rollup = (
-            active_asns.groupby("po_number_ref", as_index=False)
+        # Multi-line PO cartesian fix: group active ASNs by composite key
+        active_asns["po_line_join_key"] = active_asns["po_line_number_ref"].fillna(1).astype(int)
+        po_asn_agg = (
+            active_asns.groupby(["po_number_ref", "resolved_part_num", "po_line_join_key"], as_index=False)
             .agg(
                 legacy_inbound_qty=("legacy_visible_qty", "sum"),
                 harmonized_inbound_qty=("harmonized_shipped_qty", "sum"),
                 asn_shipment_count=("asn_line_id", "count"),
             )
-            .rename(columns={"po_number_ref": "po_number"})
         )
-
-        po_merged = po_df.merge(po_rollup, on="po_number", how="left").fillna(
-            {"legacy_inbound_qty": 0.0, "harmonized_inbound_qty": 0.0, "asn_shipment_count": 0}
+        po_merged = po_df.merge(
+            po_asn_agg,
+            left_on=["po_number", "internal_part_num", "line_number"],
+            right_on=["po_number_ref", "resolved_part_num", "po_line_join_key"],
+            how="left",
         )
-        po_merged = (
-            po_merged.groupby("internal_part_num", as_index=False)
+        po_rollup = (
+            po_merged[po_merged["po_line_status"] == "OPEN"]
+            .groupby("internal_part_num", as_index=False)
             .agg(
                 po_number=("po_number", "first"),
                 supplier_id=("supplier_id", "first"),
@@ -687,6 +797,9 @@ class ChakanExasolClient:
                 harmonized_inbound_qty=("harmonized_inbound_qty", "sum"),
             )
         )
+        po_rollup["legacy_inbound_qty"] = po_rollup["legacy_inbound_qty"].fillna(0.0)
+        po_rollup["harmonized_inbound_qty"] = po_rollup["harmonized_inbound_qty"].fillna(0.0)
+        po_merged = po_rollup
 
         bom_lvl1 = bom_df[bom_df["bom_level"] == 1].copy()
         risk_df = (
@@ -729,7 +842,7 @@ class ChakanExasolClient:
         risk_df["gross_required_qty"] = (
             risk_df["planned_output_units"] * risk_df["qty_per_assembly"] * (1.0 + risk_df["scrap_allowance_pct"])
         ).round(2)
-        risk_df["hourly_burn_qty"] = (risk_df["gross_required_qty"] / 48.0).round(2)
+        risk_df["hourly_burn_qty"] = (risk_df["gross_required_qty"] / domain_config.PLANNING_HORIZON_HOURS).round(2)
 
         # Notice how ERP Apparent Stock tricks the planner if they ignore Phantom Inventory
         risk_df["erp_blind_available_qty"] = risk_df["erp_apparent_atp_qty"] + risk_df["legacy_inbound_qty"]
@@ -766,17 +879,17 @@ class ChakanExasolClient:
         ).round(2)
 
         # Plant Downtime & Financial Exposure Math
-        risk_df["downtime_hours_net"] = np.maximum(0.0, 48.0 - risk_df["hours_to_starvation_harmonized"]).round(1)
+        risk_df["downtime_hours_net"] = np.maximum(0.0, domain_config.PLANNING_HORIZON_HOURS - risk_df["hours_to_starvation_harmonized"]).round(1)
         risk_df["plant_idle_cost_inr"] = (risk_df["downtime_hours_net"] * risk_df["downtime_burn_rate_inr_hr"]).round(2)
         risk_df["total_stoppage_exposure_inr"] = (risk_df["revenue_at_risk_net_inr"] + risk_df["plant_idle_cost_inr"]).round(2)
         risk_df["expedited_freight_cost_inr"] = np.where(
             risk_df["true_net_deficit_qty"] > 0,
-            np.clip(25000.0 + risk_df["true_net_deficit_qty"] * risk_df["unit_weight_kg"] * 4.5, 25000.0, 75000.0).round(2),
+            np.clip(domain_config.FREIGHT_BASE_INR + risk_df["true_net_deficit_qty"] * risk_df["unit_weight_kg"] * domain_config.FREIGHT_WEIGHT_TARIFF_INR_PER_KG, domain_config.FREIGHT_BASE_INR, domain_config.FREIGHT_MAX_INR).round(2),
             0.0,
         )
         risk_df["mitigation_roi_ratio"] = np.where(
             risk_df["expedited_freight_cost_inr"] > 0,
-            ((risk_df["revenue_at_risk_net_inr"] - risk_df["expedited_freight_cost_inr"]) / risk_df["expedited_freight_cost_inr"]).round(1),
+            ((risk_df["plant_idle_cost_inr"] - risk_df["expedited_freight_cost_inr"]) / risk_df["expedited_freight_cost_inr"]).round(1),
             0.0,
         )
 
@@ -822,13 +935,14 @@ class ChakanExasolClient:
         transit_delay_days: int = 0,
         quarantine_defect_pct: float = 0.0,
         demand_surge_multiplier: float = 1.0,
+        source: str = "auto",
     ) -> Dict[str, Any]:
         """
         Computes side-by-side comparative analytics: Baseline state vs Simulated Chaos state.
         Demonstrates Exasol in-memory sub-second recalculation under dynamic supply chain disruptions.
         """
-        baseline = self.compute_analytical_marts(0, 0.0, 1.0, source="pandas")
-        simulated = self.compute_analytical_marts(transit_delay_days, quarantine_defect_pct, demand_surge_multiplier, source="pandas")
+        baseline = self.compute_analytical_marts(0, 0.0, 1.0, source=source)
+        simulated = self.compute_analytical_marts(transit_delay_days, quarantine_defect_pct, demand_surge_multiplier, source=source)
 
         base_net = float(baseline["financial_roi_mart"]["net_risk_inr"])
         sim_net = float(simulated["financial_roi_mart"]["net_risk_inr"])
@@ -842,9 +956,9 @@ class ChakanExasolClient:
         sim_min_hrs = float(simulated["bom_risk_mart"]["hours_to_starvation_harmonized"].min())
         delta_hrs = round(sim_min_hrs - base_min_hrs, 1)
 
-        step1_delay = self.compute_analytical_marts(transit_delay_days, 0.0, 1.0, source="pandas")
+        step1_delay = self.compute_analytical_marts(transit_delay_days, 0.0, 1.0, source=source)
         step2_delay_quarantine = self.compute_analytical_marts(
-            transit_delay_days, quarantine_defect_pct, 1.0, source="pandas"
+            transit_delay_days, quarantine_defect_pct, 1.0, source=source
         )
 
         s0 = round(base_net, 2)
@@ -1004,11 +1118,49 @@ class ChakanExasolClient:
 
         if self.conn is not None:
             try:
-                self.conn.execute(
-                    f"DELETE FROM {self.schema}.ASN_PLANNER_OVERRIDES WHERE asn_line_id = {{asn_line_id}}",
-                    {"asn_line_id": asn_line_id},
+                merge_sql = f"""
+                MERGE INTO {self.schema}.ASN_PLANNER_OVERRIDES tgt
+                USING (
+                    VALUES (
+                        {{asn_line_id}},
+                        {{resolved_part_num}},
+                        {{normalized_qty}},
+                        {{normalized_uom}},
+                        CAST({{normalized_eta_date}} AS DATE),
+                        {{resolution_action}},
+                        {{resolved_by}},
+                        CURRENT_TIMESTAMP
+                    )
+                ) AS src (
+                    asn_line_id, resolved_part_num, normalized_qty, normalized_uom,
+                    normalized_eta_date, resolution_action, resolved_by, resolved_at
                 )
-                self.conn.import_from_pandas(new_row, (self.schema, "ASN_PLANNER_OVERRIDES"))
+                ON tgt.asn_line_id = src.asn_line_id
+                WHEN MATCHED THEN UPDATE SET
+                    tgt.resolved_part_num = src.resolved_part_num,
+                    tgt.normalized_qty = src.normalized_qty,
+                    tgt.normalized_uom = src.normalized_uom,
+                    tgt.normalized_eta_date = src.normalized_eta_date,
+                    tgt.resolution_action = src.resolution_action,
+                    tgt.resolved_by = src.resolved_by,
+                    tgt.resolved_at = src.resolved_at
+                WHEN NOT MATCHED THEN INSERT VALUES (
+                    src.asn_line_id, src.resolved_part_num, src.normalized_qty, src.normalized_uom,
+                    src.normalized_eta_date, src.resolution_action, src.resolved_by, src.resolved_at
+                )
+                """
+                self.conn.execute(
+                    merge_sql,
+                    {
+                        "asn_line_id": str(asn_line_id),
+                        "resolved_part_num": str(resolved_part_num),
+                        "normalized_qty": float(normalized_qty),
+                        "normalized_uom": str(normalized_uom),
+                        "normalized_eta_date": str(normalized_eta_date),
+                        "resolution_action": str(action),
+                        "resolved_by": str(user),
+                    },
+                )
             except Exception as exc:
                 raise ExasolWriteError(f"Planner override for {asn_line_id} could not be written to Exasol: {exc}") from exc
 

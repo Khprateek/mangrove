@@ -266,6 +266,33 @@ def generate_purchase_orders() -> pd.DataFrame:
     return pd.DataFrame(po_rows, columns=columns)
 
 
+def generate_supplier_catalog_cross_ref() -> pd.DataFrame:
+    base_day = date(2026, 1, 1)
+    records = [
+        ("XREF-001", "SUP-T2-204", "6204ZZ", "6204ZZ", "ENG-BRG-6204-01", 0.95, True, base_day),
+        ("XREF-002", "SUP-T2-204", "FBD6204ZZ", "FBD6204ZZ", "ENG-BRG-6204-01", 0.95, True, base_day),
+        ("XREF-003", "SUP-T2-203", "M12X15HT109", "M12X15HT109", "ENG-BLT-M12-109", 0.95, True, base_day),
+        ("XREF-004", "SUP-T2-202", "42CRCONROD04", "42CRCONROD04", "ENG-CRD-42CR-04", 0.95, True, base_day),
+        ("XREF-005", "SUP-T2-205", "HSRHEL34", "HSRHEL34", "TRN-GER-HEL-34", 0.95, True, base_day),
+        ("XREF-006", "SUP-T2-207", "DUCHUB14", "DUCHUB14", "AXL-HUB-DUC-14", 0.95, True, base_day),
+        ("XREF-007", "SUP-T3-302", "FKM85SEAL", "FKM85SEAL", "AXL-SEL-FKM-85", 0.95, True, base_day),
+        ("XREF-008", "SUP-T2-208", "STALAM01SIL", "STALAM01SIL", "EVC-STA-LAM-01", 0.95, True, base_day),
+        ("XREF-009", "SUP-T3-303", "CUHAIRPIN04", "CUHAIRPIN04", "EVC-WND-CU-04", 0.95, True, base_day),
+        ("XREF-010", "SUP-T3-301", "42CRMO4BILLET", "42CRMO4BILLET", "RAW-STL-42CR-B", 0.95, True, base_day),
+    ]
+    columns = [
+        "cross_ref_id",
+        "supplier_id",
+        "supplier_part_num",
+        "clean_supplier_part_num",
+        "internal_part_num",
+        "mapping_confidence",
+        "is_active",
+        "effective_date",
+    ]
+    return pd.DataFrame(records, columns=columns)
+
+
 def build_all_erp_tables(seed: int = 202610) -> Dict[str, pd.DataFrame]:
     rng = np.random.default_rng(seed)
     return {
@@ -275,4 +302,5 @@ def build_all_erp_tables(seed: int = 202610) -> Dict[str, pd.DataFrame]:
         "PRODUCTION_SCHEDULES": generate_production_schedules(),
         "WAREHOUSE_INVENTORY_LEDGER": generate_warehouse_inventory_ledger(),
         "PURCHASE_ORDER_LINES": generate_purchase_orders(),
+        "SUPPLIER_CATALOG_CROSS_REF": generate_supplier_catalog_cross_ref(),
     }

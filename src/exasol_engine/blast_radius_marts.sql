@@ -39,7 +39,7 @@ WITH deduplicated_asn AS (
         ) AS transmission_seq
     FROM CHAKAN_SCM.ASN_LINES_RAW a
 ),
-sku_resolved AS (
+asn_prep AS (
     SELECT
         d.asn_line_id,
         d.asn_number,
@@ -64,13 +64,137 @@ sku_resolved AS (
         s.supplier_name,
         s.tier_level,
         s.default_date_format,
-        CHAKAN_SCM.UDF_RESOLVE_SUPPLIER_SKU(d.raw_supplier_sku, p.internal_part_num)
+        xref.internal_part_num AS catalog_part_num
     FROM deduplicated_asn d
     LEFT JOIN CHAKAN_SCM.PURCHASE_ORDER_LINES p
         ON d.po_number_ref = p.po_number
        AND COALESCE(d.po_line_number_ref, 1) = p.line_number
     LEFT JOIN CHAKAN_SCM.SUPPLIER_MASTER s
         ON d.supplier_id = s.supplier_id
+    LEFT JOIN CHAKAN_SCM.SUPPLIER_CATALOG_CROSS_REF xref
+        ON (xref.supplier_id = d.supplier_id OR xref.supplier_id = 'GLOBAL')
+       AND REGEXP_REPLACE(UPPER(TRIM(d.raw_supplier_sku)), '[^A-Z0-9]', '') = xref.clean_supplier_part_num
+       AND xref.is_active = TRUE
+),
+-- Fast Path: Direct SQL relational matches (zero Python UDF / IPC overhead)
+sku_fast_path AS (
+    SELECT
+        a.asn_line_id,
+        a.asn_number,
+        a.supplier_id,
+        a.po_number_ref,
+        a.po_line_number_ref,
+        a.raw_supplier_sku,
+        a.raw_shipped_qty,
+        a.raw_shipped_uom,
+        a.raw_shipment_date,
+        a.raw_eta_date,
+        a.carrier_name,
+        a.vehicle_lorry_no,
+        a.source_format,
+        a.legacy_etl_status,
+        a.anomaly_type,
+        a.ingested_at,
+        a.transmission_seq,
+        a.po_part_num,
+        a.po_ordered_qty,
+        a.po_ordered_uom,
+        a.supplier_name,
+        a.tier_level,
+        a.default_date_format,
+        CASE
+            WHEN a.catalog_part_num IS NOT NULL THEN a.catalog_part_num
+            ELSE a.po_part_num
+        END AS resolved_part_num,
+        CASE
+            WHEN a.catalog_part_num IS NOT NULL THEN 'VENDOR_CATALOG_ALIAS'
+            WHEN UPPER(TRIM(a.raw_supplier_sku)) = UPPER(TRIM(a.po_part_num)) THEN 'EXACT_MATCH'
+            ELSE 'HYPHEN_NORMALIZED'
+        END AS sku_match_method,
+        CASE
+            WHEN a.catalog_part_num IS NOT NULL THEN 0.95
+            WHEN UPPER(TRIM(a.raw_supplier_sku)) = UPPER(TRIM(a.po_part_num)) THEN 1.00
+            ELSE 0.98
+        END AS sku_confidence
+    FROM asn_prep a
+    WHERE a.catalog_part_num IS NOT NULL
+       OR (a.po_part_num IS NOT NULL AND (
+           UPPER(TRIM(a.raw_supplier_sku)) = UPPER(TRIM(a.po_part_num))
+           OR REGEXP_REPLACE(UPPER(TRIM(a.raw_supplier_sku)), '[^A-Z0-9]', '') = REGEXP_REPLACE(UPPER(TRIM(a.po_part_num)), '[^A-Z0-9]', '')
+       ))
+),
+-- Fallback Path: Only unmapped or drift rows pass into In-DB Python UDF
+sku_udf_input AS (
+    SELECT
+        a.asn_line_id,
+        a.asn_number,
+        a.supplier_id,
+        a.po_number_ref,
+        a.po_line_number_ref,
+        a.raw_supplier_sku,
+        a.raw_shipped_qty,
+        a.raw_shipped_uom,
+        a.raw_shipment_date,
+        a.raw_eta_date,
+        a.carrier_name,
+        a.vehicle_lorry_no,
+        a.source_format,
+        a.legacy_etl_status,
+        a.anomaly_type,
+        a.ingested_at,
+        a.transmission_seq,
+        a.po_part_num,
+        a.po_ordered_qty,
+        a.po_ordered_uom,
+        a.supplier_name,
+        a.tier_level,
+        a.default_date_format
+    FROM asn_prep a
+    WHERE a.catalog_part_num IS NULL
+      AND (
+          a.po_part_num IS NULL
+          OR (
+              UPPER(TRIM(a.raw_supplier_sku)) != UPPER(TRIM(a.po_part_num))
+              AND REGEXP_REPLACE(UPPER(TRIM(a.raw_supplier_sku)), '[^A-Z0-9]', '') != REGEXP_REPLACE(UPPER(TRIM(a.po_part_num)), '[^A-Z0-9]', '')
+          )
+      )
+),
+sku_udf_resolved AS (
+    SELECT
+        u.asn_line_id,
+        u.asn_number,
+        u.supplier_id,
+        u.po_number_ref,
+        u.po_line_number_ref,
+        u.raw_supplier_sku,
+        u.raw_shipped_qty,
+        u.raw_shipped_uom,
+        u.raw_shipment_date,
+        u.raw_eta_date,
+        u.carrier_name,
+        u.vehicle_lorry_no,
+        u.source_format,
+        u.legacy_etl_status,
+        u.anomaly_type,
+        u.ingested_at,
+        u.transmission_seq,
+        u.po_part_num,
+        u.po_ordered_qty,
+        u.po_ordered_uom,
+        u.supplier_name,
+        u.tier_level,
+        u.default_date_format,
+        CHAKAN_SCM.UDF_RESOLVE_SUPPLIER_SKU(
+            u.raw_supplier_sku,
+            u.po_part_num,
+            NULL
+        )
+    FROM sku_udf_input u
+),
+sku_resolved AS (
+    SELECT * FROM sku_fast_path
+    UNION ALL
+    SELECT * FROM sku_udf_resolved
 )
 SELECT
     sr.asn_line_id,
@@ -131,23 +255,62 @@ LEFT JOIN CHAKAN_SCM.ASN_PLANNER_OVERRIDES ov
 
 -- 3. BOM Explosion & Assembly Line Starvation Risk View
 CREATE OR REPLACE VIEW CHAKAN_SCM.VW_BOM_LINE_STARVATION_RISK AS
-WITH po_asn_rollup AS (
+WITH sim_params AS (
     SELECT
-        p.internal_part_num,
-        MIN(p.po_number) AS po_number,
-        MIN(p.supplier_id) AS supplier_id,
-        SUM(p.ordered_qty) AS po_ordered_qty,
-        MIN(p.ordered_uom) AS ordered_uom,
-        MIN(p.promised_delivery_date) AS promised_delivery_date,
-        COALESCE(SUM(h.legacy_visible_qty), 0.0) AS legacy_inbound_qty,
-        COALESCE(SUM(h.harmonized_shipped_qty), 0.0) AS harmonized_inbound_qty,
-        COUNT(h.asn_line_id) AS asn_shipment_count
-    FROM CHAKAN_SCM.PURCHASE_ORDER_LINES p
-    LEFT JOIN CHAKAN_SCM.VW_ASN_HARMONIZED_LINEAGE h
-        ON p.po_number = h.po_number_ref
-    WHERE p.po_line_status = 'OPEN'
+        COALESCE(MAX(transit_delay_days), 0) AS sim_transit_delay_days,
+        COALESCE(MAX(quarantine_defect_pct), 0.0) AS sim_quarantine_defect_pct,
+        COALESCE(MAX(demand_surge_multiplier), 1.0) AS sim_demand_surge_multiplier
+    FROM CHAKAN_SCM.SIMULATION_PARAMETERS
+),
+asn_line_agg AS (
+    SELECT
+        po_number_ref,
+        resolved_part_num,
+        COALESCE(po_line_number_ref, 1) AS po_line_number_ref,
+        SUM(legacy_visible_qty) AS legacy_inbound_qty,
+        SUM(harmonized_shipped_qty) AS harmonized_inbound_qty,
+        COUNT(asn_line_id) AS asn_shipment_count
+    FROM CHAKAN_SCM.VW_ASN_HARMONIZED_LINEAGE
     GROUP BY
-        p.internal_part_num
+        po_number_ref,
+        resolved_part_num,
+        COALESCE(po_line_number_ref, 1)
+),
+po_lines_matched AS (
+    SELECT
+        p.po_line_id,
+        p.po_number,
+        p.line_number,
+        p.supplier_id,
+        p.internal_part_num,
+        p.ordered_qty,
+        p.ordered_uom,
+        p.promised_delivery_date,
+        p.po_line_status,
+        COALESCE(a.legacy_inbound_qty, 0.0) AS legacy_inbound_qty,
+        COALESCE(a.harmonized_inbound_qty, 0.0) AS harmonized_inbound_qty,
+        COALESCE(a.asn_shipment_count, 0) AS asn_shipment_count
+    FROM CHAKAN_SCM.PURCHASE_ORDER_LINES p
+    LEFT JOIN asn_line_agg a
+        ON p.po_number = a.po_number_ref
+       AND p.internal_part_num = a.resolved_part_num
+       AND p.line_number = a.po_line_number_ref
+    WHERE p.po_line_status = 'OPEN'
+),
+po_asn_rollup AS (
+    SELECT
+        internal_part_num,
+        MIN(po_number) AS po_number,
+        MIN(supplier_id) AS supplier_id,
+        SUM(ordered_qty) AS po_ordered_qty,
+        MIN(ordered_uom) AS ordered_uom,
+        MIN(promised_delivery_date) AS promised_delivery_date,
+        SUM(legacy_inbound_qty) AS legacy_inbound_qty,
+        SUM(harmonized_inbound_qty) AS harmonized_inbound_qty,
+        SUM(asn_shipment_count) AS asn_shipment_count
+    FROM po_lines_matched
+    GROUP BY
+        internal_part_num
 ),
 base_bom AS (
     SELECT
@@ -155,7 +318,7 @@ base_bom AS (
         ps.assembly_line_id,
         ps.assembly_line_name,
         ps.parent_part_num,
-        ps.planned_output_units,
+        ROUND(ps.planned_output_units * sp.sim_demand_surge_multiplier, 0) AS planned_output_units,
         ps.finished_unit_value_inr,
         ps.downtime_burn_rate_inr_hr,
         b.component_part_num,
@@ -168,20 +331,49 @@ base_bom AS (
         im.standard_cost_inr,
         b.assembly_station_code,
         b.qty_per_assembly,
-        ROUND(ps.planned_output_units * b.qty_per_assembly * (1.0 + b.scrap_allowance_pct), 2) AS gross_required_qty,
-        ROUND(ROUND(ps.planned_output_units * b.qty_per_assembly * (1.0 + b.scrap_allowance_pct), 2) / 48.0, 2) AS hourly_burn_qty,
+        ROUND(ROUND(ps.planned_output_units * sp.sim_demand_surge_multiplier, 0) * b.qty_per_assembly * (1.0 + b.scrap_allowance_pct), 2) AS gross_required_qty,
+        ROUND(ROUND(ROUND(ps.planned_output_units * sp.sim_demand_surge_multiplier, 0) * b.qty_per_assembly * (1.0 + b.scrap_allowance_pct), 2) / 48.0, 2) AS hourly_burn_qty,
         inv.erp_apparent_atp_qty,
-        inv.true_pickable_atp_qty,
+        GREATEST(0.0, inv.true_pickable_atp_qty - (inv.quality_hold_qty * sp.sim_quarantine_defect_pct * 2.0)) AS true_pickable_atp_qty,
         inv.phantom_inventory_qty,
         pa.po_number,
         pa.supplier_id,
         pa.po_ordered_qty,
-        COALESCE(pa.legacy_inbound_qty, 0.0) AS legacy_inbound_qty,
-        COALESCE(pa.harmonized_inbound_qty, 0.0) AS harmonized_inbound_qty,
-        GREATEST(0.0, pa.po_ordered_qty - COALESCE(pa.harmonized_inbound_qty, 0.0)) AS supplier_short_shipped_qty,
-        (inv.true_pickable_atp_qty + COALESCE(pa.legacy_inbound_qty, 0.0)) AS legacy_total_available_qty,
-        (inv.true_pickable_atp_qty + COALESCE(pa.harmonized_inbound_qty, 0.0)) AS harmonized_total_available_qty
+        CASE
+            WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
+            THEN ROUND(COALESCE(pa.legacy_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+            ELSE COALESCE(pa.legacy_inbound_qty, 0.0)
+        END AS legacy_inbound_qty,
+        CASE
+            WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
+            THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+            ELSE COALESCE(pa.harmonized_inbound_qty, 0.0)
+        END AS harmonized_inbound_qty,
+        GREATEST(0.0, pa.po_ordered_qty - (
+            CASE
+                WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
+                THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+                ELSE COALESCE(pa.harmonized_inbound_qty, 0.0)
+            END
+        )) AS supplier_short_shipped_qty,
+        (
+            GREATEST(0.0, inv.true_pickable_atp_qty - (inv.quality_hold_qty * sp.sim_quarantine_defect_pct * 2.0)) +
+            CASE
+                WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
+                THEN ROUND(COALESCE(pa.legacy_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+                ELSE COALESCE(pa.legacy_inbound_qty, 0.0)
+            END
+        ) AS legacy_total_available_qty,
+        (
+            GREATEST(0.0, inv.true_pickable_atp_qty - (inv.quality_hold_qty * sp.sim_quarantine_defect_pct * 2.0)) +
+            CASE
+                WHEN sp.sim_transit_delay_days > 0 OR sp.sim_quarantine_defect_pct > 0
+                THEN ROUND(COALESCE(pa.harmonized_inbound_qty, 0.0) * GREATEST(0.0, 1.0 - (sp.sim_transit_delay_days * 0.18)) * GREATEST(0.0, 1.0 - sp.sim_quarantine_defect_pct), 2)
+                ELSE COALESCE(pa.harmonized_inbound_qty, 0.0)
+            END
+        ) AS harmonized_total_available_qty
     FROM CHAKAN_SCM.PRODUCTION_SCHEDULES ps
+    CROSS JOIN sim_params sp
     JOIN CHAKAN_SCM.BILL_OF_MATERIALS b
         ON ps.parent_part_num = b.parent_part_num
        AND b.bom_level = 1
@@ -204,6 +396,7 @@ core AS (
         ROUND(LEAST(bb.planned_output_units, CEIL(ROUND(GREATEST(0.0, bb.gross_required_qty - bb.legacy_total_available_qty), 2) / bb.qty_per_assembly)) * bb.finished_unit_value_inr, 2) AS revenue_at_risk_legacy_inr,
         ROUND(LEAST(bb.planned_output_units, CEIL(ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) / bb.qty_per_assembly)) * bb.finished_unit_value_inr, 2) AS revenue_at_risk_net_inr,
         ROUND(GREATEST(0.0, 48.0 - ROUND(LEAST(48.0, bb.harmonized_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1)), 1) AS downtime_hours_net,
+        ROUND(ROUND(GREATEST(0.0, 48.0 - ROUND(LEAST(48.0, bb.harmonized_total_available_qty / NULLIF(bb.hourly_burn_qty, 0)), 1)), 1) * bb.downtime_burn_rate_inr_hr, 2) AS plant_idle_cost_inr,
         CASE
             WHEN ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) > 0
             THEN ROUND(LEAST(75000.0, GREATEST(25000.0, 25000.0 + ROUND(GREATEST(0.0, bb.gross_required_qty - bb.harmonized_total_available_qty), 2) * bb.unit_weight_kg * 4.5)), 2)
@@ -213,11 +406,10 @@ core AS (
 )
 SELECT
     core.*,
-    ROUND(core.downtime_hours_net * core.downtime_burn_rate_inr_hr, 2) AS plant_idle_cost_inr,
-    ROUND(core.revenue_at_risk_net_inr + ROUND(core.downtime_hours_net * core.downtime_burn_rate_inr_hr, 2), 2) AS total_stoppage_exposure_inr,
+    ROUND(core.revenue_at_risk_net_inr + core.plant_idle_cost_inr, 2) AS total_stoppage_exposure_inr,
     CASE
         WHEN core.expedited_freight_cost_inr > 0
-        THEN ROUND((core.revenue_at_risk_net_inr - core.expedited_freight_cost_inr) / core.expedited_freight_cost_inr, 1)
+        THEN ROUND((core.plant_idle_cost_inr - core.expedited_freight_cost_inr) / core.expedited_freight_cost_inr, 1)
         ELSE 0.0
     END AS mitigation_roi_ratio
 FROM core;
@@ -229,9 +421,11 @@ SELECT
     SUM(revenue_at_risk_net_inr) AS net_starvation_risk_inr,
     SUM(revenue_at_risk_legacy_inr) - SUM(revenue_at_risk_net_inr) AS false_alarm_value_cleared_inr,
     SUM(plant_idle_cost_inr) AS plant_idle_overhead_at_risk_inr,
+    ROUND(SUM(revenue_at_risk_net_inr) * 0.15, 2) AS contribution_margin_at_risk_inr,
+    ROUND(SUM(plant_idle_cost_inr) + (SUM(revenue_at_risk_net_inr) * 0.15), 2) AS unrecoverable_stoppage_exposure_inr,
     SUM(revenue_at_risk_net_inr) + SUM(plant_idle_cost_inr) AS total_plant_loss_exposure_inr,
     SUM(expedited_freight_cost_inr) AS total_mitigation_cost_inr,
-    ROUND((SUM(revenue_at_risk_net_inr) - 45000.0) / 45000.0, 1) AS headline_mitigation_roi_x,
-    ROUND((SUM(revenue_at_risk_net_inr) - SUM(expedited_freight_cost_inr)) / NULLIF(SUM(expedited_freight_cost_inr), 0), 1) AS all_lines_mitigation_roi_x,
+    ROUND((SUM(plant_idle_cost_inr) - SUM(expedited_freight_cost_inr)) / NULLIF(SUM(expedited_freight_cost_inr), 0), 1) AS headline_mitigation_roi_x,
+    ROUND((SUM(plant_idle_cost_inr) - SUM(expedited_freight_cost_inr)) / NULLIF(SUM(expedited_freight_cost_inr), 0), 1) AS all_lines_mitigation_roi_x,
     135000.0 AS panic_freight_avoided_inr
 FROM CHAKAN_SCM.VW_BOM_LINE_STARVATION_RISK;

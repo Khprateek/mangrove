@@ -107,54 +107,19 @@ def run(ctx):
     return round(qty, 2)
 /
 
--- 2. In-Database Supplier SKU Drift & Alias Resolution UDF
--- Emits resolved internal_part_num, match_method, and confidence score
+-- 2. In-Database Supplier SKU Drift & Relational Cross-Reference Resolution UDF
+-- Dynamically matches joined catalog references from SUPPLIER_CATALOG_CROSS_REF table
+-- and evaluates Jaro-Winkler string similarity, vendor prefix stripping, and token lineage.
 CREATE OR REPLACE PYTHON3 SCALAR SCRIPT CHAKAN_SCM.UDF_RESOLVE_SUPPLIER_SKU(
     raw_sku VARCHAR(80) UTF8,
-    po_part_num VARCHAR(40) UTF8
+    po_part_num VARCHAR(40) UTF8,
+    catalog_part_num VARCHAR(40) UTF8
 ) EMITS (
     resolved_part_num VARCHAR(40) UTF8,
     sku_match_method VARCHAR(30) UTF8,
     sku_confidence DOUBLE
 ) AS
 import re
-
-ALIASES = {
-    "6204ZZ": "ENG-BRG-6204-01",
-    "FBD6204ZZ": "ENG-BRG-6204-01",
-    "M12X15HT109": "ENG-BLT-M12-109",
-    "42CRCONROD04": "ENG-CRD-42CR-04",
-    "HSRHEL34": "TRN-GER-HEL-34",
-    "DUCHUB14": "AXL-HUB-DUC-14",
-    "FKM85SEAL": "AXL-SEL-FKM-85",
-    "STALAM01SIL": "EVC-STA-LAM-01",
-    "CUHAIRPIN04": "EVC-WND-CU-04",
-    "42CRMO4BILLET": "RAW-STL-42CR-B",
-}
-
-def _extract_ngrams(s):
-    cleaned = (s or "").strip().upper()
-    if not cleaned:
-        return set()
-    length = len(cleaned)
-    ng = set()
-    padded = f"^{cleaned}$"
-    ng.add(padded[:2])
-    ng.add(padded[-2:])
-    if length <= 4:
-        for i in range(len(padded) - 1):
-            ng.add(padded[i:i+2])
-    else:
-        for i in range(length - 2):
-            ng.add(cleaned[i:i+3])
-    return ng
-
-_ALIAS_NGRAM_INDEX = {}
-for _k in ALIASES:
-    for _ng in _extract_ngrams(_k):
-        if _ng not in _ALIAS_NGRAM_INDEX:
-            _ALIAS_NGRAM_INDEX[_ng] = set()
-        _ALIAS_NGRAM_INDEX[_ng].add(_k)
 
 def _jaro_winkler(s1, s2, prefix_weight=0.1):
     a = (s1 or "").strip().upper()
@@ -248,6 +213,7 @@ def _check_rev_mismatch(raw_sku, po_part):
 def run(ctx):
     cleaned_raw = (ctx.raw_sku or "").strip().upper()
     cleaned_po = (ctx.po_part_num or "").strip().upper()
+    catalog_part = (ctx.catalog_part_num or "").strip().upper()
 
     if cleaned_po and cleaned_raw == cleaned_po:
         ctx.emit(cleaned_po, "EXACT_MATCH", 1.00)
@@ -270,16 +236,18 @@ def run(ctx):
         ctx.emit(cleaned_po, "HYPHEN_NORMALIZED", 0.98)
         return
 
-    # Vendor Prefix Stripping (e.g. 'BOSCH-ENG-BRG-6204-01' -> 'ENG-BRG-6204-01')
+    # Vendor Prefix Stripping (e.g. 'VNDR-ENG-BRG-6204-01' -> 'ENG-BRG-6204-01')
     if alnum_po and alnum_raw.endswith(alnum_po) and len(alnum_raw) > len(alnum_po):
         prefix_len = len(alnum_raw) - len(alnum_po)
         if prefix_len <= 8:
             ctx.emit(cleaned_po, "VENDOR_PREFIX_STRIPPED", 0.96)
             return
 
-    if alnum_raw in ALIASES:
-        ctx.emit(ALIASES[alnum_raw], "VENDOR_CATALOG_ALIAS", 0.95)
-        return
+    # Relational Dynamic Catalog Match (from SUPPLIER_CATALOG_CROSS_REF table join)
+    if catalog_part:
+        if not _detect_transposition(alnum_raw, catalog_part):
+            ctx.emit(catalog_part, "VENDOR_CATALOG_ALIAS", 0.95)
+            return
 
     has_dim_conflict = False
     if cleaned_po:
@@ -297,52 +265,6 @@ def run(ctx):
                 return
             elif jw_po >= 0.85:
                 ctx.emit(cleaned_po, "FUZZY_MATCH_REVIEW_BAND", round(jw_po, 2))
-                return
-
-    if alnum_raw:
-        # Phase 1: Adaptive N-Gram Candidate Pre-Filtering (Fast Path)
-        query_ngrams = _extract_ngrams(alnum_raw)
-        candidate_overlaps = {}
-        for ng in query_ngrams:
-            if ng in _ALIAS_NGRAM_INDEX:
-                for candidate_key in _ALIAS_NGRAM_INDEX[ng]:
-                    candidate_overlaps[candidate_key] = candidate_overlaps.get(candidate_key, 0) + 1
-
-        best_alias_sku = None
-        best_jw = 0.0
-        evaluated_keys = set()
-
-        if candidate_overlaps:
-            sorted_candidates = sorted(candidate_overlaps.items(), key=lambda x: x[1], reverse=True)
-            for candidate_key, _ in sorted_candidates:
-                evaluated_keys.add(candidate_key)
-                if _detect_transposition(alnum_raw, candidate_key):
-                    continue
-                score = _jaro_winkler(alnum_raw, candidate_key)
-                if score > best_jw:
-                    best_jw = score
-                    best_alias_sku = ALIASES[candidate_key]
-                if best_jw >= 0.95:
-                    break
-
-        # Phase 2: Safety Fallback Guardrail (0.00% False Negative Guarantee)
-        if best_jw < 0.85:
-            for alias_key, canonical_sku in ALIASES.items():
-                if alias_key in evaluated_keys:
-                    continue
-                if _detect_transposition(alnum_raw, alias_key):
-                    continue
-                score = _jaro_winkler(alnum_raw, alias_key)
-                if score > best_jw:
-                    best_jw = score
-                    best_alias_sku = canonical_sku
-
-        if best_alias_sku:
-            if best_jw >= 0.93:
-                ctx.emit(best_alias_sku, "JARO_WINKLER_FUZZY", round(best_jw, 2))
-                return
-            elif best_jw >= 0.85:
-                ctx.emit(best_alias_sku, "FUZZY_MATCH_REVIEW_BAND", round(best_jw, 2))
                 return
 
     if cleaned_po and not has_dim_conflict:
@@ -373,10 +295,12 @@ def run(ctx):
     if not re.fullmatch(r"\d{9,10}", val):
         val = re.sub(r"[T\s]\d{1,2}:\d{2}(?::\d{2})?.*$", "", val).strip()
 
+    # Unix epoch check (seconds): bounds validation for modern enterprise window (2000 to 2050)
+    # Rejects arbitrary 9-10 digit numbers (phone numbers, numeric part codes) while accepting genuine epoch dates
     if re.fullmatch(r"\d{9,10}", val):
         try:
             d = _dt.datetime.fromtimestamp(int(val), tz=_dt.timezone.utc).date()
-            return d if d.year == 2026 else None
+            return d if (2000 <= d.year <= 2050) else None
         except Exception:
             return None
 

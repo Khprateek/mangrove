@@ -60,7 +60,7 @@ def generate_inbound_asn_chaos(
         (
             "ASN-L-9005", "ASN-BFG-1009", "SUP-T1-101", "PO-2026-8804", 1,
             "ENG-CRK-5140-01", 200.0, "EA", "2026-10-11", "2026-10-12",
-            "Mahindra Logistics", "MH-12-PQ-1102", "AS2_EDI",
+            "Chakan Express Logistics", "MH-12-PQ-1102", "AS2_EDI",
             "ACCEPTED", "CLEAN", ingested_ts,
         ),
         # 6. PO-2026-8805 (ENG-GSK-MLS-06, Ordered 500 EA)
@@ -98,7 +98,7 @@ def generate_inbound_asn_chaos(
         (
             "ASN-L-9010", "ASN-BFG-1014", "SUP-T1-101", "PO-2026-8809", 1,
             "TRN-SHF-SPL-08", 300.0, "EA", "2026-10-11", "2026-10-12",
-            "Mahindra Logistics", "MH-12-PQ-1188", "AS2_EDI",
+            "Chakan Express Logistics", "MH-12-PQ-1188", "AS2_EDI",
             "ACCEPTED", "CLEAN", ingested_ts,
         ),
         # 11. PO-2026-8810 (AXL-HUB-DUC-14, Ordered 600 EA)
@@ -167,7 +167,7 @@ def generate_inbound_asn_chaos(
     po_df = erp_tables["PURCHASE_ORDER_LINES"]
     sup_df = erp_tables["SUPPLIER_MASTER"].set_index("supplier_id")
     carriers = [
-        "Delhivery Freight", "VRL Logistics", "TCI Freight", "Mahindra Logistics",
+        "Delhivery Freight", "VRL Logistics", "TCI Freight", "Chakan Express Logistics",
         "Safexpress", "Gati KWE", "TVS Supply Chain", "Rivigo Fleet",
     ]
     anomaly_choices = [

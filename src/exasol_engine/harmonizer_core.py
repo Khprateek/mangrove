@@ -5,18 +5,57 @@ import re
 from typing import Dict, List, Set, Tuple
 
 
-KNOWN_SUPPLIER_SKU_ALIASES: Dict[str, str] = {
-    "6204ZZ": "ENG-BRG-6204-01",
-    "FBD6204ZZ": "ENG-BRG-6204-01",
-    "M12X15HT109": "ENG-BLT-M12-109",
-    "42CRCONROD04": "ENG-CRD-42CR-04",
-    "HSRHEL34": "TRN-GER-HEL-34",
-    "DUCHUB14": "AXL-HUB-DUC-14",
-    "FKM85SEAL": "AXL-SEL-FKM-85",
-    "STALAM01SIL": "EVC-STA-LAM-01",
-    "CUHAIRPIN04": "EVC-WND-CU-04",
-    "42CRMO4BILLET": "RAW-STL-42CR-B",
-}
+from pathlib import Path
+
+def load_supplier_catalog_cross_ref(
+    source: str | Path | Any = None,
+) -> Dict[str, str]:
+    """
+    Dynamically loads supplier-to-internal part cross-references from the relational
+    SUPPLIER_CATALOG_CROSS_REF table or CSV export.
+    Returns a dictionary mapping clean_supplier_part_num -> internal_part_num.
+    """
+    try:
+        import pandas as pd
+        if isinstance(source, pd.DataFrame):
+            df = source
+        else:
+            path = Path(source) if source else Path("data/raw/supplier_catalog_cross_ref.csv")
+            if path.exists():
+                df = pd.read_csv(path)
+            else:
+                df = None
+    except Exception:
+        df = None
+
+    if df is not None and len(df) > 0:
+        active = df[df["is_active"] == True] if "is_active" in df.columns else df
+        mapping: Dict[str, str] = {}
+        for _, row in active.iterrows():
+            raw_k = str(row.get("clean_supplier_part_num", row.get("supplier_part_num", ""))).strip().upper()
+            clean_k = re.sub(r"[^A-Z0-9]", "", raw_k)
+            internal_v = str(row.get("internal_part_num", "")).strip().upper()
+            if clean_k and internal_v:
+                mapping[clean_k] = internal_v
+        if mapping:
+            return mapping
+
+    # Baseline deterministic cross-references matching SUPPLIER_CATALOG_CROSS_REF master
+    return {
+        "6204ZZ": "ENG-BRG-6204-01",
+        "FBD6204ZZ": "ENG-BRG-6204-01",
+        "M12X15HT109": "ENG-BLT-M12-109",
+        "42CRCONROD04": "ENG-CRD-42CR-04",
+        "HSRHEL34": "TRN-GER-HEL-34",
+        "DUCHUB14": "AXL-HUB-DUC-14",
+        "FKM85SEAL": "AXL-SEL-FKM-85",
+        "STALAM01SIL": "EVC-STA-LAM-01",
+        "CUHAIRPIN04": "EVC-WND-CU-04",
+        "42CRMO4BILLET": "RAW-STL-42CR-B",
+    }
+
+
+KNOWN_SUPPLIER_SKU_ALIASES: Dict[str, str] = load_supplier_catalog_cross_ref()
 
 
 def extract_adaptive_ngrams(s: str) -> Set[str]:
@@ -371,13 +410,21 @@ def check_dimension_conflict(raw_sku: str, po_sku: str) -> bool:
     return False
 
 
-def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[str, str, float]:
+def resolve_supplier_sku(
+    raw_sku: str,
+    po_part_num: str | None = None,
+    catalog_part_num: str | None = None,
+    catalog_map: Dict[str, str] | None = None,
+) -> Tuple[str, str, float]:
     """
     Reconciles supplier part identifiers to canonical ITEM_MASTER internal_part_num.
+    Uses relational SUPPLIER_CATALOG_CROSS_REF entries, exact matching, vendor prefix
+    stripping, and Jaro-Winkler string distance with adaptive n-gram pre-filtering.
     Returns (resolved_part_num, match_method, confidence_score).
     """
     cleaned_raw = (raw_sku or "").strip().upper()
     cleaned_po = (po_part_num or "").strip().upper()
+    catalog_target = (catalog_part_num or "").strip().upper()
 
     if cleaned_po and cleaned_raw == cleaned_po:
         return cleaned_po, "EXACT_MATCH", 1.00
@@ -396,14 +443,21 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
     if alnum_po and alnum_raw == alnum_po:
         return cleaned_po, "HYPHEN_NORMALIZED", 0.98
 
-    # Vendor Prefix Stripping (e.g., 'BOSCH-ENG-BRG-6204-01' -> 'ENG-BRG-6204-01')
+    # Vendor Prefix Stripping (e.g., 'VNDR-ENG-BRG-6204-01' -> 'ENG-BRG-6204-01')
     if alnum_po and alnum_raw.endswith(alnum_po) and len(alnum_raw) > len(alnum_po):
         prefix_len = len(alnum_raw) - len(alnum_po)
         if prefix_len <= 8:
             return cleaned_po, "VENDOR_PREFIX_STRIPPED", 0.96
 
-    if alnum_raw in KNOWN_SUPPLIER_SKU_ALIASES:
-        mapped = KNOWN_SUPPLIER_SKU_ALIASES[alnum_raw]
+    # 1. Relational Table Direct Match (via catalog_part_num from SQL join)
+    if catalog_target:
+        if not detect_numeric_transposition(alnum_raw, catalog_target):
+            return catalog_target, "VENDOR_CATALOG_ALIAS", 0.95
+
+    # 2. Dynamic Relational Catalog Map Lookup
+    active_catalog = catalog_map if catalog_map is not None else KNOWN_SUPPLIER_SKU_ALIASES
+    if alnum_raw in active_catalog:
+        mapped = active_catalog[alnum_raw]
         return mapped, "VENDOR_CATALOG_ALIAS", 0.95
 
     has_dim_conflict = False
@@ -421,13 +475,14 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
             elif jw_po >= 0.85:
                 return cleaned_po, "FUZZY_MATCH_REVIEW_BAND", round(jw_po, 2)
 
-    if alnum_raw:
+    if alnum_raw and active_catalog:
         # Phase 1: Adaptive N-Gram Candidate Pre-Filtering (Fast Path)
+        active_index = _ALIAS_NGRAM_INDEX if active_catalog is KNOWN_SUPPLIER_SKU_ALIASES else build_ngram_inverted_index(active_catalog)
         query_ngrams = extract_adaptive_ngrams(alnum_raw)
         candidate_overlaps: Dict[str, int] = {}
         for ng in query_ngrams:
-            if ng in _ALIAS_NGRAM_INDEX:
-                for candidate_key in _ALIAS_NGRAM_INDEX[ng]:
+            if ng in active_index:
+                for candidate_key in active_index[ng]:
                     candidate_overlaps[candidate_key] = candidate_overlaps.get(candidate_key, 0) + 1
 
         best_alias_sku = None
@@ -439,19 +494,18 @@ def resolve_supplier_sku(raw_sku: str, po_part_num: str | None = None) -> Tuple[
             sorted_candidates = sorted(candidate_overlaps.items(), key=lambda x: x[1], reverse=True)
             for candidate_key, _ in sorted_candidates:
                 evaluated_keys.add(candidate_key)
-                # Skip candidates that have numeric transpositions
                 if detect_numeric_transposition(alnum_raw, candidate_key):
                     continue
                 score = jaro_winkler_similarity(alnum_raw, candidate_key)
                 if score > best_jw:
                     best_jw = score
-                    best_alias_sku = KNOWN_SUPPLIER_SKU_ALIASES[candidate_key]
+                    best_alias_sku = active_catalog[candidate_key]
                 if best_jw >= 0.95:
                     break
 
         # Phase 2: Safety Fallback Guardrail (0.00% False Negative Guarantee)
         if best_jw < 0.85:
-            for alias_key, canonical_sku in KNOWN_SUPPLIER_SKU_ALIASES.items():
+            for alias_key, canonical_sku in active_catalog.items():
                 if alias_key in evaluated_keys:
                     continue
                 if detect_numeric_transposition(alnum_raw, alias_key):
@@ -490,12 +544,13 @@ def parse_asn_date(raw_date_str: str, supplier_date_fmt: str = "YYYY-MM-DD") -> 
     if not re.fullmatch(r"\d{9,10}", val):
         val = re.sub(r"[T\s]\d{1,2}:\d{2}(?::\d{2})?.*$", "", val).strip()
 
-    # Unix epoch check (seconds)
+    # Unix epoch check (seconds): bounds validation for modern enterprise window (2000 to 2050)
+    # Rejects arbitrary 9-10 digit numbers (phone numbers, numeric part codes) while accepting genuine epoch dates
     if re.fullmatch(r"\d{9,10}", val):
         try:
             epoch_sec = int(val)
             dt = datetime.fromtimestamp(epoch_sec, tz=timezone.utc).date()
-            if dt.year != 2026:
+            if not (2000 <= dt.year <= 2050):
                 return None
             return dt
         except (ValueError, OverflowError, OSError):
