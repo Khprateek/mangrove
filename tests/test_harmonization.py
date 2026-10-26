@@ -1080,3 +1080,57 @@ def test_exasol_views_match_pandas_mirror(tmp_path) -> None:
 
 
 
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: live simulation parity + session isolation (skipped when Exasol is offline)
+# ---------------------------------------------------------------------------
+_SIM_PRESETS = [
+    (3, 0.05, 1.0),   # Western Ghats Monsoon
+    (1, 0.35, 1.0),   # Tier-2 Foundry Porosity
+    (2, 0.15, 1.35),  # Festive OEM Surge
+    (3, 0.20, 1.20),  # Compound shock
+]
+
+
+def _live_client(tmp_path) -> ChakanExasolClient:
+    client = ChakanExasolClient(data_dir=str(tmp_path))
+    if not client.connect():
+        pytest.skip("Exasol Personal container not reachable on localhost:8563")
+    client.bootstrap_exasol_schema_and_data()
+    return client
+
+
+@pytest.mark.parametrize("delay,defect,surge", _SIM_PRESETS)
+def test_live_simulation_matches_pandas_mirror(tmp_path, delay, defect, surge) -> None:
+    client = _live_client(tmp_path)
+    exa = client.compute_analytical_marts(delay, defect, surge, source="exasol")
+    pan = client.compute_analytical_marts(delay, defect, surge, source="pandas")
+    assert exa["compute_source"] == "EXASOL_VIEWS"
+    for key in ("net_risk_inr", "legacy_risk_inr", "total_stoppage_exposure_inr", "total_idle_loss_inr"):
+        assert exa["financial_roi_mart"][key] == pytest.approx(pan["financial_roi_mart"][key], abs=0.01), key
+    assert float(exa["bom_risk_mart"]["hours_to_starvation_harmonized"].min()) == pytest.approx(
+        float(pan["bom_risk_mart"]["hours_to_starvation_harmonized"].min()), abs=0.05
+    )
+
+
+def test_live_waterfall_is_additive_and_matches_mirror(tmp_path) -> None:
+    client = _live_client(tmp_path)
+    exa = client.compute_simulation_marts(3, 0.2, 1.2, source="exasol")
+    pan = client.compute_simulation_marts(3, 0.2, 1.2, source="pandas")
+    for e, p in zip(exa["waterfall_data"], pan["waterfall_data"]):
+        assert e["Amount"] == pytest.approx(p["Amount"], abs=0.01), e["Stage"]
+    steps = exa["waterfall_data"]
+    assert sum(s["Amount"] for s in steps[:4]) == pytest.approx(steps[4]["Amount"], abs=0.01)
+
+
+def test_live_simulation_parameters_are_session_isolated(tmp_path) -> None:
+    a = _live_client(tmp_path)
+    b = ChakanExasolClient(data_dir=str(tmp_path))
+    assert b.connect()
+    base_b = b.compute_analytical_marts(source="exasol")["financial_roi_mart"]["net_risk_inr"]
+    shock_a = a.compute_analytical_marts(3, 0.2, 1.2, source="exasol")["financial_roi_mart"]["net_risk_inr"]
+    assert shock_a != pytest.approx(base_b)
+    # Session A's scenario row must not change what session B reads from the shared view.
+    rows = b._fetch_df(f"SELECT SUM(revenue_at_risk_net_inr) AS n FROM {b.schema}.VW_BOM_LINE_STARVATION_RISK")
+    assert float(rows.iloc[0]["n"]) == pytest.approx(base_b, abs=0.01)

@@ -433,7 +433,10 @@ class ChakanExasolClient:
         try:
             merge_sql = f"""
             MERGE INTO {self.schema}.SIMULATION_PARAMETERS tgt
-            USING (VALUES ('GLOBAL_SESSION', {{transit_delay_days}}, {{quarantine_defect_pct}}, {{demand_surge_multiplier}}, CURRENT_TIMESTAMP)) AS src (
+            USING (
+                SELECT CAST(CURRENT_SESSION AS VARCHAR(40)), {{transit_delay_days}}, {{quarantine_defect_pct}}, {{demand_surge_multiplier}}, CURRENT_TIMESTAMP
+                FROM DUAL
+            ) AS src (
                 session_id, transit_delay_days, quarantine_defect_pct, demand_surge_multiplier, updated_at
             )
             ON tgt.session_id = src.session_id
@@ -454,8 +457,42 @@ class ChakanExasolClient:
                     "demand_surge_multiplier": float(demand_surge_multiplier),
                 },
             )
+            self.conn.execute(
+                f"DELETE FROM {self.schema}.SIMULATION_PARAMETERS WHERE updated_at < ADD_DAYS(CURRENT_TIMESTAMP, -1)"
+            )
         except Exception as exc:
             raise ExasolWriteError(f"Simulation parameters could not be synced to Exasol: {exc}") from exc
+
+    def _scenario_totals(
+        self,
+        transit_delay_days: int,
+        quarantine_defect_pct: float,
+        demand_surge_multiplier: float,
+        source: str = "auto",
+    ) -> Tuple[float, float]:
+        """
+        Lightweight scenario read: (net revenue at risk, total stoppage exposure) for one parameter set.
+        On live Exasol this is a single aggregate over VW_BOM_LINE_STARVATION_RISK (no triage/ROI
+        round-trips); offline it falls back to the full mirror.
+        """
+        if source in ("auto", "exasol") and self.conn is not None:
+            try:
+                self._sync_simulation_parameters_to_exasol(
+                    transit_delay_days, quarantine_defect_pct, demand_surge_multiplier
+                )
+                row = self._fetch_df(
+                    f"SELECT SUM(revenue_at_risk_net_inr) AS net_risk, "
+                    f"SUM(total_stoppage_exposure_inr) AS exposure FROM {self.schema}.VW_BOM_LINE_STARVATION_RISK"
+                ).iloc[0]
+                return float(row["net_risk"]), float(row["exposure"])
+            except Exception:
+                if source == "exasol":
+                    raise
+        m = self.compute_analytical_marts(
+            transit_delay_days, quarantine_defect_pct, demand_surge_multiplier, source=source
+        )
+        roi = m["financial_roi_mart"]
+        return float(roi["net_risk_inr"]), float(roi["total_stoppage_exposure_inr"])
 
     def _compute_marts_from_exasol(
         self,
@@ -548,7 +585,44 @@ class ChakanExasolClient:
             "telemetry": telemetry,
         }
 
+    def _baseline_cache_key(self, source: str) -> Tuple[Any, ...]:
+        t = self.tables
+        return (
+            source,
+            self.conn is not None,
+            len(t.get("ASN_PLANNER_OVERRIDES", [])),
+            len(t.get("AUDIT_LOG_LEDGER", [])),
+            len(t.get("ASN_LINES_RAW", [])),
+            id(t.get("ASN_LINES_RAW")),
+        )
+
     def compute_analytical_marts(
+        self,
+        transit_delay_days: int = 0,
+        quarantine_defect_pct: float = 0.0,
+        demand_surge_multiplier: float = 1.0,
+        source: str = "auto",
+    ) -> Dict[str, Any]:
+        """Baseline results are memoized per data version (overrides/audit/ASN batch); scenarios never are."""
+        sim_active = (
+            int(transit_delay_days) > 0
+            or float(quarantine_defect_pct) > 0.0
+            or float(demand_surge_multiplier) != 1.0
+        )
+        if sim_active or source not in ("auto", "exasol", "pandas"):
+            return self._compute_analytical_marts_uncached(
+                transit_delay_days, quarantine_defect_pct, demand_surge_multiplier, source
+            )
+        self.ensure_data_loaded()
+        key = self._baseline_cache_key(source)
+        cache = getattr(self, "_baseline_cache", None)
+        if cache is not None and cache[0] == key:
+            return dict(cache[1])
+        result = self._compute_analytical_marts_uncached(0, 0.0, 1.0, source)
+        self._baseline_cache = (key, result)
+        return dict(result)
+
+    def _compute_analytical_marts_uncached(
         self,
         transit_delay_days: int = 0,
         quarantine_defect_pct: float = 0.0,
@@ -956,14 +1030,12 @@ class ChakanExasolClient:
         sim_min_hrs = float(simulated["bom_risk_mart"]["hours_to_starvation_harmonized"].min())
         delta_hrs = round(sim_min_hrs - base_min_hrs, 1)
 
-        step1_delay = self.compute_analytical_marts(transit_delay_days, 0.0, 1.0, source=source)
-        step2_delay_quarantine = self.compute_analytical_marts(
-            transit_delay_days, quarantine_defect_pct, 1.0, source=source
-        )
+        step1_net, _ = self._scenario_totals(transit_delay_days, 0.0, 1.0, source)
+        step2_net, _ = self._scenario_totals(transit_delay_days, quarantine_defect_pct, 1.0, source)
 
         s0 = round(base_net, 2)
-        s1 = round(float(step1_delay["financial_roi_mart"]["net_risk_inr"]), 2)
-        s2 = round(float(step2_delay_quarantine["financial_roi_mart"]["net_risk_inr"]), 2)
+        s1 = round(step1_net, 2)
+        s2 = round(step2_net, 2)
         s3 = round(sim_net, 2)
 
         waterfall_data = [

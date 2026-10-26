@@ -261,6 +261,7 @@ WITH sim_params AS (
         COALESCE(MAX(quarantine_defect_pct), 0.0) AS sim_quarantine_defect_pct,
         COALESCE(MAX(demand_surge_multiplier), 1.0) AS sim_demand_surge_multiplier
     FROM CHAKAN_SCM.SIMULATION_PARAMETERS
+    WHERE session_id = CAST(CURRENT_SESSION AS VARCHAR(40))
 ),
 asn_line_agg AS (
     SELECT

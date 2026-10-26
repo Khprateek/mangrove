@@ -48,10 +48,12 @@ __all__ = [
 ]
 
 
-@st.cache_resource(show_spinner=False)
 def get_client() -> ChakanExasolClient:
-    """Instantiate and cache the Chakan Exasol client singleton."""
-    return ChakanExasolClient()
+    """Return this browser session's own client, so each user owns an isolated Exasol session
+    (What-If parameters are keyed by CURRENT_SESSION and never leak between users)."""
+    if "_mangrove_client" not in st.session_state:
+        st.session_state["_mangrove_client"] = ChakanExasolClient()
+    return st.session_state["_mangrove_client"]
 
 
 def main() -> None:
