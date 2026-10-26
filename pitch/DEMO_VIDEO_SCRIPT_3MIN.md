@@ -16,8 +16,8 @@
 [0:50 - 1:20] 🐍 SCENE 3: The Architecture (Exasol Personal In-Memory MPP + Python UDFs)
 [0:20 - 1:55] 🎯 SCENE 4: Live Triage Cockpit (Clearing ₹20.76 Cr in False Alarms & 1-Click Action)
 [1:55 - 2:20] 🌧️ SCENE 5: What-If Chaos Simulator (Monsoon Shocks & Crores Attribution Waterfall)
-[2:20 - 2:45] 📊 SCENE 6: Scalability Benchmark & Financial ROI (35.4x Pure CPU Speedup & 1,175x ROI)
-[2:45 - 3:00] 🚀 SCENE 7: Boardroom Defense & The Ask (15/15 Tests & Call to Action)
+[2:20 - 2:45] 📊 SCENE 6: Scalability Benchmark & Financial ROI (Set-Based Columnar Architecture & 177x ROI)
+[2:45 - 3:00] 🚀 SCENE 7: Boardroom Defense & The Ask (35/35 Tests & Call to Action)
 ```
 
 ---
@@ -55,9 +55,9 @@
 
 | Timestamp | Visual Action (Screen / Mouse) | Narration Audio (Spoken Word-for-Word) | Tone & Direction |
 | :---: | :--- | :--- | :--- |
-| **0:50 – 1:02** | Highlight sidebar telemetry card: engine status, sub-second latency, and `DISTRIBUTE BY (internal_part_num) [0 Net Hops]`. | *"That’s why we built our engine inside Exasol Personal. Instead of shipping messy rows out to external Python queues, we run the transformation directly in Exasol's in-memory columnar RAM.* | Technical pride, sharp delivery highlighting Exasol's unique edge. |
+| **0:50 – 1:02** | Highlight sidebar telemetry card: engine status, sub-second latency, and `DISTRIBUTE BY (internal_part_num) [In-DB RAM]`. | *"That’s why we built our engine inside Exasol Personal. Instead of shipping messy rows out to external Python queues, we run the transformation directly in Exasol's in-memory columnar RAM.* | Technical pride, sharp delivery highlighting Exasol's unique edge. |
 | **1:02 – 1:12** | In Tab 7, scroll to `UDF_NORMALIZE_UOM` and `UDF_RESOLVE_SUPPLIER_SKU`. | *Three native Python 3 scalar UDFs run inside worker cores in parallel, normalizing units, fuzzy-resolving catalog aliases, and parsing multi-format dates.* | Confident technical depth. Show real SQL and Python UDF code. |
-| **1:12 – 1:20** | Click on the Query Profiler card showing `Stage 3: Co-Located Hash Join (0 Net Hops)`. | *And because our 5 core tables share the same partition key—`DISTRIBUTE BY internal_part_num`—multi-table Bill-of-Materials joins execute with zero inter-node network shuffles in under 15 milliseconds."* | Emphasize the 0 network hops architectural achievement. |
+| **1:12 – 1:20** | Click on the Query Profiler card showing `Stage 3: BOM Starvation Risk`. | *Our relational tables partition across core part keys—aligning material catalogs, inventory ledgers, and purchase orders directly in Exasol's in-memory columnar RAM to execute high-speed multi-table joins in under 15 milliseconds in engine RAM and under 60 milliseconds across the active session."* | Emphasize in-memory execution and zero ETL network serialization. |
 
 ---
 
@@ -69,7 +69,7 @@
 | :---: | :--- | :--- | :--- |
 | **1:20 – 1:32** | Show top **Prioritized Dispatch Queue**: point out the green badge `FALSE_STARVATION_CLEARED_BY_UDF` for Bearing `6204ZZ` and Crate `CRATE_50`. | *"Here is the live triage queue. Look at the magic: Exasol resolved vendor alias `6204ZZ` to engine bearings, converted 22 crates into 2,200 units, and instantly cleared ₹20.76 Crores in false alarms!* | High energy, dynamic walkthrough of the core product value. |
 | **1:32 – 1:44** | Scroll down to the critical red row: `CRITICAL_SHORT_SHIPMENT_EXPOSED` for Wheel Hub `AXL-HUB-DUC-14`. | *Only one genuine physical deficit remains: 600 wheel hubs short-shipped on Line 2, risking ₹5.29 Crores of finished vehicles within 8.6 hours.* | Clear focus on the true net bottleneck. |
-| **1:44 – 1:55** | In the **1-Click Resolution Workbench** below, select `⚡ ASN-L-9003 | PO-2026-8803`, click **"Approve Expedited Courier Allocation"**, and watch screen refresh. | *With one click, the planner logs an expedited shipment override. Exasol updates the override table, re-evaluates the view in 11 milliseconds, and the starvation threat vanishes to zero."* | Seamless demonstration of the interactive write-back loop. |
+| **1:44 – 1:55** | In the **1-Click Resolution Workbench** below, select `⚡ ASN-L-9003 | PO-2026-8803`, click **"Approve Expedited Courier Allocation"**, and watch screen refresh. | *With one click, the planner logs an expedited shipment override. Exasol executes an atomic SQL MERGE in under 1 millisecond, re-evaluates the view in 45 milliseconds over the active WebSocket, and the starvation threat vanishes to zero."* | Seamless demonstration of the interactive write-back loop. |
 
 ---
 
@@ -79,8 +79,8 @@
 
 | Timestamp | Visual Action (Screen / Mouse) | Narration Audio (Spoken Word-for-Word) | Tone & Direction |
 | :---: | :--- | :--- | :--- |
-| **1:55 – 2:05** | Click the preset button: `🌧️ Western Ghats Monsoon` (`₹15.39 Cr` net risk), then adjust sliders to compound shock (`+3d delay`, `20% quarantine`, `1.20x surge`). | *"Supply chains are dynamic. In Tab 3, our interactive simulator stress-tests real-world shocks. Clicking 'Western Ghats Monsoon' models NH-48 highway landslides, escalating net risk to ₹15.39 Crores.* | Fast-paced, impressive demonstration of real-time reactivity. |
-| **2:05 – 2:20** | Show the **Attribution Waterfall** (in ₹ Crores) and **Run Window Horizon** bars updating under compound shock (`₹32.50 Cr`). | *Under a compound shock with 20% defect holds and a 1.2x surge, risk reaches ₹32.50 Crores. Our sequential attribution waterfall breaks down every rupee across transit drift, quarantine holds, and demand surge—empowering planners to intervene hours before the line starves."* | Highlight sub-second speed and exact additive waterfall attribution. |
+| **1:55 – 2:05** | Click the preset button: `🌧️ Western Ghats Monsoon` (`₹15.39 Cr` net risk), then adjust sliders to compound shock (`+3d delay`, `20% quarantine`, `1.20x surge`). | *"Supply chains are dynamic. In Tab 3, our interactive simulator stress-tests real-world shocks. Clicking 'Western Ghats Monsoon' pushes parameters to Exasol's `SIMULATION_PARAMETERS` table, where the view recalculates entirely in database RAM, escalating net risk to ₹15.39 Crores.* | Fast-paced, impressive demonstration of real-time reactivity. |
+| **2:05 – 2:20** | Show the **Attribution Waterfall** (in ₹ Crores) and **Run Window Horizon** bars updating under compound shock (`₹32.50 Cr`). | *Under a compound shock with 20% defect holds and a 1.2x surge, risk reaches ₹32.50 Crores. Exasol evaluates the sequential attribution waterfall in-database across transit drift, quarantine holds, and demand surge—empowering planners to intervene hours before the line starves."* | Highlight in-database pushdown and exact additive waterfall attribution. |
 
 ---
 
@@ -90,8 +90,8 @@
 
 | Timestamp | Visual Action (Screen / Mouse) | Narration Audio (Spoken Word-for-Word) | Tone & Direction |
 | :---: | :--- | :--- | :--- |
-| **2:20 – 2:33** | Show Tab 4 benchmark curves: `10,000 Rows: ~84 ms Set-Based vs ~2,961 ms Row-by-Row CPU (35.4x Measured CPU Speedup)`. | *"How does it scale? In our 10,000-row stress benchmark with zero synthetic overhead, uncached row-by-row Python ETL takes nearly 3 seconds of CPU time. Our columnar pipeline completes in 84 milliseconds—a 35.4x measured CPU speedup!* | Punchy, undeniable physical proof of technical superiority. |
-| **2:33 – 2:45** | Switch to Tab 5: Highlight `1,175x Executive Mitigation ROI` and `₹1.35 L Avoided Panic Freight`. | *Financially, preventing plant stoppage against a ₹45,000 hot-shot freight delivers an executive mitigation ROI of 1,175 times, while avoiding ₹1.35 Lakhs in wasted panic couriers."* | Ground the technology in undeniable CFO-level monetary value. |
+| **2:20 – 2:33** | Show Tab 4 benchmark curves: `10,000 Rows: ~133 ms Columnar (75,177 rows/s) vs ~181 ms Python ETL`. | *"How does it scale? In our 10,000-row stress benchmark with zero synthetic overhead, standard indexed Python ETL slows down as batch sizes expand. Our set-based columnar pipeline finishes in 133 milliseconds—delivering 75,000 rows per second throughput directly in memory!* | Punchy, undeniable physical proof of technical superiority. |
+| **2:33 – 2:45** | Switch to Tab 5: Highlight `177x Executive Mitigation ROI` and `₹1.35 L Avoided Panic Freight`. | *"Financially, preventing plant stoppage against a ₹45,000 hot-shot freight delivers an executive mitigation ROI of 177 times on unrecoverable factory overhead, while avoiding ₹1.35 Lakhs in wasted panic couriers."* | Ground the technology in undeniable CFO-level monetary value. |
 
 ---
 
@@ -101,7 +101,7 @@
 
 | Timestamp | Visual Action (Screen / Mouse) | Narration Audio (Spoken Word-for-Word) | Tone & Direction |
 | :---: | :--- | :--- | :--- |
-| **2:45 – 3:00** | Smooth zoom-out on the full Streamlit dashboard with clean terminal in background showing pytest passing 15/15 tests across both test suites. | *"100% synthetic data, zero proprietary leaks, and verified Exasol Personal SQL & UDF parity. We turned inbound supply chain chaos into boardroom financial certainty. Thank you—let's make factory lines truly starvation-proof."* | Strong, professional, memorable closing. Confident finish at 03:00. |
+| **2:45 – 3:00** | Smooth zoom-out on the full Streamlit dashboard with clean terminal in background showing pytest passing 35/35 tests across all three test suites (or 34 passed, 1 skipped offline). | *"100% synthetic data, zero proprietary leaks, and verified Exasol Personal SQL & UDF parity. We turned inbound supply chain chaos into boardroom financial certainty. Thank you—let's make factory lines truly starvation-proof."* | Strong, professional, memorable closing. Confident finish at 03:00. |
 
 ---
 
@@ -113,9 +113,9 @@
 > 
 > Was the line really starving? No. It was a ₹26.05 Crore false alarm.
 > 
-> We built **Mangrove** on **Exasol Personal**. By compiling Python 3 UDFs inside Exasol (`UDF_NORMALIZE_UOM`, `UDF_RESOLVE_SUPPLIER_SKU`, `UDF_PARSE_ASN_DATE`) and joining across distributed keys (`internal_part_num`, `component_part_num`), Exasol harmonizes dirty dispatches in-database. It cleared ₹20.76 Crores in false alarms, isolated the one real ₹5.29 Crore wheel-hub shortage, and delivered a **1,175x mitigation ROI** over a ₹45,000 emergency freight run.
+> We built **Mangrove** on **Exasol Personal**. By compiling Python 3 UDFs inside Exasol (`UDF_NORMALIZE_UOM`, `UDF_RESOLVE_SUPPLIER_SKU`, `UDF_PARSE_ASN_DATE`) and joining across distributed keys, Exasol harmonizes dirty dispatches in-database. It cleared ₹20.76 Crores in false alarms, isolated the one real ₹5.29 Crore wheel-hub shortage, and delivered a **177x mitigation ROI** over a ₹45,000 emergency freight run avoiding ₹79.92 Lakhs in factory downtime.
 > 
-> Under stress, our set-based pipeline processes 10,000 dispatches in **84 milliseconds—35.4 times faster** in pure CPU time than uncached row-by-row ETL. 100% synthetic, 100% reproducible. Analytics that keep automotive assembly lines running."
+> Under stress, our set-based columnar pipeline processes 10,000 dispatches in **133 milliseconds (75,177 rows/s)**—delivering 1.4x CPU acceleration over indexed external Python ETL with zero network serialization. 100% synthetic, 100% reproducible. Analytics that keep automotive assembly lines running."
 
 ---
 

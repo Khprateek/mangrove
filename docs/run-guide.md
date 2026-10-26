@@ -14,8 +14,8 @@ docker compose up -d
 ```
 
 ### Automated Self-Bootstrapping Sequence:
-1. **Container 1 (`exasol-personal-db`)**: Launches Exasol Personal (`exasol/docker-db:latest`) on port `8563` with privileged memory mapping.
-2. **Container 2 (`mangrove-cockpit`)**: Spawns [`scripts/entrypoint.py`](../scripts/entrypoint.py), probes the Exasol port until RAM initializes, automatically executes `bootstrap_exasol_schema_and_data()` (creating schema `CHAKAN_SCM`, compiling the 3 Python 3 UDFs, creating the 4 analytical views, and bulk-loading all 7 ERP tables), and launches Streamlit.
+1. **Container 1 (`exasol-personal-db`)**: Launches Exasol Personal (`exasol/docker-db:latest`) on port `8563` with privileged memory mapping and a native Docker TCP healthcheck (`cat < /dev/null > /dev/tcp/127.0.0.1/8563`).
+2. **Container 2 (`mangrove-cockpit`)**: Waits for `exasol-engine` to reach `service_healthy` via Docker Compose orchestration, spawns [`scripts/entrypoint.py`](../scripts/entrypoint.py), automatically executes `bootstrap_exasol_schema_and_data()` (creating schema `CHAKAN_SCM`, compiling the 3 Python 3 UDFs, creating the 4 analytical views, and bulk-loading all 8 ERP tables and cross-references), and launches Streamlit.
 3. Access the Cockpit UI: Open `http://localhost:8501` in your browser.
 
 To stop the appliance:
@@ -45,7 +45,7 @@ Copy-Item .env.example .env
 
 ## 2. Deterministic Synthetic ERP & ASN Chaos Generation
 
-Regenerate all 7 synthetic ERP master tables and the 498-row inbound ASN chaos stream (`seed = 202610`):
+Regenerate all 8 synthetic ERP master tables (including supplier catalog cross-references) and the 498-row inbound ASN chaos stream (`seed = 202610`):
 
 ```powershell
 .\.venv\Scripts\python.exe -m src.data_generator.generate_all --extra-asns 480
@@ -59,7 +59,7 @@ Regenerate all 7 synthetic ERP master tables and the 498-row inbound ASN chaos s
 - **Plant Idle Labor & Overhead Exposure**: `₹2.63 Cr` (`26,283,000.00 INR`)
 - **Total Unmitigated Stoppage Exposure**: `₹7.92 Cr` (`79,188,000.00 INR`)
 - **Warehouse Phantom Inventory Detected**: `₹1.18 Cr` (`11,813,950.00 INR` across `7,138` unpickable units)
-- **Headline Emergency Freight ROI**: `1,174.7x` (`₹45,000` charter vs `₹5.29 Cr` net vehicle output protected)
+- **Headline Emergency Freight ROI**: `176.6x` (`₹45,000` charter vs `₹79.92 Lakhs` unrecoverable idle burn on `LINE-03-AXLE`; `176.6x` fleet-wide)
 
 ---
 
@@ -87,7 +87,7 @@ What `bootstrap_exasol_schema_and_data()` executes and verifies:
    - `VW_ASN_HARMONIZED_LINEAGE`
    - `VW_BOM_LINE_STARVATION_RISK`
    - `VW_FINANCIAL_ROI_SUMMARY`
-4. Bulk-imports all 7 CSV tables via `import_from_pandas` and verifies `SELECT COUNT(*)` on every table against the source DataFrame length (raising `ExasolBootstrapError` on any mismatch or SQL error).
+4. Bulk-imports all 8 CSV tables via `import_from_pandas` and verifies `SELECT COUNT(*)` on every table against the source DataFrame length (raising `ExasolBootstrapError` on any mismatch or SQL error).
 
 ---
 
@@ -97,30 +97,32 @@ What `bootstrap_exasol_schema_and_data()` executes and verifies:
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
-The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine, cockpit UI, and BYOD telemetry (3 test suites; run `python -m pytest -v` for the current count):
+The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine, cockpit UI, and BYOD telemetry (**35 total tests collected across 3 test suites**: 35 passed with live Exasol / 34 passed, 1 skipped offline):
 
-### Engine & UDF Test Suite (`tests/test_harmonization.py`)
+### Engine & UDF Test Suite (`tests/test_harmonization.py` — 14 Tests)
 1. `test_uom_normalization_pack_and_weight_inversions`: Pack multipliers (`BOX_100`, `BAG_250`, `CRATE_50`) and weight-to-piece conversions (`MT` $\to$ `KG`, `MT` $\to$ `EA`).
 2. `test_supplier_sku_drift_and_jaro_winkler_resolution`: Exact, hyphen-normalized, vendor catalog alias, and Jaro-Winkler ($\ge 0.85$) fuzzy SKU resolution.
 3. `test_adaptive_ngram_prefiltering_and_safety_fallback`: Boundary-padded bigrams/trigrams for sub-millisecond filtering plus 0.00% false-negative safety fallback.
 4. `test_multiformat_date_parsing`: `DD/MM/YYYY`, `MM/DD/YYYY`, ISO `YYYY-MM-DD`, and Unix epoch disambiguation.
 5. `test_blast_radius_analytical_marts`: End-to-end mart calculation, planner override writeback (`ASN-L-9011`), and state idempotency on reset.
 6. `test_cryptographic_audit_trail_and_rollback`: SHA-256 Merkle-chained audit ledger, selective override rollback, and mathematical chain validation.
-7. `test_financial_roi_and_downtime_cost_engine`: Downtime burn rates, freight costs, and ROI calculations.
-8. `test_telemetry_and_query_profiler`: Stage timing instrumentation and distribution key metadata.
-9. `test_what_if_scenario_simulation_additive_waterfall`: Verifies null shock (`0` delta) and confirms sequential waterfall stages sum identically to total simulated exposure.
-10. `test_scale_benchmark_suite`: Verifies pure CPU benchmark (`network_hop_penalty_ms = 0.0`) across 500 to 10,000 rows.
-11. `test_broken_connection_raises_explicit_errors`: Confirms broken DB connections raise `ExasolBootstrapError` / `ExasolWriteError` instead of silently passing.
-12. `test_exasol_views_match_pandas_mirror`: Confirms `compute_analytical_marts(source="exasol")` and `compute_analytical_marts(source="pandas")` match to `0.00 INR` across all 10 financial KPIs.
+7. `test_financial_roi_and_downtime_cost_engine`: Downtime burn rates, freight costs, and realistic line stoppage ROI calculations (~177x on unrecoverable idle burn).
+8. `test_multiline_po_cartesian_join_isolation`: Verifies multi-line POs join on composite key `(po_number, internal_part_num, line_number)`, preventing phantom supply inflation.
+9. `test_dynamic_supplier_catalog_cross_ref_table`: Confirms relational `SUPPLIER_CATALOG_CROSS_REF` table resolves newly onboarded supplier SKUs dynamically without UDF code changes.
+10. `test_telemetry_and_query_profiler`: Stage timing instrumentation and distribution key metadata.
+11. `test_what_if_scenario_simulation_additive_waterfall`: Verifies null shock (`0` delta) and confirms sequential waterfall stages sum identically to total simulated exposure.
+12. `test_scale_benchmark_suite`: Verifies pure CPU benchmark (`network_hop_penalty_ms = 0.0`) across 500 to 10,000 rows.
+13. `test_broken_connection_raises_explicit_errors`: Confirms broken DB connections raise `ExasolBootstrapError` / `ExasolWriteError` instead of silently passing.
+14. `test_exasol_views_match_pandas_mirror`: Confirms `compute_analytical_marts(source="exasol")` and `compute_analytical_marts(source="pandas")` match to `0.00 INR` across all financial KPIs.
 
-### UI & Cockpit Smoke Test Suite (`tests/test_cockpit_smoke.py`)
-13. `test_theme_tokens_and_formatting_utilities`: Validates color tokens, safe float coercion, and Indian Rupee formatting helpers (`Rs XX.XX Cr`, `Rs XX.XX L`).
-14. `test_component_exports_and_callables`: Ensures all reusable UI components export valid render callables.
-15. `test_tab_module_exports_and_callables`: Ensures all 8 domain tab modules export valid render callables.
-16. `test_streamlit_cockpit_headless_execution`: End-to-end integration test executing the complete Streamlit Cockpit app via official `AppTest` with zero unhandled exceptions.
-17. `test_perspective_switcher_toggle_lifecycle`: Verifies segmented pill execution mode toggle with zero widget instantiation conflicts.
+### UI & Cockpit Smoke Test Suite (`tests/test_cockpit_smoke.py` — 5 Tests)
+15. `test_theme_tokens_and_formatting_utilities`: Validates color tokens, safe float coercion, and Indian Rupee formatting helpers (`Rs XX.XX Cr`, `Rs XX.XX L`).
+16. `test_component_exports_and_callables`: Ensures all reusable UI components export valid render callables.
+17. `test_tab_module_exports_and_callables`: Ensures all 8 domain tab modules export valid render callables.
+18. `test_streamlit_cockpit_headless_execution`: End-to-end integration test executing the complete Streamlit Cockpit app via official `AppTest` with zero unhandled exceptions.
+19. `test_perspective_switcher_toggle_lifecycle`: Verifies segmented pill execution mode toggle with zero widget instantiation conflicts.
 
-### BYOD Inbound & Feedback Log Test Suite (`tests/test_byod_and_telemetry.py`)
+### BYOD Inbound & Feedback Log Test Suite (`tests/test_byod_and_telemetry.py` — 16 Tests)
 - Feedback log starts empty (no placeholder reviews), hash-chain verification and tamper detection.
 - Presets contain no real company names; each preset harmonizes and can only reduce exposure.
 - An empty batch reproduces the baseline KPIs exactly (`legacy_risk_inr`, `net_risk_inr`).
@@ -136,7 +138,7 @@ The test suite in [`tests/`](../tests/) verifies full-stack coverage across data
 .\.venv\Scripts\python.exe -m src.benchmarks.scale_benchmark
 ```
 
-By default (`--penalty 0.0`), the benchmark reports pure measured CPU wall-clock timings (`~35x` speedup at 10,000 rows: `~84 ms` columnar/set-based vs `~2,960 ms` uncached `iterrows()` row-by-row ETL) and real `memory_usage(deep=True)` footprints.
+By default (`--penalty 0.0`), the benchmark reports pure measured CPU wall-clock timings comparing set-based columnar execution against a standard indexed row-by-row Python ETL pipeline and real `memory_usage(deep=True)` footprints.
 
 ---
 
