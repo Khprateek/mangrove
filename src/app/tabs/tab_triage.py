@@ -5,7 +5,6 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from src.app.components.audit_ledger import render_visual_audit_ledger
 from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
@@ -89,7 +88,7 @@ def render_triage_tab(
     )
 
     # 1. Actionable Queue Header & Urgency Filter
-    col_t_title, col_t_filter = st.columns([1.2, 0.9])
+    col_t_title, col_t_filter = st.columns([1.5, 1.0], vertical_alignment="center")
     with col_t_title:
         title_text = (
             "Actionable Shortage-Risk Queue &amp; Fast Triage"
@@ -147,7 +146,7 @@ def render_triage_tab(
     queue_label = "PRIORITIZED INBOUND DISPATCH QUEUE" if is_mangrove else "LEGACY ERP GATE REJECTION LOG (RAW UNHARMONIZED PAYLOADS)"
     st.markdown(
         f"""
-        <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 10px; margin-bottom: 8px;">
+        <div style="font-size: 0.70rem; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.8px; text-transform: uppercase; margin-top: 16px; margin-bottom: 10px;">
             {queue_label}
         </div>
         """,
@@ -353,5 +352,3 @@ def render_triage_tab(
                 st.success(f"Authorized emergency shortfall cover and updated Exasol in {write_ms:.2f} ms.")
                 st.rerun()
 
-        # 3. Cryptographic Merkle Audit Trail & 1-Click Rollback Explorer
-        render_visual_audit_ledger(client)

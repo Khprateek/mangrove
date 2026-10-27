@@ -221,107 +221,127 @@ def render_perspective_switcher() -> str:
             background-color: rgba(255, 255, 255, 0.5) !important;
         }}
 
+        /* Interactive Alert Drawer (HTML details/summary) */
+        details.mangrove-alert-drawer {{
+            border-radius: 8px;
+            margin-top: 10px;
+            margin-bottom: 14px;
+            transition: all 0.2s ease;
+        }}
+        details.mangrove-alert-drawer summary {{
+            list-style: none !important;
+            outline: none !important;
+            cursor: pointer !important;
+            user-select: none !important;
+        }}
+        details.mangrove-alert-drawer summary::-webkit-details-marker {{
+            display: none !important;
+        }}
+        details.mangrove-alert-drawer summary::marker {{
+            display: none !important;
+        }}
+        details.mangrove-alert-drawer .label-open {{
+            display: none;
+        }}
+        details.mangrove-alert-drawer[open] .label-closed {{
+            display: none;
+        }}
+        details.mangrove-alert-drawer[open] .label-open {{
+            display: inline;
+        }}
+        details.mangrove-alert-drawer[open] .alert-chevron {{
+            transform: rotate(180deg) !important;
+        }}
+
         {css_server_fallback}
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    col_ctrl, col_status = st.columns([1.6, 1.4])
-    with col_ctrl:
-        st.markdown(
-            """
-            <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.8px; color: #68756B; text-transform: uppercase; margin-bottom: 6px;">
-                EXECUTION MODE
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        selected_mode = st.radio(
-            "Execution Mode",
-            [MODE_LEGACY, MODE_MANGROVE],
-            key="engine_perspective_mode",
-            label_visibility="collapsed",
-            horizontal=True,
-        )
+    st.markdown(
+        """
+        <div style="font-size: 0.70rem; font-weight: 700; letter-spacing: 0.8px; color: #68756B; text-transform: uppercase; margin-bottom: 6px;">
+            EXECUTION MODE
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    selected_mode = st.radio(
+        "Execution Mode",
+        [MODE_LEGACY, MODE_MANGROVE],
+        key="engine_perspective_mode",
+        label_visibility="collapsed",
+        horizontal=True,
+    )
 
     is_mangrove = (selected_mode == MODE_MANGROVE)
-
-    with col_status:
-        if is_mangrove:
-            st.markdown(
-                f"""
-                <div style="text-align: right; padding-top: 24px;">
-                    <span style="background-color: {COLOR_BRAND_SOFT}; color: {COLOR_BRAND_PRIMARY}; font-size: 0.72rem; font-weight: 700; padding: 6px 12px; border-radius: 6px; border: 1px solid #C6DBC3; letter-spacing: 0.4px;">
-                        🛡️ MANGROVE ACTIVE: 136.1 MS &bull; &#x20B9;20.76 CR CLEARED
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-        else:
-            st.markdown(
-                f"""
-                <div style="text-align: right; padding-top: 24px;">
-                    <span style="background-color: #FDF4F4; color: {COLOR_DANGER}; font-size: 0.72rem; font-weight: 700; padding: 6px 12px; border-radius: 6px; border: 1px solid #F5C6C6; letter-spacing: 0.4px;">
-                        ⚠️ TRADITIONAL ERP: 13 REJECTED ASNs &bull; &#x20B9;26.05 CR HALT THREAT
-                    </span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
     # Informational Slim Alert Strip with Expandable Diagnostic Drawer
     if not is_mangrove:
         st.markdown(
             f"""
-            <div style="background-color: #FDF4F4; border: 1px solid #F5C6C6; border-left: 4px solid {COLOR_DANGER}; border-radius: 8px; padding: 7px 14px; margin-top: 6px; margin-bottom: 2px; box-shadow: 0 1px 2px rgba(181, 71, 71, 0.04);">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem;">
-                        <span style="font-size: 0.90rem;">🚨</span>
-                        <strong style="color: {COLOR_DANGER}; letter-spacing: 0.2px;">Traditional ERP Alert:</strong>
-                        <span style="color: {COLOR_TEXT_SECONDARY};">13 supplier ASNs quarantined at gate &bull; 4 assembly lines in imminent halt (4.2h to line-stop)</span>
+            <details class="mangrove-alert-drawer" style="background-color: #FDF5F5; border: 1px solid #F5DADA; border-left: 4px solid {COLOR_DANGER}; border-radius: 8px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(181, 71, 71, 0.05);">
+                <summary style="display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; width: 100%;">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#9A3838" style="flex-shrink: 0; margin-top: 2px;">
+                            <path d="M12 2L1 21h22L12 2zm0 3.5L19.8 19H4.2L12 5.5zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z"/>
+                        </svg>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong style="color: #8C2E2E; font-size: 0.88rem; font-weight: 700; letter-spacing: 0.1px;">Traditional ERP alert</strong>
+                                <span style="background-color: #F8DADA; color: #8C2E2E; font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 10px;">13 ASNs</span>
+                            </div>
+                            <div style="font-size: 0.77rem; color: {COLOR_TEXT_SECONDARY}; margin-top: 3px; font-weight: 400; line-height: 1.3;">
+                                13 supplier ASNs quarantined at gate &bull; 4 assembly lines at risk &bull; 4.2h to line-stop
+                            </div>
+                        </div>
                     </div>
+                    <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; font-weight: 500; display: flex; align-items: center; gap: 4px; white-space: nowrap; margin-left: auto;">
+                        <span class="label-closed">View details</span>
+                        <span class="label-open">Hide details</span>
+                        <span class="alert-chevron" style="display: inline-block; transition: transform 0.2s ease; font-size: 0.70rem; margin-left: 3px;">&#x25BE;</span>
+                    </div>
+                </summary>
+                <div style="border-top: 1px dashed #F0C4C4; margin-top: 10px; padding-top: 8px; font-size: 0.77rem; color: #4A5850; line-height: 1.5;">
+                    Traditional ERP batch processing rejected 13 supplier ASNs due to raw packaging drift, catalog aliases, and corrupt epoch dates. Without in-database Python UDFs, the ERP assumes zero stock. Plant managers are preparing emergency shutdown protocols across Line 1 (Euro-6), Line 2 (AMT), and Line 4 (EV Drive). Toggle to <b>Mangrove Guard</b> above to engage Exasol in-memory defense.
                 </div>
-            </div>
+            </details>
             """,
             unsafe_allow_html=True,
         )
-        with st.expander("ℹ️ Root Cause & Operational Impact Brief (Click to expand)", expanded=False):
-            st.markdown(
-                f"""
-                <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; line-height: 1.45; padding: 4px 2px;">
-                    Traditional ERP batch processing rejected 13 supplier ASNs due to raw packaging drift, catalog aliases, and corrupt epoch dates. Without in-database Python UDFs, the ERP assumes zero stock. Plant managers are preparing emergency shutdown protocols across Line 1 (Euro-6), Line 2 (AMT), and Line 4 (EV Drive). Toggle to <b>Mangrove Guard</b> above to engage Exasol in-memory defense.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
     else:
         st.markdown(
             f"""
-            <div style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 4px solid {COLOR_BRAND_PRIMARY}; border-radius: 8px; padding: 7px 14px; margin-top: 6px; margin-bottom: 2px; box-shadow: 0 1px 2px rgba(47, 107, 79, 0.03);">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem;">
-                        <span style="font-size: 0.90rem;">🟢</span>
-                        <strong style="color: {COLOR_BRAND_PRIMARY}; letter-spacing: 0.2px;">Mangrove In-DB Active Guard:</strong>
-                        <span style="color: {COLOR_TEXT_SECONDARY};">12 false alarms dissolved in Exasol RAM (136.1 ms) &bull; Genuine shortage isolated to &#x20B9;5.29 Cr on Line 3</span>
+            <details class="mangrove-alert-drawer" style="background-color: {COLOR_BRAND_SOFT}; border: 1px solid #C6DBC3; border-left: 4px solid {COLOR_BRAND_PRIMARY}; border-radius: 8px; padding: 10px 14px; box-shadow: 0 1px 3px rgba(47, 107, 79, 0.04);">
+                <summary style="display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; width: 100%;">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{COLOR_BRAND_PRIMARY}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            <polyline points="9 12 11 14 15 10"></polyline>
+                        </svg>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong style="color: {COLOR_BRAND_PRIMARY}; font-size: 0.88rem; font-weight: 700; letter-spacing: 0.1px;">Mangrove In-DB Active Guard</strong>
+                                <span style="background-color: #DCEFE0; color: {COLOR_BRAND_PRIMARY}; font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 10px;">12 Cleared</span>
+                            </div>
+                            <div style="font-size: 0.77rem; color: {COLOR_TEXT_SECONDARY}; margin-top: 3px; font-weight: 400; line-height: 1.3;">
+                                12 false alarms dissolved in Exasol RAM (136.1 ms) &bull; Genuine shortage isolated to &#x20B9;5.29 Cr on Line 3
+                            </div>
+                        </div>
                     </div>
-                    <span style="font-size: 0.68rem; color: {COLOR_BRAND_PRIMARY}; font-weight: 700; background: #FFFFFF; border: 1px solid #C6DBC3; padding: 2px 8px; border-radius: 5px;">
-                        MPP IN-MEMORY ACTIVE
-                    </span>
+                    <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; font-weight: 500; display: flex; align-items: center; gap: 4px; white-space: nowrap; margin-left: auto;">
+                        <span class="label-closed">View details</span>
+                        <span class="label-open">Hide details</span>
+                        <span class="alert-chevron" style="display: inline-block; transition: transform 0.2s ease; font-size: 0.70rem; margin-left: 3px;">&#x25BE;</span>
+                    </div>
+                </summary>
+                <div style="border-top: 1px dashed #C6DBC3; margin-top: 10px; padding-top: 8px; font-size: 0.77rem; color: #2D4036; line-height: 1.5;">
+                    In-database Python 3 UDFs normalized packaging multipliers and resolved SKU drift in-memory. &#x20B9;20.76 Cr of false starvation threats dissolved. Assembly lines 1, 2, and 4 are safe. Genuine physical shortage isolated to &#x20B9;5.29 Cr on Line 3.
                 </div>
-            </div>
+            </details>
             """,
             unsafe_allow_html=True,
         )
-        with st.expander("ℹ️ In-Database Python UDF Lineage (Click to expand)", expanded=False):
-            st.markdown(
-                f"""
-                <div style="font-size: 0.76rem; color: {COLOR_TEXT_SECONDARY}; line-height: 1.45; padding: 4px 2px;">
-                    In-database Python 3 UDFs normalized packaging multipliers and resolved SKU drift in-memory. &#x20B9;20.76 Cr of false starvation threats dissolved. Assembly lines 1, 2, and 4 are safe. Genuine physical shortage isolated to &#x20B9;5.29 Cr on Line 3.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
 
     return "MANGROVE_ACTIVE" if is_mangrove else "TRADITIONAL_ERP"

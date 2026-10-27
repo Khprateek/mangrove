@@ -47,7 +47,7 @@ def render_kpi_header(
     phantom_val = float(pd.to_numeric(inv_df["phantom_inventory_value_inr"], errors="coerce").fillna(0.0).sum())
     phantom_units = int(pd.to_numeric(inv_df["phantom_inventory_qty"], errors="coerce").fillna(0.0).sum())
 
-    st.markdown("<div style='margin-top: 0.75rem; margin-bottom: 0.4rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top: 1.0rem; margin-bottom: 0.5rem;'></div>", unsafe_allow_html=True)
     c1, c2, c3, c4, c5 = st.columns(5)
 
     if is_mangrove:
@@ -108,7 +108,7 @@ def render_kpi_header(
         if roi:
             st.markdown(
                 f"""
-                <div style="background-color: {COLOR_SURFACE}; border-left: 4px solid {COLOR_BRAND_PRIMARY}; border-top: 1px solid {COLOR_BORDER}; border-right: 1px solid {COLOR_BORDER}; border-bottom: 1px solid {COLOR_BORDER}; padding: 8px 16px; border-radius: 9px; margin-top: 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; box-shadow: 0 1px 3px rgba(24, 61, 50, 0.03);">
+                <div style="background-color: {COLOR_SURFACE}; border-left: 4px solid {COLOR_BRAND_PRIMARY}; border-top: 1px solid {COLOR_BORDER}; border-right: 1px solid {COLOR_BORDER}; border-bottom: 1px solid {COLOR_BORDER}; padding: 9px 18px; border-radius: 9px; margin-top: 14px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; box-shadow: 0 1px 3px rgba(24, 61, 50, 0.03);">
                     <span style="font-weight: 700; color: {COLOR_BRAND_PRIMARY}; letter-spacing: 0.6px; font-size: 0.72rem;">BUSINESS DEFENSE &amp; ROI (MANGROVE IN-DB ACTIVE GUARD)</span>
                     <span style="color: {COLOR_TEXT_SECONDARY};">Total Stoppage Exposure: <b style="color: {COLOR_DANGER}; font-size: 0.82rem;">{format_inr_crore_lakh(roi.get('total_stoppage_exposure_inr', 0))}</b></span>
                     <span style="color: {COLOR_TEXT_SECONDARY};">Emergency Freight: <b style="color: {COLOR_TEXT_PRIMARY};">{format_inr_crore_lakh(roi.get('benchmark_freight_inr', 45000))}</b></span>
@@ -198,7 +198,7 @@ def render_kpi_header(
         if roi:
             st.markdown(
                 f"""
-                <div style="background-color: {COLOR_SURFACE}; border-left: 4px solid {COLOR_DANGER}; border-top: 1px solid {COLOR_BORDER}; border-right: 1px solid {COLOR_BORDER}; border-bottom: 1px solid {COLOR_BORDER}; padding: 8px 16px; border-radius: 9px; margin-top: 10px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; box-shadow: 0 1px 3px rgba(181, 71, 71, 0.05);">
+                <div style="background-color: {COLOR_SURFACE}; border-left: 4px solid {COLOR_DANGER}; border-top: 1px solid {COLOR_BORDER}; border-right: 1px solid {COLOR_BORDER}; border-bottom: 1px solid {COLOR_BORDER}; padding: 9px 18px; border-radius: 9px; margin-top: 14px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.78rem; box-shadow: 0 1px 3px rgba(181, 71, 71, 0.05);">
                     <span style="font-weight: 700; color: {COLOR_DANGER}; letter-spacing: 0.6px; font-size: 0.72rem;">TRADITIONAL ERP PERSPECTIVE: UNMITIGATED LINE-STOP EXPOSURE</span>
                     <span style="color: {COLOR_TEXT_SECONDARY};">Total Stoppage Exposure: <b style="color: {COLOR_DANGER}; font-size: 0.82rem;">{format_inr_crore_lakh(roi.get('total_stoppage_exposure_inr', 0))}</b></span>
                     <span style="color: {COLOR_TEXT_SECONDARY};">Emergency Freight Required: <b style="color: {COLOR_DANGER};">Rs 5.85 L (13 Couriers)</b></span>

@@ -10,7 +10,6 @@ import streamlit as st
 from PIL import Image
 
 from src.app.components import (
-    render_feedback_hub_section,
     render_header,
     render_kpi_header,
     render_perspective_switcher,
@@ -18,16 +17,13 @@ from src.app.components import (
 )
 from src.app.tabs import (
     render_bom_horizon_tab,
-    render_byod_tab,
     render_exasol_engine_tab,
     render_financial_roi_tab,
-    render_phantom_inventory_tab,
     render_scale_benchmark_tab,
     render_scenario_simulator_tab,
     render_triage_tab,
 )
 from src.app.theme import (
-    apply_dark_theme,
     format_inr_crore_lakh,
     inject_minimalist_theme,
     safe_float,
@@ -44,7 +40,6 @@ __all__ = [
     "inject_minimalist_theme",
     "format_inr_crore_lakh",
     "safe_float",
-    "apply_dark_theme",
 ]
 
 
@@ -76,16 +71,14 @@ def main() -> None:
     perspective_mode = render_perspective_switcher()
     render_kpi_header(marts, client, perspective_mode=perspective_mode)
 
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
             "1. Inbound Triage",
-            "2. Starvation Horizon",
+            "2. Inventory & Starvation",
             "3. What-If Simulator",
             "4. 10k Scale Benchmark",
             "5. Financial ROI Defense",
-            "6. Phantom Inventory",
-            "7. Exasol Engine & SQL",
-            "8. BYOD Ingestion Studio",
+            "6. Exasol Engine & SQL",
         ]
     )
 
@@ -100,14 +93,8 @@ def main() -> None:
     with tab5:
         render_financial_roi_tab(client, marts, perspective_mode=perspective_mode)
     with tab6:
-        render_phantom_inventory_tab(marts, perspective_mode=perspective_mode)
-    with tab7:
         render_exasol_engine_tab(client, marts, project_root=PROJECT_ROOT)
-    with tab8:
-        render_byod_tab(client, marts)
 
-    st.markdown("---")
-    render_feedback_hub_section(project_root=PROJECT_ROOT)
 
 
 if __name__ == "__main__":

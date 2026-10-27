@@ -14,20 +14,15 @@ from src.app.theme import (
     safe_float,
 )
 from src.app.components import (
-    render_feedback_hub_section,
     render_header,
     render_kpi_header,
     render_perspective_switcher,
     render_sidebar,
-    render_telemetry_banner,
-    render_visual_audit_ledger,
 )
 from src.app.tabs import (
     render_bom_horizon_tab,
-    render_byod_tab,
     render_exasol_engine_tab,
     render_financial_roi_tab,
-    render_phantom_inventory_tab,
     render_scale_benchmark_tab,
     render_scenario_simulator_tab,
     render_triage_tab,
@@ -55,28 +50,23 @@ def test_component_exports_and_callables() -> None:
     """Ensures all reusable UI components export valid render callables."""
     components = [
         render_header,
-        render_telemetry_banner,
         render_perspective_switcher,
         render_kpi_header,
         render_sidebar,
-        render_visual_audit_ledger,
-        render_feedback_hub_section,
     ]
     for comp_fn in components:
         assert callable(comp_fn), f"{comp_fn.__name__} must be a callable function"
 
 
 def test_tab_module_exports_and_callables() -> None:
-    """Ensures all 8 domain tab modules export valid render callables."""
+    """Ensures all 6 domain tab modules export valid render callables."""
     tab_callables = [
         render_triage_tab,
         render_bom_horizon_tab,
         render_scenario_simulator_tab,
         render_scale_benchmark_tab,
         render_financial_roi_tab,
-        render_phantom_inventory_tab,
         render_exasol_engine_tab,
-        render_byod_tab,
     ]
     for tab_fn in tab_callables:
         assert callable(tab_fn), f"{tab_fn.__name__} must be a callable function"
