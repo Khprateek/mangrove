@@ -68,11 +68,11 @@ Traditional data validation pipelines optimize for **database schema purity over
 
 | Operational Metric | Traditional ERP Baseline (Quarantine & Blind Panic) | Mangrove In-DB Guard (Exasol Personal) |
 | :--- | :--- | :--- |
-| **Inbound ASN Status** | ❌ **13 Supplier ASNs quarantined** at factory gate | 🟢 **12 False alarms dissolved** in RAM (136.1 ms) |
-| **Plant Line-Halt Threat** | ❌ **₹26.05 Cr apparent threat** (3 assembly lines halting) | 🟢 **₹20.76 Cr exposure cleared** to full availability |
-| **Isolated Net Shortage** | ❌ Blind across all 5 starved BOM components | 🎯 **₹5.29 Cr genuine deficit isolated** to rear axle (`LINE-03`) |
-| **Warehouse Inventory** | ❌ **Blind to phantom stock** (₹1.18 Cr phantom counted) | 🔍 **7,138 damaged/unpickable units** safely held in True ATP |
-| **Emergency Freight Action** | ❌ Panic-chartering multiple unneeded couriers | ⚡ **177x ROI**: 1 targeted ₹45k charter saves ₹79.92L idle penalty |
+| **Inbound ASN Status** | ❌ **13 Supplier ASNs quarantined** at factory gate | **12 False alarms dissolved** in RAM (136.1 ms) |
+| **Plant Line-Halt Threat** | ❌ **₹26.05 Cr apparent threat** (3 assembly lines halting) | **₹20.76 Cr exposure cleared** to full availability |
+| **Isolated Net Shortage** | ❌ Blind across all 5 starved BOM components | **₹5.29 Cr genuine deficit isolated** to rear axle (`LINE-03`) |
+| **Warehouse Inventory** | ❌ **Blind to phantom stock** (₹1.18 Cr phantom counted) | **7,138 damaged/unpickable units** safely held in True ATP |
+| **Emergency Freight Action** | ❌ Panic-chartering multiple unneeded couriers | **177x ROI**: 1 targeted ₹45k charter saves ₹79.92L idle penalty |
 
 ### The Chakan Plant-1 Baseline Reality:
 
