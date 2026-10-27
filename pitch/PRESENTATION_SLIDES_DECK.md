@@ -483,16 +483,12 @@ $$\text{Mitigation ROI (Idle Overhead Avoidance)} = \frac{\text{Avoided Plant Id
 
 
 
-#### Q5: "Does the Bring-Your-Own-Data (BYOD) Inbound Studio actually execute on Exasol?"
-
-> **Answer**: "Yes. In `src/exasol_engine/custom_ingestor.py`, when a live Exasol connection is active, `_harmonize_exasol()` creates a temporary scratch staging table in `CHAKAN_SCM`, streams the uploaded batch into columnar storage, and executes the exact same three in-database Python UDFs (`UDF_RESOLVE_SUPPLIER_SKU`, `UDF_NORMALIZE_UOM`, `UDF_PARSE_ASN_DATE`) joined against `ITEM_MASTER` and `SUPPLIER_MASTER`. The UI prominently displays an `⚡ NATIVE EXASOL IN-DATABASE EXECUTION` audit badge confirming the compute location. If Exasol is offline, it transparently falls back to local parity logic and explicitly alerts the user."
-
-#### Q6: "Why benchmark at 10,000 rows? On 10,000 rows in memory, isn't an indexed Python dictionary already fast enough?"
+#### Q5: "Why benchmark at 10,000 rows? On 10,000 rows in memory, isn't an indexed Python dictionary already fast enough?"
 > **Answer**: "At 10,000 rows in local RAM, single-threaded Python dictionary lookup is fast (~180 ms) because the entire 1.5 MB dataset fits inside CPU L3 cache. However, micro-benchmarks hide the true enterprise bottleneck: **The Data Locality Law**. In real-world automotive plants (e.g., Pune-Chakan with SAP S/4HANA), inbound dispatches cannot be reconciled in isolation—they must be cross-referenced against multi-million-row historical ERP ledgers (`ITEM_MASTER`, `PURCHASE_ORDER_LINES`, `WAREHOUSE_INVENTORY_LEDGER`).
 > To run Python ETL in production, an application server must extract and serialize 500,000 to 10,000,000 ERP records across the corporate network every 5 minutes (a 5 to 20+ second network serialization tax + gigabytes of heap memory), risking OOM crashes and stale reads.
 > **Exasol eliminates network data egress entirely**: multi-million row ERP tables stay pinned in compressed columnar RAM slices. Only inbound dispatches are streamed into the engine, where joins, deduplication, and Python 3 UDFs execute *in situ* in under 150 ms with zero external network serialization."
 
-#### Q7: "Maintaining both Exasol SQL views and a Python mirror creates a dual-engine maintenance burden. How do you prevent code drift?"
+#### Q6: "Maintaining both Exasol SQL views and a Python mirror creates a dual-engine maintenance burden. How do you prevent code drift?"
 > **Answer**: "We treat the Python mirror as an **Executable Specification & Air-Gapped Algorithmic Twin**—an established architecture pattern in safety-critical manufacturing (Siemens, ASML, automotive OEMs) where in-database procedures must be formally verified against an independent reference model.
 > To prevent code drift and eliminate maintenance tax, we implemented three structural guardrails:
 > 1. **Single Source of Truth (SSOT)**: All financial coefficients, EBITDA margin ratios (`0.15`), expedited freight tariff brackets (`₹25k–₹75k`), and planning horizons (`48.0h`) are centralized in [`domain_config.py`](file:///d:/JOB/1.Buid_Skill/Opensource/Exasol/src/exasol_engine/domain_config.py), eliminating hardcoded magic numbers across both engines.

@@ -97,7 +97,7 @@ What `bootstrap_exasol_schema_and_data()` executes and verifies:
 .\.venv\Scripts\python.exe -m pytest -v
 ```
 
-The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine, cockpit UI, and BYOD telemetry (**41 total tests collected across 3 test suites**: 41 passed with live Exasol / 40 passed, 1 skipped offline):
+The test suite in [`tests/`](../tests/) verifies full-stack coverage across database engine and cockpit UI (**25 total tests collected across 2 test suites**: 25 passed with live Exasol / 18 passed, 7 skipped offline):
 
 ### Engine & UDF Test Suite (`tests/test_harmonization.py` — 20 Tests)
 1. `test_uom_normalization_pack_and_weight_inversions`: Pack multipliers (`BOX_100`, `BAG_250`, `CRATE_50`) and weight-to-piece conversions (`MT` $\to$ `KG`, `MT` $\to$ `EA`).
@@ -119,19 +119,11 @@ The test suite in [`tests/`](../tests/) verifies full-stack coverage across data
 20. `test_live_simulation_parameters_are_session_isolated`: Verifies concurrent user session isolation in Exasol `SIMULATION_PARAMETERS`.
 
 ### UI & Cockpit Smoke Test Suite (`tests/test_cockpit_smoke.py` — 5 Tests)
-15. `test_theme_tokens_and_formatting_utilities`: Validates color tokens, safe float coercion, and Indian Rupee formatting helpers (`Rs XX.XX Cr`, `Rs XX.XX L`).
-16. `test_component_exports_and_callables`: Ensures all reusable UI components export valid render callables.
-17. `test_tab_module_exports_and_callables`: Ensures all 8 domain tab modules export valid render callables.
-18. `test_streamlit_cockpit_headless_execution`: End-to-end integration test executing the complete Streamlit Cockpit app via official `AppTest` with zero unhandled exceptions.
-19. `test_perspective_switcher_toggle_lifecycle`: Verifies segmented pill execution mode toggle with zero widget instantiation conflicts.
-
-### BYOD Inbound & Feedback Log Test Suite (`tests/test_byod_and_telemetry.py` — 16 Tests)
-- Feedback log starts empty (no placeholder reviews), hash-chain verification and tamper detection.
-- Presets contain no real company names; each preset harmonizes and can only reduce exposure.
-- An empty batch reproduces the baseline KPIs exactly (`legacy_risk_inr`, `net_risk_inr`).
-- Duplicate and low-confidence rows are not counted; UOM normalization sanity (`BOX_100`, `MT` to `KG`).
-- Engine reporting: no connection and a failing Exasol connection both fall back to local UDF-parity logic and say why.
-- Column auto-mapping, display-only identifier masking, exports, and webhook failure handling.
+1. `test_theme_tokens_and_formatting_utilities`: Validates color tokens, safe float coercion, and Indian Rupee formatting helpers (`Rs XX.XX Cr`, `Rs XX.XX L`).
+2. `test_component_exports_and_callables`: Ensures all reusable UI components export valid render callables.
+3. `test_tab_module_exports_and_callables`: Ensures all 6 domain tab modules export valid render callables.
+4. `test_streamlit_cockpit_headless_execution`: End-to-end integration test executing the complete Streamlit Cockpit app via official `AppTest` with zero unhandled exceptions.
+5. `test_perspective_switcher_toggle_lifecycle`: Verifies segmented pill execution mode toggle with zero widget instantiation conflicts.
 
 ---
 
