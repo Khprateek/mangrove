@@ -44,35 +44,39 @@
   "standard_pipeline_benchmark": [
     {
       "batch_rows": 500,
-      "exasol_latency_ms": 2099.44,
-      "exasol_throughput_rows_sec": 238.0,
-      "python_etl_latency_ms": 18.44,
-      "python_etl_throughput_rows_sec": 27115.0,
-      "speedup_factor": 0.01
+      "columnar_latency_ms": 97.28,
+      "columnar_throughput_rows_sec": 5140.0,
+      "python_etl_latency_ms": 12.92,
+      "python_etl_throughput_rows_sec": 38700.0,
+      "speedup_factor": 0.1,
+      "status": "Baseline init overhead"
     },
     {
       "batch_rows": 2500,
-      "exasol_latency_ms": 2344.12,
-      "exasol_throughput_rows_sec": 1066.0,
-      "python_etl_latency_ms": 54.69,
-      "python_etl_throughput_rows_sec": 45712.0,
-      "speedup_factor": 0.02
+      "columnar_latency_ms": 92.28,
+      "columnar_throughput_rows_sec": 27091.0,
+      "python_etl_latency_ms": 47.96,
+      "python_etl_throughput_rows_sec": 52127.0,
+      "speedup_factor": 0.5,
+      "status": "Scale approach"
     },
     {
       "batch_rows": 5000,
-      "exasol_latency_ms": 2584.26,
-      "exasol_throughput_rows_sec": 1935.0,
-      "python_etl_latency_ms": 102.27,
-      "python_etl_throughput_rows_sec": 48890.0,
-      "speedup_factor": 0.04
+      "columnar_latency_ms": 106.6,
+      "columnar_throughput_rows_sec": 46904.0,
+      "python_etl_latency_ms": 91.89,
+      "python_etl_throughput_rows_sec": 54413.0,
+      "speedup_factor": 0.9,
+      "status": "Scale crossover tier"
     },
     {
       "batch_rows": 10000,
-      "exasol_latency_ms": 3852.12,
-      "exasol_throughput_rows_sec": 2596.0,
-      "python_etl_latency_ms": 200.02,
-      "python_etl_throughput_rows_sec": 49995.0,
-      "speedup_factor": 0.05
+      "columnar_latency_ms": 133.02,
+      "columnar_throughput_rows_sec": 75177.0,
+      "python_etl_latency_ms": 180.77,
+      "python_etl_throughput_rows_sec": 55319.0,
+      "speedup_factor": 1.4,
+      "status": "Columnar acceleration (26.4% latency reduction)"
     }
   ]
 }
