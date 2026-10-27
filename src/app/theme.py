@@ -158,10 +158,32 @@ def inject_minimalist_theme() -> None:
             cursor: pointer !important;
         }}
         [data-testid="stMetric"]:hover {{
-            border-color: {COLOR_BRAND_PRIMARY} !important;
-            background: linear-gradient(180deg, #FFFFFF 0%, #E8F2E5 100%) !important;
-            box-shadow: 0 6px 18px rgba(47, 107, 79, 0.12) !important;
+            border-color: #2F6B4F !important;
+            background-color: #183D32 !important;
+            background: linear-gradient(180deg, #183D32 0%, #112B23 100%) !important;
+            box-shadow: 0 8px 24px rgba(24, 61, 50, 0.35) !important;
             transform: translateY(-2px) !important;
+        }}
+        [data-testid="stMetric"]:hover [data-testid="stMetricLabel"],
+        [data-testid="stMetric"]:hover [data-testid="stMetricLabel"] * {{
+            color: #C6DBC3 !important;
+            transition: color 0.2s ease-in-out !important;
+        }}
+        [data-testid="stMetric"]:hover [data-testid="stMetricValue"],
+        [data-testid="stMetric"]:hover [data-testid="stMetricValue"] * {{
+            color: #FFFFFF !important;
+            transition: color 0.2s ease-in-out !important;
+        }}
+        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #A7F3D0 !important;
+            fill: #A7F3D0 !important;
+            transition: color 0.2s ease-in-out !important;
+        }}
+        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"]:has([data-testid="stMetricDeltaIcon-Down"]),
+        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"]:has([data-testid="stMetricDeltaIcon-Down"]) * {{
+            color: #FCA5A5 !important;
+            fill: #FCA5A5 !important;
         }}
         [data-testid="stMetricLabel"] {{
             font-size: 0.74rem !important;

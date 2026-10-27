@@ -59,14 +59,28 @@ def render_kpi_header(
             background-color: {COLOR_BRAND_SOFT} !important;
             border: 1px solid #C6DBC3 !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover {{
-            background: linear-gradient(180deg, #E8F2E5 0%, #D4E9CD 100%) !important;
-            border-color: {COLOR_BRAND_PRIMARY} !important;
-            box-shadow: 0 6px 18px rgba(47, 107, 79, 0.15) !important;
-            transform: translateY(-2px) !important;
-        }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetricValue"] {{
             color: {COLOR_BRAND_PRIMARY} !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover {{
+            background-color: #183D32 !important;
+            background: linear-gradient(180deg, #183D32 0%, #112B23 100%) !important;
+            border-color: #2F6B4F !important;
+            box-shadow: 0 8px 24px rgba(24, 61, 50, 0.35) !important;
+            transform: translateY(-2px) !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricValue"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricValue"] * {{
+            color: #FFFFFF !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricLabel"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricLabel"] * {{
+            color: #C6DBC3 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #6EE7B7 !important;
+            fill: #6EE7B7 !important;
         }}
 
         /* Card 4: True Net Shortage (Red - Confirmed Operational Deficit) */
@@ -74,14 +88,45 @@ def render_kpi_header(
             background-color: #FDF4F4 !important;
             border: 1px solid #F5C6C6 !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover {{
-            background: linear-gradient(180deg, #FDF4F4 0%, #F8E3E3 100%) !important;
-            border-color: {COLOR_DANGER} !important;
-            box-shadow: 0 6px 18px rgba(181, 71, 71, 0.14) !important;
-            transform: translateY(-2px) !important;
-        }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {{
             color: {COLOR_DANGER} !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover {{
+            background-color: #183D32 !important;
+            background: linear-gradient(180deg, #183D32 0%, #112B23 100%) !important;
+            border-color: #2F6B4F !important;
+            box-shadow: 0 8px 24px rgba(24, 61, 50, 0.35) !important;
+            transform: translateY(-2px) !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricValue"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricValue"] * {{
+            color: #FFFFFF !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricLabel"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricLabel"] * {{
+            color: #C6DBC3 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #FCA5A5 !important;
+            fill: #FCA5A5 !important;
+        }}
+
+        /* Hover delta specifics for Cards 1, 2, 5 */
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #A7F3D0 !important;
+            fill: #A7F3D0 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #FCA5A5 !important;
+            fill: #FCA5A5 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #FCD34D !important;
+            fill: #FCD34D !important;
         }}
         </style>
         """
@@ -142,12 +187,6 @@ def render_kpi_header(
             background-color: #FDF4F4 !important;
             border: 1px solid #F5C6C6 !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover {{
-            background: linear-gradient(180deg, #FDF4F4 0%, #F8E3E3 100%) !important;
-            border-color: {COLOR_DANGER} !important;
-            box-shadow: 0 6px 18px rgba(181, 71, 71, 0.14) !important;
-            transform: translateY(-2px) !important;
-        }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetricValue"] {{
             color: {COLOR_DANGER} !important;
         }}
@@ -156,12 +195,6 @@ def render_kpi_header(
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {{
             background-color: #FDF4F4 !important;
             border: 1px solid #F5C6C6 !important;
-        }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover {{
-            background: linear-gradient(180deg, #FDF4F4 0%, #F8E3E3 100%) !important;
-            border-color: {COLOR_DANGER} !important;
-            box-shadow: 0 6px 18px rgba(181, 71, 71, 0.14) !important;
-            transform: translateY(-2px) !important;
         }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetricValue"] {{
             color: {COLOR_DANGER} !important;
@@ -172,12 +205,6 @@ def render_kpi_header(
             background-color: #FDF4F4 !important;
             border: 1px solid #F5C6C6 !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover {{
-            background: linear-gradient(180deg, #FDF4F4 0%, #F8E3E3 100%) !important;
-            border-color: {COLOR_DANGER} !important;
-            box-shadow: 0 6px 18px rgba(181, 71, 71, 0.14) !important;
-            transform: translateY(-2px) !important;
-        }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {{
             color: {COLOR_DANGER} !important;
         }}
@@ -187,14 +214,50 @@ def render_kpi_header(
             background-color: #FFF8E6 !important;
             border: 1px solid #FFE49E !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover {{
-            background: linear-gradient(180deg, #FFF8E6 0%, #FDF0D0 100%) !important;
-            border-color: #A66B20 !important;
-            box-shadow: 0 6px 18px rgba(166, 107, 32, 0.14) !important;
-            transform: translateY(-2px) !important;
-        }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetricValue"] {{
             color: #A66B20 !important;
+        }}
+
+        /* Hover States for All Cards in Traditional ERP: Deep Mangrove Green with White/High-Contrast Text */
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"] [data-testid="stMetric"]:hover {{
+            background-color: #183D32 !important;
+            background: linear-gradient(180deg, #183D32 0%, #112B23 100%) !important;
+            border-color: #2F6B4F !important;
+            box-shadow: 0 8px 24px rgba(24, 61, 50, 0.35) !important;
+            transform: translateY(-2px) !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"] [data-testid="stMetric"]:hover [data-testid="stMetricValue"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"] [data-testid="stMetric"]:hover [data-testid="stMetricValue"] * {{
+            color: #FFFFFF !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"] [data-testid="stMetric"]:hover [data-testid="stMetricLabel"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"] [data-testid="stMetric"]:hover [data-testid="stMetricLabel"] * {{
+            color: #C6DBC3 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #A7F3D0 !important;
+            fill: #A7F3D0 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #FCA5A5 !important;
+            fill: #FCA5A5 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #FCA5A5 !important;
+            fill: #FCA5A5 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #FCA5A5 !important;
+            fill: #FCA5A5 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: #FCD34D !important;
+            fill: #FCD34D !important;
         }}
         </style>
         """
