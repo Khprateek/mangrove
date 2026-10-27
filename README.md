@@ -94,7 +94,7 @@ Traditional data validation pipelines optimize for **database schema purity over
 
 <p align="center">
 
-  <img src="assets/cockpit-preview.png" alt="Mangrove Materials Planner Cockpit Interface" width="100%" />
+  <img src="assets/cockpit-preview-v2.png" alt="Mangrove Materials Planner Cockpit Interface" width="100%" />
 
 </p>
 
