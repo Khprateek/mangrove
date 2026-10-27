@@ -54,6 +54,37 @@ def render_kpi_header(
         # Dynamic CSS injection for Mangrove Mode
         card_styles = f"""
         <style>
+        /* Base Metric Delta Pill Badges (Normal State) */
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetricDelta"] {{
+            background-color: #EDF7EE !important;
+            border: 1px solid #B8E2BE !important;
+            color: #1B6A41 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetricDelta"] {{
+            background-color: #FEECEC !important;
+            border: 1px solid #FCA5A5 !important;
+            color: #DC2626 !important;
+            font-weight: 700 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetricDelta"] {{
+            background-color: #E8F5E9 !important;
+            border: 1px solid #A3D9AC !important;
+            color: #15803D !important;
+            font-weight: 700 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetricDelta"] {{
+            background-color: #FEECEC !important;
+            border: 1px solid #FCA5A5 !important;
+            color: #DC2626 !important;
+            font-weight: 700 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetricDelta"] {{
+            background-color: #FEF3C7 !important;
+            border: 1px solid #FDE68A !important;
+            color: #B45309 !important;
+            font-weight: 700 !important;
+        }}
+
         /* Card 3: Cleared in RAM (Green - Positive Cleared Outcome) */
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {{
             background-color: {COLOR_BRAND_SOFT} !important;
@@ -76,11 +107,6 @@ def render_kpi_header(
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricLabel"],
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricLabel"] * {{
             color: #C6DBC3 !important;
-        }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #6EE7B7 !important;
-            fill: #6EE7B7 !important;
         }}
 
         /* Card 4: True Net Shortage (Red - Confirmed Operational Deficit) */
@@ -106,27 +132,44 @@ def render_kpi_header(
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricLabel"] * {{
             color: #C6DBC3 !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #FCA5A5 !important;
-            fill: #FCA5A5 !important;
-        }}
 
-        /* Hover delta specifics for Cards 1, 2, 5 */
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #A7F3D0 !important;
-            fill: #A7F3D0 !important;
+        /* Hover High-Contrast Delta Badges across all 5 Cards */
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(46, 213, 115, 0.22) !important;
+            border: 1px solid rgba(78, 202, 139, 0.55) !important;
+            color: #6EE7B7 !important;
+            box-shadow: 0 0 10px rgba(78, 202, 139, 0.25) !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #FCA5A5 !important;
-            fill: #FCA5A5 !important;
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(239, 68, 68, 0.28) !important;
+            border: 1px solid rgba(248, 113, 113, 0.70) !important;
+            color: #FFA4A4 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.35) !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #FCD34D !important;
-            fill: #FCD34D !important;
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(46, 213, 115, 0.22) !important;
+            border: 1px solid rgba(78, 202, 139, 0.55) !important;
+            color: #6EE7B7 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 10px rgba(78, 202, 139, 0.25) !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(239, 68, 68, 0.28) !important;
+            border: 1px solid rgba(248, 113, 113, 0.70) !important;
+            color: #FFA4A4 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.35) !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(245, 158, 11, 0.25) !important;
+            border: 1px solid rgba(251, 191, 36, 0.65) !important;
+            color: #FDE68A !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.30) !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) [data-testid="stMetricDelta"] * {{
+            color: inherit !important;
         }}
         </style>
         """
@@ -218,6 +261,37 @@ def render_kpi_header(
             color: #A66B20 !important;
         }}
 
+        /* Base Metric Delta Pill Badges in Traditional ERP */
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetricDelta"] {{
+            background-color: #EDF7EE !important;
+            border: 1px solid #B8E2BE !important;
+            color: #1B6A41 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetricDelta"] {{
+            background-color: #FEECEC !important;
+            border: 1px solid #FCA5A5 !important;
+            color: #DC2626 !important;
+            font-weight: 700 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetricDelta"] {{
+            background-color: #FEECEC !important;
+            border: 1px solid #FCA5A5 !important;
+            color: #DC2626 !important;
+            font-weight: 700 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetricDelta"] {{
+            background-color: #FEECEC !important;
+            border: 1px solid #FCA5A5 !important;
+            color: #DC2626 !important;
+            font-weight: 700 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetricDelta"] {{
+            background-color: #FEF3C7 !important;
+            border: 1px solid #FDE68A !important;
+            color: #B45309 !important;
+            font-weight: 700 !important;
+        }}
+
         /* Hover States for All Cards in Traditional ERP: Deep Mangrove Green with White/High-Contrast Text */
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"] [data-testid="stMetric"]:hover {{
             background-color: #183D32 !important;
@@ -234,30 +308,44 @@ def render_kpi_header(
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"] [data-testid="stMetric"]:hover [data-testid="stMetricLabel"] * {{
             color: #C6DBC3 !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #A7F3D0 !important;
-            fill: #A7F3D0 !important;
+
+        /* Hover High-Contrast Delta Badges across all 5 Cards */
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(1) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(46, 213, 115, 0.22) !important;
+            border: 1px solid rgba(78, 202, 139, 0.55) !important;
+            color: #6EE7B7 !important;
+            box-shadow: 0 0 10px rgba(78, 202, 139, 0.25) !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #FCA5A5 !important;
-            fill: #FCA5A5 !important;
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(239, 68, 68, 0.28) !important;
+            border: 1px solid rgba(248, 113, 113, 0.70) !important;
+            color: #FFA4A4 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.35) !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #FCA5A5 !important;
-            fill: #FCA5A5 !important;
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(239, 68, 68, 0.28) !important;
+            border: 1px solid rgba(248, 113, 113, 0.70) !important;
+            color: #FFA4A4 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.35) !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #FCA5A5 !important;
-            fill: #FCA5A5 !important;
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(239, 68, 68, 0.28) !important;
+            border: 1px solid rgba(248, 113, 113, 0.70) !important;
+            color: #FFA4A4 !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.35) !important;
         }}
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #FCD34D !important;
-            fill: #FCD34D !important;
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(245, 158, 11, 0.25) !important;
+            border: 1px solid rgba(251, 191, 36, 0.65) !important;
+            color: #FDE68A !important;
+            font-weight: 700 !important;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.30) !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) [data-testid="stMetricDelta"] * {{
+            color: inherit !important;
         }}
         </style>
         """

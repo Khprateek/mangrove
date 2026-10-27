@@ -174,16 +174,20 @@ def inject_minimalist_theme() -> None:
             color: #FFFFFF !important;
             transition: color 0.2s ease-in-out !important;
         }}
-        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"],
-        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
-            color: #A7F3D0 !important;
-            fill: #A7F3D0 !important;
-            transition: color 0.2s ease-in-out !important;
+        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] {{
+            background-color: rgba(46, 213, 115, 0.20) !important;
+            border: 1px solid rgba(78, 202, 139, 0.50) !important;
+            color: #6EE7B7 !important;
+            box-shadow: 0 0 10px rgba(78, 202, 139, 0.20) !important;
         }}
-        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"]:has([data-testid="stMetricDeltaIcon-Down"]),
-        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"]:has([data-testid="stMetricDeltaIcon-Down"]) * {{
+        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"] * {{
+            color: inherit !important;
+        }}
+        [data-testid="stMetric"]:hover [data-testid="stMetricDelta"]:has([data-testid="stMetricDeltaIcon-Down"]) {{
+            background-color: rgba(239, 68, 68, 0.22) !important;
+            border: 1px solid rgba(248, 113, 113, 0.55) !important;
             color: #FCA5A5 !important;
-            fill: #FCA5A5 !important;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.25) !important;
         }}
         [data-testid="stMetricLabel"] {{
             font-size: 0.74rem !important;
@@ -207,12 +211,42 @@ def inject_minimalist_theme() -> None:
             line-height: 1.15 !important;
         }}
         [data-testid="stMetricDelta"] {{
-            font-size: 0.76rem !important;
+            font-size: 0.74rem !important;
             font-weight: 600 !important;
             white-space: nowrap !important;
             overflow: hidden !important;
             text-overflow: ellipsis !important;
-            margin-top: 4px !important;
+            padding: 2px 8px !important;
+            border-radius: 9999px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            width: fit-content !important;
+            line-height: 1.25 !important;
+            margin-top: 6px !important;
+            background-color: #EDF7EE !important;
+            border: 1px solid #C6E6CC !important;
+            color: #1B6A41 !important;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }}
+        [data-testid="stMetricDelta"] * {{
+            color: inherit !important;
+        }}
+        [data-testid="stMetricDelta"] svg {{
+            width: 13px !important;
+            height: 13px !important;
+            margin-right: 3px !important;
+            flex-shrink: 0 !important;
+        }}
+        [data-testid="stMetricDelta"] svg path[fill="none"] {{
+            fill: none !important;
+        }}
+        [data-testid="stMetricDelta"] svg path:not([fill="none"]) {{
+            fill: currentColor !important;
+        }}
+        [data-testid="stMetricDelta"]:has([data-testid="stMetricDeltaIcon-Down"]) {{
+            background-color: #FEECEC !important;
+            border: 1px solid #FCA5A5 !important;
+            color: #DC2626 !important;
         }}
 
         /* Sidebar: Deep Mangrove Forest Styling */
