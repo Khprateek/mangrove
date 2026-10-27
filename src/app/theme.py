@@ -46,6 +46,12 @@ COLOR_INK_GREEN = COLOR_TEXT_PRIMARY
 COLOR_MOSS_GREY = COLOR_TEXT_SECONDARY
 COLOR_CARD_BG = COLOR_SURFACE_MUTED
 
+# Universal High-Contrast Chart Palette (Benchmark Harmonized)
+COLOR_CHART_PRIMARY = "#2F6B4F"    # Deep Pine Green (Active, True ATP, Exasol, Mitigated)
+COLOR_CHART_SECONDARY = "#8E9E93"  # Neutral Slate Stone Grey (Baseline, Legacy ETL, Python ETL, Book Stock)
+COLOR_CHART_ACCENT = "#B54747"     # Distinct Brick Red (Critical Alert, Shortage, Deficit, Speedup Line)
+COLOR_CHART_MUTED = "#B8C7BD"      # Soft Pale Slate (Auxiliary / Secondary Allocations)
+
 
 
 def inject_minimalist_theme() -> None:
@@ -81,14 +87,19 @@ def inject_minimalist_theme() -> None:
             background-color: {COLOR_BACKGROUND} !important;
         }}
 
-        /* Main Container Spacing & Generous Breathing Room with Compact Header */
+        /* Main Container Spacing & Generous Breathing Room */
         .main .block-container {{
             max-width: 1440px !important;
-            padding: 1.25rem 2.5rem 3.5rem 2.5rem !important;
+            padding: 1.5rem 2.5rem 4rem 2.5rem !important;
         }}
 
         /* Column Horizontal Spacing */
         [data-testid="stHorizontalBlock"] {{
+            gap: 1.25rem !important;
+        }}
+
+        /* Vertical Block Rhythm */
+        [data-testid="stVerticalBlock"] {{
             gap: 1.15rem !important;
         }}
 
@@ -244,33 +255,230 @@ def inject_minimalist_theme() -> None:
             background-color: {COLOR_BRAND_SOFT} !important;
         }}
 
-        /* Tab Navigation Bar with Balanced Margins */
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 8px !important;
-            border-bottom: 1px solid {COLOR_BORDER} !important;
-            padding-bottom: 3px !important;
-            margin-top: 0.5rem !important;
-            margin-bottom: 1.0rem !important;
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            font-size: 0.86rem !important;
-            font-weight: 500 !important;
-            padding: 9px 18px !important;
-            color: {COLOR_TEXT_SECONDARY} !important;
-            border-radius: 8px 8px 0 0 !important;
-            border: none !important;
+        /* -------------------------------------------------------------------------
+           STREAMLIT TAB NAVIGATION: ENCLOSED PILL CAPSULE TRACK (ALL VERSIONS)
+           ------------------------------------------------------------------------- */
+
+        /* 1. Eliminate Default Underlines, Borders and Overflow Scroll Buttons */
+        [data-testid="stTabs"] [role="tablist"]::after,
+        .stTabs [role="tablist"]::after,
+        [data-testid="stTab"] .react-aria-SelectionIndicator,
+        button[role="tab"] .react-aria-SelectionIndicator,
+        [data-testid="stTabsScrollLeft"],
+        [data-testid="stTabsScrollRight"],
+        .stTabs [data-baseweb="tab-highlight"],
+        .stTabs [data-baseweb="tab-border"] {{
+            display: none !important;
+            height: 0 !important;
+            width: 0 !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
             background: transparent !important;
-            transition: all 0.15s ease !important;
+            pointer-events: none !important;
         }}
-        .stTabs [data-baseweb="tab"]:hover {{
-            color: {COLOR_BRAND_PRIMARY} !important;
-            background: rgba(47, 107, 79, 0.05) !important;
+
+        /* 2. Outer Enclosed Capsule Track - Responsive Full Width */
+        [data-testid="stTabs"] [role="tablist"],
+        .stTabs [role="tablist"],
+        [data-testid="stTabs"] > div > div:first-child,
+        .stTabs [data-baseweb="tab-list"] {{
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            background-color: #FFFFFF !important;
+            border: 1px solid #D5DCD4 !important;
+            border-radius: 12px !important;
+            padding: 3px 4px !important;
+            gap: 2px !important;
+            box-shadow: 0 1px 4px rgba(24, 61, 50, 0.04) !important;
+            margin-top: 1.0rem !important;
+            margin-bottom: 1.25rem !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow: hidden !important;
+            box-sizing: border-box !important;
         }}
-        .stTabs [aria-selected="true"] {{
+
+        /* 3. Base Tab Buttons - Compact & Proportional */
+        [data-testid="stTab"],
+        button[role="tab"],
+        .stTabs [data-baseweb="tab"] {{
+            display: inline-flex !important;
+            flex: 1 1 auto !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 0.77rem !important;
+            font-weight: 500 !important;
+            padding: 6px 10px !important;
+            color: #68756B !important;
+            border-radius: 8px !important;
+            border: 1px solid transparent !important;
+            background: transparent !important;
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            cursor: pointer !important;
+            white-space: nowrap !important;
+            height: auto !important;
+            min-height: 32px !important;
+            position: relative !important;
+            outline: none !important;
+            box-sizing: border-box !important;
+        }}
+
+        /* 4. Tab Inactive Hover */
+        [data-testid="stTab"]:not([aria-selected="true"]):not([data-selected="true"]):hover,
+        button[role="tab"]:not([aria-selected="true"]):not([data-selected="true"]):hover,
+        .stTabs [data-baseweb="tab"]:not([aria-selected="true"]):hover {{
             color: {COLOR_BRAND_PRIMARY} !important;
+            background-color: #F4F7F3 !important;
+            border-color: #E2E8E0 !important;
+        }}
+
+        /* 5. Active Tab (Elevated Pale Sage Chip matching Image Reference) */
+        [data-testid="stTab"][aria-selected="true"],
+        [data-testid="stTab"][data-selected="true"],
+        button[role="tab"][aria-selected="true"],
+        button[role="tab"][data-selected="true"],
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            color: #1E4D38 !important;
             font-weight: 700 !important;
-            background: {COLOR_BRAND_SOFT} !important;
-            border-bottom: 3px solid {COLOR_BRAND_PRIMARY} !important;
+            background-color: #E2EFE5 !important;
+            border: 1px solid #BED8C5 !important;
+            border-bottom: 2px solid #2F6B4F !important;
+            box-shadow: 0 1px 3px rgba(47, 107, 79, 0.10) !important;
+        }}
+        [data-testid="stTab"][aria-selected="true"] p,
+        [data-testid="stTab"][data-selected="true"] p,
+        [data-testid="stTab"][aria-selected="true"] span,
+        [data-testid="stTab"][data-selected="true"] span,
+        button[role="tab"][aria-selected="true"] p,
+        button[role="tab"][data-selected="true"] p,
+        .stTabs [data-baseweb="tab"][aria-selected="true"] p {{
+            color: #1E4D38 !important;
+            font-weight: 700 !important;
+        }}
+
+        /* 6. Subtle Vertical Divider Between Inactive Adjacent Tabs */
+        [data-testid="stTab"]:not([aria-selected="true"]):not([data-selected="true"]) + [data-testid="stTab"]:not([aria-selected="true"]):not([data-selected="true"])::before,
+        button[role="tab"]:not([aria-selected="true"]):not([data-selected="true"]) + button[role="tab"]:not([aria-selected="true"]):not([data-selected="true"])::before,
+        .stTabs [data-baseweb="tab"]:not([aria-selected="true"]) + .stTabs [data-baseweb="tab"]:not([aria-selected="true"])::before {{
+            content: "" !important;
+            position: absolute !important;
+            left: -2px !important;
+            top: 25% !important;
+            height: 50% !important;
+            width: 1px !important;
+            background-color: #DDE3DC !important;
+            pointer-events: none !important;
+        }}
+
+        /* 7. Tab Panel Buffer */
+        [data-testid="stTabPanel"],
+        .stTabs [data-baseweb="tab-panel"] {{
+            padding-top: 0.85rem !important;
+            padding-bottom: 1.5rem !important;
+        }}
+
+        /* Tab Vector Outline Icons - Compact Footprint */
+        [data-testid="stTab"] p,
+        button[role="tab"] p,
+        .stTabs [data-baseweb="tab"] p {{
+            display: inline-flex !important;
+            align-items: center !important;
+            margin: 0 !important;
+            line-height: 1.2 !important;
+            font-size: 0.77rem !important;
+        }}
+        [data-testid="stTab"] p::before,
+        button[role="tab"] p::before,
+        .stTabs [data-baseweb="tab"] p::before {{
+            content: "" !important;
+            display: inline-block !important;
+            width: 14px !important;
+            height: 14px !important;
+            margin-right: 5px !important;
+            background-size: contain !important;
+            background-repeat: no-repeat !important;
+            background-position: center !important;
+            flex-shrink: 0 !important;
+        }}
+        /* Tab 1: Inbound Triage (Inbox/Tray) */
+        [data-testid="stTab"]:nth-child(1) p::before,
+        button[role="tab"]:nth-child(1) p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(1) p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2368756B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-6l-2 3h-4l-2-3H2'/%3E%3Cpath d='M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E") !important;
+        }}
+        [data-testid="stTab"]:nth-child(1)[aria-selected="true"] p::before,
+        [data-testid="stTab"]:nth-child(1)[data-selected="true"] p::before,
+        button[role="tab"]:nth-child(1)[aria-selected="true"] p::before,
+        button[role="tab"]:nth-child(1)[data-selected="true"] p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(1)[aria-selected="true"] p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E4D38' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-6l-2 3h-4l-2-3H2'/%3E%3Cpath d='M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E") !important;
+        }}
+        /* Tab 2: Inventory & Starvation Horizon (Hierarchy Tree) */
+        [data-testid="stTab"]:nth-child(2) p::before,
+        button[role="tab"]:nth-child(2) p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(2) p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2368756B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='5' r='3'/%3E%3Ccircle cx='6' cy='19' r='3'/%3E%3Ccircle cx='18' cy='19' r='3'/%3E%3Cpath d='M12 8v4'/%3E%3Cpath d='M6 16v-1a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v1'/%3E%3C/svg%3E") !important;
+        }}
+        [data-testid="stTab"]:nth-child(2)[aria-selected="true"] p::before,
+        [data-testid="stTab"]:nth-child(2)[data-selected="true"] p::before,
+        button[role="tab"]:nth-child(2)[aria-selected="true"] p::before,
+        button[role="tab"]:nth-child(2)[data-selected="true"] p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(2)[aria-selected="true"] p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E4D38' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='5' r='3'/%3E%3Ccircle cx='6' cy='19' r='3'/%3E%3Ccircle cx='18' cy='19' r='3'/%3E%3Cpath d='M12 8v4'/%3E%3Cpath d='M6 16v-1a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v1'/%3E%3C/svg%3E") !important;
+        }}
+        /* Tab 3: What-If Simulator (Sliders/Sliders-H) */
+        [data-testid="stTab"]:nth-child(3) p::before,
+        button[role="tab"]:nth-child(3) p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(3) p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2368756B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='4' y1='21' x2='4' y2='14'/%3E%3Cline x1='4' y1='10' x2='4' y2='3'/%3E%3Cline x1='12' y1='21' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12' y2='3'/%3E%3Cline x1='20' y1='21' x2='20' y2='16'/%3E%3Cline x1='20' y1='12' x2='20' y2='3'/%3E%3Cline x1='1' y1='14' x2='7' y2='14'/%3E%3Cline x1='9' y1='8' x2='15' y2='8'/%3E%3Cline x1='17' y1='16' x2='23' y2='16'/%3E%3C/svg%3E") !important;
+        }}
+        [data-testid="stTab"]:nth-child(3)[aria-selected="true"] p::before,
+        [data-testid="stTab"]:nth-child(3)[data-selected="true"] p::before,
+        button[role="tab"]:nth-child(3)[aria-selected="true"] p::before,
+        button[role="tab"]:nth-child(3)[data-selected="true"] p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(3)[aria-selected="true"] p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E4D38' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='4' y1='21' x2='4' y2='14'/%3E%3Cline x1='4' y1='10' x2='4' y2='3'/%3E%3Cline x1='12' y1='21' x2='12' y2='12'/%3E%3Cline x1='12' y1='8' x2='12' y2='3'/%3E%3Cline x1='20' y1='21' x2='20' y2='16'/%3E%3Cline x1='20' y1='12' x2='20' y2='3'/%3E%3Cline x1='1' y1='14' x2='7' y2='14'/%3E%3Cline x1='9' y1='8' x2='15' y2='8'/%3E%3Cline x1='17' y1='16' x2='23' y2='16'/%3E%3C/svg%3E") !important;
+        }}
+        /* Tab 4: 10k Scale Benchmark (Stopwatch Timer) */
+        [data-testid="stTab"]:nth-child(4) p::before,
+        button[role="tab"]:nth-child(4) p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(4) p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2368756B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='13' r='8'/%3E%3Cpath d='M12 9v4l2 2'/%3E%3Cpath d='M10 2h4'/%3E%3Cpath d='M18 6l1.5-1.5'/%3E%3C/svg%3E") !important;
+        }}
+        [data-testid="stTab"]:nth-child(4)[aria-selected="true"] p::before,
+        [data-testid="stTab"]:nth-child(4)[data-selected="true"] p::before,
+        button[role="tab"]:nth-child(4)[aria-selected="true"] p::before,
+        button[role="tab"]:nth-child(4)[data-selected="true"] p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(4)[aria-selected="true"] p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E4D38' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='13' r='8'/%3E%3Cpath d='M12 9v4l2 2'/%3E%3Cpath d='M10 2h4'/%3E%3Cpath d='M18 6l1.5-1.5'/%3E%3C/svg%3E") !important;
+        }}
+        /* Tab 5: Financial ROI Defense (Bar Chart) */
+        [data-testid="stTab"]:nth-child(5) p::before,
+        button[role="tab"]:nth-child(5) p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(5) p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2368756B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='20' x2='18' y2='10'/%3E%3Cline x1='12' y1='20' x2='12' y2='4'/%3E%3Cline x1='6' y1='20' x2='6' y2='14'/%3E%3C/svg%3E") !important;
+        }}
+        [data-testid="stTab"]:nth-child(5)[aria-selected="true"] p::before,
+        [data-testid="stTab"]:nth-child(5)[data-selected="true"] p::before,
+        button[role="tab"]:nth-child(5)[aria-selected="true"] p::before,
+        button[role="tab"]:nth-child(5)[data-selected="true"] p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(5)[aria-selected="true"] p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E4D38' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='18' y1='20' x2='18' y2='10'/%3E%3Cline x1='12' y1='20' x2='12' y2='4'/%3E%3Cline x1='6' y1='20' x2='6' y2='14'/%3E%3C/svg%3E") !important;
+        }}
+        /* Tab 6: Exasol Engine & SQL (Settings Gear / Database Engine) */
+        [data-testid="stTab"]:nth-child(6) p::before,
+        button[role="tab"]:nth-child(6) p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(6) p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2368756B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/%3E%3C/svg%3E") !important;
+        }}
+        [data-testid="stTab"]:nth-child(6)[aria-selected="true"] p::before,
+        [data-testid="stTab"]:nth-child(6)[data-selected="true"] p::before,
+        button[role="tab"]:nth-child(6)[aria-selected="true"] p::before,
+        button[role="tab"]:nth-child(6)[data-selected="true"] p::before,
+        .stTabs [data-baseweb="tab"]:nth-of-type(6)[aria-selected="true"] p::before {{
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231E4D38' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/%3E%3C/svg%3E") !important;
         }}
 
         /* Dataframe & Tables with Proper Padding */
@@ -292,14 +500,19 @@ def inject_minimalist_theme() -> None:
             margin-bottom: 1.25rem !important;
         }}
 
-        /* Radio Buttons (Urgency Filter Pills) */
+        /* Segmented Radio Filter Pills (Clean, Modern, Uncongested) */
         [data-testid="stRadio"] [role="radiogroup"] {{
-            gap: 8px !important;
-            background-color: {COLOR_SURFACE} !important;
-            border: 1px solid {COLOR_BORDER} !important;
-            padding: 5px 8px !important;
+            gap: 6px !important;
+            background-color: #F4F6F2 !important;
+            border: 1px solid #DCE3DB !important;
+            padding: 4px 6px !important;
             border-radius: 10px !important;
-            box-shadow: 0 1px 3px rgba(24, 61, 50, 0.03) !important;
+            box-shadow: none !important;
+        }}
+        [data-testid="stRadio"] [role="radiogroup"] label {{
+            border-radius: 6px !important;
+            padding: 4px 10px !important;
+            transition: all 0.15s ease !important;
         }}
 
         /* Selectboxes & Inputs */
@@ -439,6 +652,7 @@ def apply_mangrove_theme(fig: go.Figure, height: int = 400) -> go.Figure:
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="#FFFFFF",
+        colorway=[COLOR_CHART_PRIMARY, COLOR_CHART_SECONDARY, COLOR_CHART_ACCENT, COLOR_CHART_MUTED],
         font=dict(
             family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
             color=COLOR_TEXT_PRIMARY,

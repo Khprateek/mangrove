@@ -9,6 +9,9 @@ import streamlit as st
 from src.app.theme import (
     COLOR_BRAND_ACCENT,
     COLOR_BRAND_PRIMARY,
+    COLOR_CHART_ACCENT,
+    COLOR_CHART_PRIMARY,
+    COLOR_CHART_SECONDARY,
     COLOR_DANGER,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
@@ -144,7 +147,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                 y=df_bench["columnar_latency_ms"],
                 mode="lines+markers",
                 name=columnar_trace_name,
-                line=dict(color=COLOR_BRAND_PRIMARY, width=3),
+                line=dict(color=COLOR_CHART_PRIMARY, width=3),
                 marker=dict(size=8),
             )
         )
@@ -154,7 +157,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                 y=df_bench["legacy_latency_ms"],
                 mode="lines+markers",
                 name="Indexed Python ETL Total",
-                line=dict(color=COLOR_DANGER, width=3, dash="solid"),
+                line=dict(color=COLOR_CHART_ACCENT, width=3, dash="solid"),
                 marker=dict(size=8),
             )
         )
@@ -165,17 +168,17 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                     y=df_bench["legacy_cpu_ms"],
                     mode="lines+markers",
                     name="Indexed Python ETL Pure CPU",
-                    line=dict(color="#A66B20", width=2, dash="dot"),
+                    line=dict(color=COLOR_CHART_SECONDARY, width=2, dash="dot"),
                     marker=dict(size=6),
                 )
             )
         fig_lat.add_hline(
             y=150.0,
             line_dash="dash",
-            line_color=COLOR_BRAND_ACCENT,
+            line_color=COLOR_CHART_PRIMARY,
             annotation_text=" 150ms In-DB SLA",
             annotation_position="bottom right",
-            annotation_font=dict(size=9.5, color=COLOR_BRAND_ACCENT),
+            annotation_font=dict(size=9.5, color=COLOR_CHART_PRIMARY),
         )
         fig_lat = apply_mangrove_theme(fig_lat, height=380)
         fig_lat.update_layout(
@@ -212,7 +215,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                 x=df_bench["batch_rows"].astype(str) + " Rows",
                 y=df_bench["columnar_throughput_rows_sec"],
                 name=f"{columnar_trace_name} Throughput",
-                marker_color=COLOR_BRAND_PRIMARY,
+                marker_color=COLOR_CHART_PRIMARY,
                 yaxis="y",
             )
         )
@@ -221,7 +224,7 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                 x=df_bench["batch_rows"].astype(str) + " Rows",
                 y=df_bench["legacy_throughput_rows_sec"],
                 name="Python ETL Throughput",
-                marker_color="#8E9E93",
+                marker_color=COLOR_CHART_SECONDARY,
                 yaxis="y",
             )
         )
@@ -233,8 +236,8 @@ def render_scale_benchmark_tab(client: ChakanExasolClient, marts: dict) -> None:
                 mode="lines+markers+text",
                 text=[f"{s:.1f}x" for s in df_bench["speedup_factor"]],
                 textposition="top center",
-                line=dict(color=COLOR_DANGER, width=2),
-                marker=dict(size=7, color=COLOR_DANGER),
+                line=dict(color=COLOR_CHART_ACCENT, width=2),
+                marker=dict(size=7, color=COLOR_CHART_ACCENT),
                 yaxis="y2",
             )
         )

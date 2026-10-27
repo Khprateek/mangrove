@@ -10,6 +10,9 @@ from src.app.theme import (
     COLOR_BORDER,
     COLOR_BRAND_PRIMARY,
     COLOR_BRAND_SOFT,
+    COLOR_CHART_ACCENT,
+    COLOR_CHART_PRIMARY,
+    COLOR_CHART_SECONDARY,
     COLOR_DANGER,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
@@ -261,7 +264,7 @@ def render_scenario_simulator_tab(
                 x=merged_bom["component_part_num"],
                 y=merged_bom["baseline_run_hours"],
                 name="Baseline Hours",
-                marker_color=COLOR_BRAND_PRIMARY,
+                marker_color=COLOR_CHART_SECONDARY,
             )
         )
         fig_horizon.add_trace(
@@ -269,16 +272,16 @@ def render_scenario_simulator_tab(
                 x=merged_bom["component_part_num"],
                 y=merged_bom["simulated_run_hours"],
                 name="Post-Shock Hours",
-                marker_color=COLOR_DANGER,
+                marker_color=COLOR_CHART_PRIMARY,
             )
         )
         fig_horizon.add_hline(
             y=48.0,
             line_dash="dash",
-            line_color=COLOR_BRAND_PRIMARY,
+            line_color=COLOR_CHART_ACCENT,
             annotation_text=" 48h Safety Target",
             annotation_position="top right",
-            annotation_font=dict(size=9.5, color=COLOR_BRAND_PRIMARY),
+            annotation_font=dict(size=9.5, color=COLOR_CHART_ACCENT),
         )
         fig_horizon = apply_mangrove_theme(fig_horizon, height=390)
         fig_horizon.update_layout(
@@ -349,9 +352,9 @@ def render_scenario_simulator_tab(
                 cliponaxis=False,
                 textfont=dict(size=10, color=COLOR_TEXT_PRIMARY),
                 connector={"line": {"color": COLOR_BORDER, "width": 1.5, "dash": "dot"}},
-                decreasing={"marker": {"color": COLOR_BRAND_PRIMARY}},
-                increasing={"marker": {"color": COLOR_DANGER}},
-                totals={"marker": {"color": "#8B2626"}},
+                decreasing={"marker": {"color": COLOR_CHART_PRIMARY}},
+                increasing={"marker": {"color": COLOR_CHART_ACCENT}},
+                totals={"marker": {"color": "#1E4D38"}},
             )
         )
         fig_wf = apply_mangrove_theme(fig_wf, height=390)

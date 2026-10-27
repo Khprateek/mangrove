@@ -9,6 +9,9 @@ import streamlit as st
 from src.app.theme import (
     COLOR_BRAND_PRIMARY,
     COLOR_BRAND_SOFT,
+    COLOR_CHART_ACCENT,
+    COLOR_CHART_PRIMARY,
+    COLOR_CHART_SECONDARY,
     COLOR_DANGER,
     COLOR_TEXT_PRIMARY,
     COLOR_TEXT_SECONDARY,
@@ -191,7 +194,7 @@ def render_financial_roi_tab(
             x=line_rollup["assembly_line_id"],
             y=line_rollup["revenue_at_risk_net_inr"],
             name="Unproduced Vehicle Risk",
-            marker_color=COLOR_DANGER,
+            marker_color=COLOR_CHART_ACCENT,
         )
     )
     fig_fin.add_trace(
@@ -199,7 +202,7 @@ def render_financial_roi_tab(
             x=line_rollup["assembly_line_id"],
             y=line_rollup["plant_idle_cost_inr"],
             name="Plant Idle Penalty",
-            marker_color=COLOR_WARNING,
+            marker_color=COLOR_CHART_SECONDARY,
         )
     )
     fig_fin.add_trace(
@@ -207,7 +210,7 @@ def render_financial_roi_tab(
             x=line_rollup["assembly_line_id"],
             y=line_rollup["expedited_freight_cost_inr"],
             name="Expedited Freight Cost",
-            marker_color=COLOR_BRAND_PRIMARY,
+            marker_color=COLOR_CHART_PRIMARY,
         )
     )
     fig_fin = apply_mangrove_theme(fig_fin, height=380)
