@@ -150,15 +150,18 @@ def inject_minimalist_theme() -> None:
             border-radius: 12px !important;
             padding: 12px 18px !important;
             box-shadow: 0 1px 3px rgba(24, 61, 50, 0.03) !important;
-            transition: all 0.2s ease-in-out !important;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
             min-height: 94px !important;
+            cursor: pointer !important;
         }}
         [data-testid="stMetric"]:hover {{
-            border-color: {COLOR_BRAND_ACCENT} !important;
-            box-shadow: 0 4px 12px rgba(24, 61, 50, 0.08) !important;
+            border-color: {COLOR_BRAND_PRIMARY} !important;
+            background: linear-gradient(180deg, #FFFFFF 0%, #E8F2E5 100%) !important;
+            box-shadow: 0 6px 18px rgba(47, 107, 79, 0.12) !important;
+            transform: translateY(-2px) !important;
         }}
         [data-testid="stMetricLabel"] {{
             font-size: 0.74rem !important;

@@ -59,6 +59,12 @@ def render_kpi_header(
             background-color: {COLOR_BRAND_SOFT} !important;
             border: 1px solid #C6DBC3 !important;
         }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover {{
+            background: linear-gradient(180deg, #E8F2E5 0%, #D4E9CD 100%) !important;
+            border-color: {COLOR_BRAND_PRIMARY} !important;
+            box-shadow: 0 6px 18px rgba(47, 107, 79, 0.15) !important;
+            transform: translateY(-2px) !important;
+        }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetricValue"] {{
             color: {COLOR_BRAND_PRIMARY} !important;
         }}
@@ -67,6 +73,12 @@ def render_kpi_header(
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"] {{
             background-color: #FDF4F4 !important;
             border: 1px solid #F5C6C6 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover {{
+            background: linear-gradient(180deg, #FDF4F4 0%, #F8E3E3 100%) !important;
+            border-color: {COLOR_DANGER} !important;
+            box-shadow: 0 6px 18px rgba(181, 71, 71, 0.14) !important;
+            transform: translateY(-2px) !important;
         }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {{
             color: {COLOR_DANGER} !important;
@@ -130,6 +142,12 @@ def render_kpi_header(
             background-color: #FDF4F4 !important;
             border: 1px solid #F5C6C6 !important;
         }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetric"]:hover {{
+            background: linear-gradient(180deg, #FDF4F4 0%, #F8E3E3 100%) !important;
+            border-color: {COLOR_DANGER} !important;
+            box-shadow: 0 6px 18px rgba(181, 71, 71, 0.14) !important;
+            transform: translateY(-2px) !important;
+        }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(2) [data-testid="stMetricValue"] {{
             color: {COLOR_DANGER} !important;
         }}
@@ -138,6 +156,12 @@ def render_kpi_header(
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {{
             background-color: #FDF4F4 !important;
             border: 1px solid #F5C6C6 !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetric"]:hover {{
+            background: linear-gradient(180deg, #FDF4F4 0%, #F8E3E3 100%) !important;
+            border-color: {COLOR_DANGER} !important;
+            box-shadow: 0 6px 18px rgba(181, 71, 71, 0.14) !important;
+            transform: translateY(-2px) !important;
         }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(3) [data-testid="stMetricValue"] {{
             color: {COLOR_DANGER} !important;
@@ -148,6 +172,12 @@ def render_kpi_header(
             background-color: #FDF4F4 !important;
             border: 1px solid #F5C6C6 !important;
         }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetric"]:hover {{
+            background: linear-gradient(180deg, #FDF4F4 0%, #F8E3E3 100%) !important;
+            border-color: {COLOR_DANGER} !important;
+            box-shadow: 0 6px 18px rgba(181, 71, 71, 0.14) !important;
+            transform: translateY(-2px) !important;
+        }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(4) [data-testid="stMetricValue"] {{
             color: {COLOR_DANGER} !important;
         }}
@@ -156,6 +186,12 @@ def render_kpi_header(
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"] {{
             background-color: #FFF8E6 !important;
             border: 1px solid #FFE49E !important;
+        }}
+        [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetric"]:hover {{
+            background: linear-gradient(180deg, #FFF8E6 0%, #FDF0D0 100%) !important;
+            border-color: #A66B20 !important;
+            box-shadow: 0 6px 18px rgba(166, 107, 32, 0.14) !important;
+            transform: translateY(-2px) !important;
         }}
         [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="column"]:nth-child(5) [data-testid="stMetricValue"] {{
             color: #A66B20 !important;
